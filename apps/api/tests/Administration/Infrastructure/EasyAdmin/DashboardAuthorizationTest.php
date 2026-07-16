@@ -13,6 +13,6 @@ final class DashboardAuthorizationTest extends WebTestCase
         $client = self::createClient();
         $client->request('GET', '/admin');
 
-        self::assertResponseStatusCodeSame(401);
+        self::assertResponseRedirects('/admin/login');
     }
 }

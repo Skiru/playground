@@ -1,0 +1,62 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_MONOREPO_V1_C1R_C2",
+  "checkpoint": "C2A",
+  "status": "PASS",
+  "inputSha": "af8672eb3b762927a4092f0abc5fe93e2bdb8859",
+  "completedAt": "2026-07-16T10:30:21+02:00",
+  "implemented": [
+    "UUIDv7 administrator identity with normalized email, status, local password and roles",
+    "form login, CSRF, logout, session security and login throttling",
+    "safe app:user:create-admin application workflow",
+    "Places domain entities, value objects and publication workflow",
+    "PostGIS, pg_trgm and unaccent migration from an empty PostgreSQL 18 database",
+    "geography(Point,4326), GiST, trigram, foreign key, join, age and opening-time indexes and constraints",
+    "migration-backed Messenger transport table",
+    "deterministic five-city, six-category, fifteen-amenity and fifteen-place fixtures"
+  ],
+  "architecture": {
+    "identityPersistence": "Doctrine ORM with XML mapping",
+    "placesPersistence": "parameterized Doctrine DBAL with migration-owned schema",
+    "domainApiAttributes": false,
+    "schemaValidationScope": "ORM-managed Identity; DBAL-managed Places is verified by migration, constraints and PostGIS integration checks"
+  },
+  "results": {
+    "domainUnitTests": "PASS",
+    "publicationWorkflow": "PASS",
+    "identityTests": "PASS",
+    "adminLogin": "PASS",
+    "loginThrottlingConfiguration": "PASS",
+    "migrationsFromZero": "PASS: 1 migration, 32 SQL queries",
+    "migrationStatus": "PASS: no pending migrations",
+    "doctrineMapping": "PASS",
+    "doctrineSchemaValidation": "PASS",
+    "postgisRoundTrip": "PASS: POINT(21.0122 52.2297)",
+    "messengerTable": "PASS",
+    "databaseConstraints": "PASS: invalid age range rejected",
+    "fixtures": "PASS: deterministic reload produced 15 places",
+    "phpunit": "PASS: 15 tests, 35 assertions",
+    "phpstan": "PASS",
+    "deptrac": "PASS: 0 violations, 0 skipped violations",
+    "phpCsFixer": "PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "findingsClosed": [
+    "test database suffix corrected so isolated test credentials target family_places_test",
+    "PostGIS temporary init-server health race mitigated with a start period",
+    "Doctrine XML enum attribute corrected",
+    "DBAL fixture booleans normalized for PostgreSQL",
+    "fixtures explicitly truncate DBAL-managed catalogue tables for deterministic reloads",
+    "domain read interfaces added instead of suppressing PHPStan persistence-field findings"
+  ],
+  "knownLimitations": [
+    "Google subject is persisted but no Google authentication flow is implemented before C3",
+    "C2A exposes no public Places API; that belongs to C2B",
+    "Places schema is DBAL-managed and intentionally excluded from ORM schema diffing"
+  ],
+  "externalConfigurationRequired": [
+    "create production administrators explicitly with app:user:create-admin",
+    "supply production secrets and map provider configuration"
+  ],
+  "selfReferentialSha": false,
+  "nextAction": "Commit and push C2A, verify clean worktree, then begin C2B."
+}
