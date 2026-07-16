@@ -29,7 +29,7 @@ jobs:
           npm install --global pnpm@11.13.1
           pnpm install --frozen-lockfile
       - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @family-places/web exec playwright install --with-deps chromium
       - name: Build test runtime
         run: docker compose -f compose.yaml -f compose.test.yaml build api
       - name: Migrate from zero and load deterministic fixtures
