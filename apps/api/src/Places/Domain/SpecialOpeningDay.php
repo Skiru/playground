@@ -15,7 +15,7 @@ final class SpecialOpeningDay
     public function __construct(
         private Place $place,
         private \DateTimeImmutable $localDate,
-        private bool $closed,
+        private SpecialOpeningDayMode $mode,
         private ?string $note = null,
     ) {
         $this->id = Uuid::v7();
@@ -23,8 +23,8 @@ final class SpecialOpeningDay
 
     public function addInterval(SpecialOpeningInterval $interval): void
     {
-        if ($this->closed) {
-            throw new \DomainException('A closed special day cannot have intervals.');
+        if (SpecialOpeningDayMode::CUSTOM !== $this->mode) {
+            throw new \DomainException('Only a custom special day can have intervals.');
         }
         $this->intervals[] = $interval;
     }
@@ -46,7 +46,12 @@ final class SpecialOpeningDay
 
     public function closed(): bool
     {
-        return $this->closed;
+        return SpecialOpeningDayMode::CLOSED === $this->mode;
+    }
+
+    public function mode(): SpecialOpeningDayMode
+    {
+        return $this->mode;
     }
 
     public function note(): ?string
@@ -58,5 +63,18 @@ final class SpecialOpeningDay
     public function intervals(): array
     {
         return $this->intervals;
+    }
+
+    public function assertValid(): void
+    {
+        if (SpecialOpeningDayMode::CUSTOM === $this->mode ? [] === $this->intervals : [] !== $this->intervals) {
+            throw new \InvalidArgumentException('Special opening day mode and intervals are inconsistent.');
+        }
+
+        $sequences = array_map(static fn (SpecialOpeningInterval $interval): int => $interval->sequence(), $this->intervals);
+        sort($sequences);
+        if ($sequences !== ([] === $sequences ? [] : range(1, \count($sequences)))) {
+            throw new \InvalidArgumentException('Special opening interval sequence must be contiguous.');
+        }
     }
 }

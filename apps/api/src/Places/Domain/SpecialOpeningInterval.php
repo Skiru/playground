@@ -17,7 +17,7 @@ final class SpecialOpeningInterval
         private \DateTimeImmutable $closesAt,
         private bool $closesNextDay,
     ) {
-        if ($sequence < 1 || (!$closesNextDay && $closesAt <= $opensAt)) {
+        if ($sequence < 1 || (!$closesNextDay && $closesAt <= $opensAt) || ($closesNextDay && $closesAt > $opensAt)) {
             throw new \InvalidArgumentException('Invalid special opening interval.');
         }
         $this->id = Uuid::v7();

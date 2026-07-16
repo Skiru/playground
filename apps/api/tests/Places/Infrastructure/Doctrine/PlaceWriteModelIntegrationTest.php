@@ -12,6 +12,7 @@ use App\Places\Application\Command\OpeningHoursModeInput;
 use App\Places\Application\Command\PublishPlace;
 use App\Places\Application\Command\ReplacePlaceAgeZones;
 use App\Places\Application\Command\SpecialOpeningDayInput;
+use App\Places\Application\Command\SpecialOpeningDayModeInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UpdatePlaceAggregate;
 use App\Places\Application\Command\VerificationStatusInput;
@@ -202,7 +203,7 @@ final class PlaceWriteModelIntegrationTest extends KernelTestCase
             ageZones: $ageZones ?? [new AgeZoneInput('Toddlers', 12, 36), new AgeZoneInput('Children', 37, 96)],
             openingHoursMode: OpeningHoursModeInput::SCHEDULED,
             weeklyOpeningHours: $weekly ?? [new WeeklyOpeningIntervalInput(1, 1, '09:00', '18:00', false)],
-            specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', true, 'Closed', [])],
+            specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', SpecialOpeningDayModeInput::CLOSED, 'Closed', [])],
             externalReferences: $references ?? [new ExternalReferenceInput('atomic-test', $slug)],
         );
     }

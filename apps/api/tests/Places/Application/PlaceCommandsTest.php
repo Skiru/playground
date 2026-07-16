@@ -19,6 +19,7 @@ use App\Places\Application\Command\ReplacePlaceCategories;
 use App\Places\Application\Command\ReplaceSpecialOpeningDays;
 use App\Places\Application\Command\ReplaceWeeklyOpeningHours;
 use App\Places\Application\Command\SpecialOpeningDayInput;
+use App\Places\Application\Command\SpecialOpeningDayModeInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
 use App\Places\Application\Command\UpdatePlaceAggregate;
@@ -47,7 +48,7 @@ final class PlaceCommandsTest extends TestCase
             new ReplacePlaceAmenities('id', 1, ['parking']),
             new ReplacePlaceAgeZones('id', 1, [new AgeZoneInput('Children', 12, 72)]),
             new ReplaceWeeklyOpeningHours('id', 1, [new WeeklyOpeningIntervalInput(1, 1, '09:00', '18:00', false)]),
-            new ReplaceSpecialOpeningDays('id', 1, [new SpecialOpeningDayInput('2026-12-24', true, null, [])]),
+            new ReplaceSpecialOpeningDays('id', 1, [new SpecialOpeningDayInput('2026-12-24', SpecialOpeningDayModeInput::CLOSED, null, [])]),
             new ReplaceExternalReferences('id', 1, [new ExternalReferenceInput('osm', '123')]),
             new SubmitPlaceForReview('id', 1),
             new PublishPlace('id', 1),
@@ -111,7 +112,7 @@ final class PlaceCommandsTest extends TestCase
             ageZones: [new AgeZoneInput('Children', 12, 72)],
             openingHoursMode: OpeningHoursModeInput::SCHEDULED,
             weeklyOpeningHours: [new WeeklyOpeningIntervalInput(1, 1, '09:00', '18:00', false)],
-            specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', true, null, [])],
+            specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', SpecialOpeningDayModeInput::CLOSED, null, [])],
             externalReferences: [new ExternalReferenceInput('osm', '123')],
         ));
     }

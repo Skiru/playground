@@ -360,12 +360,14 @@ final class Place
     {
         $dates = [];
         foreach ($days as $day) {
+            $day->assertValid();
             $date = $day->localDate()->format('Y-m-d');
             if (isset($dates[$date])) {
                 throw new \InvalidArgumentException('Special opening dates must be unique.');
             }
             $dates[$date] = true;
         }
+        $this->assertSpecialIntervalsDoNotOverlap($days);
         $this->specialOpeningDays = $days;
         $this->updatedAt = $now;
     }
@@ -550,8 +552,17 @@ final class Place
     private static function assertIntervalsDoNotOverlap(array $intervals): void
     {
         $byDay = [];
+        $segments = [];
         foreach ($intervals as $interval) {
             $byDay[$interval->weekday()][] = $interval;
+            $start = (($interval->weekday() - 1) * 1440) + self::minuteOfDay($interval->opensAt());
+            $end = (($interval->weekday() - 1) * 1440) + self::minuteOfDay($interval->closesAt()) + ($interval->closesNextDay() ? 1440 : 0);
+            if ($end <= 10080) {
+                $segments[] = [$start, $end];
+            } else {
+                $segments[] = [$start, 10080];
+                $segments[] = [0, $end - 10080];
+            }
         }
         foreach ($byDay as $dayIntervals) {
             usort($dayIntervals, static fn (WeeklyOpeningInterval $a, WeeklyOpeningInterval $b): int => $a->sequence() <=> $b->sequence());
@@ -559,10 +570,61 @@ final class Place
                 if ($interval->sequence() !== $index + 1) {
                     throw new \InvalidArgumentException('Opening interval sequence must be contiguous.');
                 }
-                if ($index > 0 && $dayIntervals[$index - 1]->closesAt() > $interval->opensAt()) {
-                    throw new \InvalidArgumentException('Opening intervals cannot overlap.');
-                }
             }
         }
+        usort($segments, static fn (array $left, array $right): int => $left[0] <=> $right[0]);
+        foreach ($segments as $index => $segment) {
+            if ($index > 0 && $segments[$index - 1][1] > $segment[0]) {
+                throw new \InvalidArgumentException('Weekly opening intervals cannot overlap across day or week boundaries.');
+            }
+        }
+    }
+
+    /** @param list<SpecialOpeningDay> $days */
+    private function assertSpecialIntervalsDoNotOverlap(array $days): void
+    {
+        $timezone = new \DateTimeZone($this->timezone);
+        $ranges = [];
+        foreach ($days as $day) {
+            if (SpecialOpeningDayMode::CLOSED === $day->mode()) {
+                continue;
+            }
+            $date = $day->localDate()->format('Y-m-d');
+            if (SpecialOpeningDayMode::OPEN_24_HOURS === $day->mode()) {
+                $ranges[] = [$this->localDateTime($date, '00:00', $timezone), $this->localDateTime((new \DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d'), '00:00', $timezone)];
+                continue;
+            }
+            foreach ($day->intervals() as $interval) {
+                $nextDate = (new \DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d');
+                $ranges[] = [
+                    $this->localDateTime($date, $interval->opensAt()->format('H:i'), $timezone),
+                    $this->localDateTime($interval->closesNextDay() ? $nextDate : $date, $interval->closesAt()->format('H:i'), $timezone),
+                ];
+            }
+        }
+        usort($ranges, static fn (array $left, array $right): int => $left[0] <=> $right[0]);
+        foreach ($ranges as $index => $range) {
+            if ($range[1] <= $range[0]) {
+                throw new \InvalidArgumentException('Special opening interval must have a positive real duration.');
+            }
+            if ($index > 0 && $ranges[$index - 1][1] > $range[0]) {
+                throw new \InvalidArgumentException('Special opening intervals cannot overlap across dates.');
+            }
+        }
+    }
+
+    private function localDateTime(string $date, string $time, \DateTimeZone $timezone): \DateTimeImmutable
+    {
+        $value = new \DateTimeImmutable($date.' '.$time, $timezone);
+        if ($value->format('Y-m-d H:i') !== $date.' '.$time) {
+            throw new \InvalidArgumentException('Opening interval uses a nonexistent local time.');
+        }
+
+        return $value;
+    }
+
+    private static function minuteOfDay(\DateTimeImmutable $time): int
+    {
+        return ((int) $time->format('H') * 60) + (int) $time->format('i');
     }
 }

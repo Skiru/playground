@@ -372,7 +372,7 @@ export type SearchPlacesResponses = {
             distance_meters: number | null;
             longitude: number;
             latitude: number;
-            is_open_now: boolean;
+            is_open_now: boolean | null;
             complete: boolean;
             relevance_score: number;
         }>;

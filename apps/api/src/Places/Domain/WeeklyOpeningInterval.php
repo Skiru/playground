@@ -21,8 +21,8 @@ final class WeeklyOpeningInterval
         if ($weekday < 1 || $weekday > 7 || $sequence < 1) {
             throw new \InvalidArgumentException('Invalid weekly opening interval.');
         }
-        if (!$closesNextDay && $closesAt <= $opensAt) {
-            throw new \InvalidArgumentException('Closing time must follow opening time unless it closes next day.');
+        if ((!$closesNextDay && $closesAt <= $opensAt) || ($closesNextDay && $closesAt > $opensAt)) {
+            throw new \InvalidArgumentException('Closing time and next-day marker are inconsistent.');
         }
         $this->id = Uuid::v7();
     }

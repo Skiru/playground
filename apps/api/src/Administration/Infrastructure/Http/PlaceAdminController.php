@@ -13,6 +13,7 @@ use App\Places\Application\Command\MarkPlaceTemporarilyClosed;
 use App\Places\Application\Command\OpeningHoursModeInput;
 use App\Places\Application\Command\PublishPlace;
 use App\Places\Application\Command\SpecialOpeningDayInput;
+use App\Places\Application\Command\SpecialOpeningDayModeInput;
 use App\Places\Application\Command\SpecialOpeningIntervalInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
@@ -220,7 +221,8 @@ final class PlaceAdminController extends AbstractController
                     $intervals[] = new SpecialOpeningIntervalInput((int) $interval[0], trim($interval[1]), trim($interval[2]), '1' === trim($interval[3]));
                 }
             }
-            $result[] = new SpecialOpeningDayInput(trim($parts[0]), $closed, self::nullable($parts[2]), $intervals);
+            $mode = $closed ? SpecialOpeningDayModeInput::CLOSED : ([] === $intervals ? SpecialOpeningDayModeInput::OPEN_24_HOURS : SpecialOpeningDayModeInput::CUSTOM);
+            $result[] = new SpecialOpeningDayInput(trim($parts[0]), $mode, self::nullable($parts[2]), $intervals);
         }
 
         return $result;

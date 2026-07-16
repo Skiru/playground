@@ -16,6 +16,7 @@ use App\Places\Domain\Place;
 use App\Places\Domain\PlaceAgeZone;
 use App\Places\Domain\PlaceStatus;
 use App\Places\Domain\SpecialOpeningDay;
+use App\Places\Domain\SpecialOpeningDayMode;
 use App\Places\Domain\SpecialOpeningInterval;
 use App\Places\Domain\ValueObject\AgeRange;
 use App\Places\Domain\ValueObject\Coordinates;
@@ -170,7 +171,7 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         $place->replaceWeeklyOpeningHours($weekly, $place->updatedAt());
         $days = [];
         foreach ($this->connection->fetchAllAssociative('SELECT * FROM special_opening_days WHERE place_id=:id ORDER BY local_date', ['id' => $id]) as $dayRow) {
-            $day = new SpecialOpeningDay($place, $this->date($dayRow['local_date']), (bool) $dayRow['closed'], null === $dayRow['note'] ? null : (string) $dayRow['note']);
+            $day = new SpecialOpeningDay($place, $this->date($dayRow['local_date']), SpecialOpeningDayMode::from((string) $dayRow['mode']), null === $dayRow['note'] ? null : (string) $dayRow['note']);
             foreach ($this->connection->fetchAllAssociative('SELECT * FROM special_opening_intervals WHERE special_opening_day_id=:id ORDER BY sequence', ['id' => $dayRow['id']]) as $interval) {
                 $day->addInterval(new SpecialOpeningInterval($day, (int) $interval['sequence'], $this->time((string) $interval['opens_at']), $this->time((string) $interval['closes_at']), (bool) $interval['closes_next_day']));
             }
@@ -223,7 +224,7 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         }
         foreach ($place->specialOpeningDays() as $day) {
             $dayId = $day->id()->toRfc4122();
-            $this->connection->insert('special_opening_days', ['id' => $dayId, 'place_id' => $id, 'local_date' => $day->localDate()->format('Y-m-d'), 'closed' => (int) $day->closed(), 'note' => $day->note()]);
+            $this->connection->insert('special_opening_days', ['id' => $dayId, 'place_id' => $id, 'local_date' => $day->localDate()->format('Y-m-d'), 'mode' => $day->mode()->value, 'note' => $day->note()]);
             foreach ($day->intervals() as $interval) {
                 $this->connection->insert('special_opening_intervals', ['id' => $interval->id()->toRfc4122(), 'special_opening_day_id' => $dayId, 'sequence' => $interval->sequence(), 'opens_at' => $interval->opensAt()->format('H:i:s'), 'closes_at' => $interval->closesAt()->format('H:i:s'), 'closes_next_day' => (int) $interval->closesNextDay()]);
             }

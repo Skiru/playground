@@ -6,6 +6,9 @@ namespace App\Tests\Discovery\Infrastructure;
 
 use App\Discovery\Application\PlaceSearchQuery;
 use App\Discovery\Infrastructure\Doctrine\PlaceReadRepository;
+use App\Places\Domain\OpeningScheduleEvaluator;
+use App\Places\Domain\OpeningState;
+use App\Places\Infrastructure\Doctrine\PlaceRepository as PlaceWriteRepository;
 use App\Tests\Shared\Application\FrozenClock;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -23,7 +26,7 @@ final class PlaceReadRepositoryPostgisTest extends KernelTestCase
         $this->connection = $connection;
         $connection->executeStatement('DELETE FROM special_opening_days WHERE place_id=:id', ['id' => self::PLACE_ID]);
         $connection->executeStatement('DELETE FROM weekly_opening_intervals WHERE place_id=:id', ['id' => self::PLACE_ID]);
-        $connection->executeStatement("UPDATE places SET status='published',indoor=true,outdoor=false,free_entry=true WHERE id=:id", ['id' => self::PLACE_ID]);
+        $connection->executeStatement("UPDATE places SET status='published',opening_hours_mode='scheduled',indoor=true,outdoor=false,free_entry=true WHERE id=:id", ['id' => self::PLACE_ID]);
     }
 
     public function testRadiusBoundaryCoordinateOrderAndGistIndex(): void
@@ -130,6 +133,58 @@ final class PlaceReadRepositoryPostgisTest extends KernelTestCase
         self::assertTrue($this->contains($this->repository('2026-10-25T01:30:00Z'), $this->query(openNow: true)));
     }
 
+    public function testDomainEvaluatorAndPostgresqlUseTheSameTriStateScheduleSemantics(): void
+    {
+        $cases = [
+            ['unknown', '2026-07-20T10:00:00Z', null, static function (): void {}],
+            ['always_open', '2026-07-20T10:00:00Z', true, static function (): void {}],
+            ['scheduled', '2026-07-20T10:00:00Z', true, fn () => $this->weekly(1, 1, '09:00', '18:00', false)],
+            ['scheduled', '2026-07-20T16:00:00Z', false, fn () => $this->weekly(1, 1, '09:00', '18:00', false)],
+            ['scheduled', '2026-07-20T22:30:00Z', true, fn () => $this->weekly(1, 1, '20:00', '01:00', true)],
+            ['scheduled', '2026-07-20T10:00:00Z', false, fn () => $this->specialDay('2026-07-20', true)],
+            ['scheduled', '2026-07-20T10:00:00Z', true, fn () => $this->specialDayWithMode('2026-07-20', 'open_24_hours')],
+            ['scheduled', '2026-07-20T09:00:00Z', true, function (): void {
+                $day = $this->specialDay('2026-07-20', false);
+                $this->specialInterval($day, 1, '10:00', '12:00', false);
+            }],
+            ['scheduled', '2026-07-20T23:00:00Z', true, function (): void {
+                $day = $this->specialDay('2026-07-20', false);
+                $this->specialInterval($day, 1, '20:00', '02:00', true);
+            }],
+            ['scheduled', '2026-07-20T23:00:00Z', false, function (): void {
+                $day = $this->specialDay('2026-07-20', false);
+                $this->specialInterval($day, 1, '20:00', '02:00', true);
+                $this->specialDay('2026-07-21', true);
+            }],
+            ['scheduled', '2026-10-25T00:30:00Z', true, fn () => $this->weekly(7, 1, '02:00', '03:00', false)],
+            ['scheduled', '2026-10-25T01:30:00Z', true, fn () => $this->weekly(7, 1, '02:00', '03:00', false)],
+            ['scheduled', '2026-10-25T00:30:00Z', true, function (): void {
+                $day = $this->specialDay('2026-10-25', false);
+                $this->specialInterval($day, 1, '02:00', '03:00', false);
+            }],
+            ['scheduled', '2026-10-25T01:30:00Z', true, function (): void {
+                $day = $this->specialDay('2026-10-25', false);
+                $this->specialInterval($day, 1, '02:00', '03:00', false);
+            }],
+        ];
+
+        foreach ($cases as [$mode, $instant, $expected, $setup]) {
+            $this->connection->executeStatement('DELETE FROM special_opening_days WHERE place_id=:id', ['id' => self::PLACE_ID]);
+            $this->connection->executeStatement('DELETE FROM weekly_opening_intervals WHERE place_id=:id', ['id' => self::PLACE_ID]);
+            $this->connection->update('places', ['opening_hours_mode' => $mode], ['id' => self::PLACE_ID]);
+            $setup();
+            $place = (new PlaceWriteRepository($this->connection))->get(self::PLACE_ID);
+            $domain = (new OpeningScheduleEvaluator())->evaluate($place->openingHoursMode(), $place->timezone(), $place->weeklyOpeningHours(), $place->specialOpeningDays(), new \DateTimeImmutable($instant));
+            $domainValue = match ($domain->state) {
+                OpeningState::OPEN => true,
+                OpeningState::CLOSED => false,
+                OpeningState::UNKNOWN => null,
+            };
+            self::assertSame($expected, $domainValue, $mode.' at '.$instant);
+            self::assertSame($domainValue, $this->sqlOpening($instant), $mode.' at '.$instant);
+        }
+    }
+
     private function repository(string $instant): PlaceReadRepository
     {
         return new PlaceReadRepository($this->connection, new FrozenClock(new \DateTimeImmutable($instant)));
@@ -154,9 +209,28 @@ final class PlaceReadRepositoryPostgisTest extends KernelTestCase
     private function specialDay(string $date, bool $closed): string
     {
         $id = self::id(100 + (int) str_replace('-', '', substr($date, 5)));
-        $this->connection->insert('special_opening_days', ['id' => $id, 'place_id' => self::PLACE_ID, 'local_date' => $date, 'closed' => (int) $closed, 'note' => 'test']);
+        $this->connection->insert('special_opening_days', ['id' => $id, 'place_id' => self::PLACE_ID, 'local_date' => $date, 'mode' => $closed ? 'closed' : 'custom', 'note' => 'test']);
 
         return $id;
+    }
+
+    private function specialDayWithMode(string $date, string $mode): string
+    {
+        $id = self::id(500 + (int) str_replace('-', '', substr($date, 5)));
+        $this->connection->insert('special_opening_days', ['id' => $id, 'place_id' => self::PLACE_ID, 'local_date' => $date, 'mode' => $mode, 'note' => 'test']);
+
+        return $id;
+    }
+
+    private function sqlOpening(string $instant): ?bool
+    {
+        foreach ($this->repository($instant)->search($this->query())['items'] as $item) {
+            if (self::PLACE_ID === $item->id) {
+                return $item->opening->isOpenNow;
+            }
+        }
+
+        self::fail('Contract place must be returned by discovery.');
     }
 
     private function specialInterval(string $dayId, int $sequence, string $opens, string $closes, bool $nextDay): void

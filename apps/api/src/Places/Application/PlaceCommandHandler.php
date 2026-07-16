@@ -25,6 +25,7 @@ use App\Places\Domain\Place;
 use App\Places\Domain\PlaceAgeZone;
 use App\Places\Domain\PlaceStatus;
 use App\Places\Domain\SpecialOpeningDay;
+use App\Places\Domain\SpecialOpeningDayMode;
 use App\Places\Domain\SpecialOpeningInterval;
 use App\Places\Domain\ValueObject\AgeRange;
 use App\Places\Domain\ValueObject\Coordinates;
@@ -126,7 +127,7 @@ final readonly class PlaceCommandHandler
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
             $days = [];
             foreach ($command->specialDays as $input) {
-                $day = new SpecialOpeningDay($place, new \DateTimeImmutable($input->localDate), $input->closed, $input->note);
+                $day = new SpecialOpeningDay($place, new \DateTimeImmutable($input->localDate), SpecialOpeningDayMode::from($input->mode->value), $input->note);
                 foreach ($input->intervals as $interval) {
                     $day->addInterval(new SpecialOpeningInterval($day, $interval->sequence, $this->time($interval->opensAt), $this->time($interval->closesAt), $interval->closesNextDay));
                 }
@@ -248,7 +249,7 @@ final readonly class PlaceCommandHandler
     {
         $days = [];
         foreach ($inputs as $input) {
-            $day = new SpecialOpeningDay($place, new \DateTimeImmutable($input->localDate), $input->closed, $input->note);
+            $day = new SpecialOpeningDay($place, new \DateTimeImmutable($input->localDate), SpecialOpeningDayMode::from($input->mode->value), $input->note);
             foreach ($input->intervals as $interval) {
                 $day->addInterval(new SpecialOpeningInterval($day, $interval->sequence, $this->time($interval->opensAt), $this->time($interval->closesAt), $interval->closesNextDay));
             }

@@ -72,7 +72,7 @@ final class PlacesFixtures extends Fixture
             $this->connection->insert('place_age_zones', ['id' => self::id(500 + $index), 'place_id' => $placeId, 'name' => 'Strefa rodzinna', 'min_age_months' => ($index % 4) * 12, 'max_age_months' => 72 + (($index % 5) * 24), 'notes' => null, 'source_type' => 'admin', 'verified_at' => $publishedAt]);
             $this->connection->insert('weekly_opening_intervals', ['id' => self::id(600 + $index), 'place_id' => $placeId, 'weekday' => 1 + ($index % 7), 'sequence' => 1, 'opens_at' => '09:00:00', 'closes_at' => 0 === $index % 5 ? '01:00:00' : '18:00:00', 'closes_next_day' => 0 === $index % 5 ? 'true' : 'false']);
         }
-        $this->connection->insert('special_opening_days', ['id' => self::id(700), 'place_id' => self::id(400), 'local_date' => '2026-12-24', 'closed' => true, 'note' => 'Wyjątek demonstracyjny']);
+        $this->connection->insert('special_opening_days', ['id' => self::id(700), 'place_id' => self::id(400), 'local_date' => '2026-12-24', 'mode' => 'closed', 'note' => 'Wyjątek demonstracyjny']);
     }
 
     private static function id(int $number): string

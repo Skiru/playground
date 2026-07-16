@@ -7,11 +7,11 @@ namespace App\Discovery\Application\Dto;
 final readonly class OpeningStatus implements \JsonSerializable
 {
     public function __construct(
-        public bool $isOpenNow,
+        public ?bool $isOpenNow,
     ) {
     }
 
-    public function jsonSerialize(): bool
+    public function jsonSerialize(): ?bool
     {
         return $this->isOpenNow;
     }

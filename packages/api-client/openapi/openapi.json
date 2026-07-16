@@ -845,7 +845,10 @@
                                                         "type": "number"
                                                     },
                                                     "is_open_now": {
-                                                        "type": "boolean"
+                                                        "type": [
+                                                            "boolean",
+                                                            "null"
+                                                        ]
                                                     },
                                                     "complete": {
                                                         "type": "boolean"
