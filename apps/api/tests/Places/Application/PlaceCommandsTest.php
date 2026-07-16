@@ -21,8 +21,8 @@ use App\Places\Application\Command\SpecialOpeningDayInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
 use App\Places\Application\Command\UpdatePlaceCoreDetails;
+use App\Places\Application\Command\VerificationStatusInput;
 use App\Places\Application\Command\WeeklyOpeningIntervalInput;
-use App\Places\Domain\VerificationStatus;
 use PHPUnit\Framework\TestCase;
 
 final class PlaceCommandsTest extends TestCase
@@ -31,7 +31,7 @@ final class PlaceCommandsTest extends TestCase
     {
         $commands = [
             new CreatePlaceDraft('Place', 'place', 'Short', 'Description', 'Street 1', '00-001', 'warszawa', 'PL', 52.2, 21.0, 'Europe/Warsaw', 'parks', true, false, false),
-            new UpdatePlaceCoreDetails('id', 1, 'Place', 'place', 'Short', 'Description', 'Street 1', '00-001', 'warszawa', 'PL', 52.2, 21.0, 'Europe/Warsaw', true, false, false, VerificationStatus::UNVERIFIED),
+            new UpdatePlaceCoreDetails('id', 1, 'Place', 'place', 'Short', 'Description', 'Street 1', '00-001', 'warszawa', 'PL', 52.2, 21.0, 'Europe/Warsaw', true, false, false, VerificationStatusInput::UNVERIFIED),
             new ReplacePlaceCategories('id', 1, ['parks'], 'parks'),
             new ReplacePlaceAmenities('id', 1, ['parking']),
             new ReplacePlaceAgeZones('id', 1, [new AgeZoneInput('Children', 12, 72)]),

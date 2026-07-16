@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Places\Application\Command;
 
-use App\Places\Domain\VerificationStatus;
-
 final readonly class UpdatePlaceCoreDetails
 {
     public function __construct(
@@ -25,7 +23,7 @@ final readonly class UpdatePlaceCoreDetails
         public bool $indoor,
         public bool $outdoor,
         public bool $freeEntry,
-        public VerificationStatus $verificationStatus,
+        public VerificationStatusInput $verificationStatus,
         public ?string $addressLine2 = null,
         public ?string $priceDescription = null,
         public ?string $websiteUrl = null,

@@ -28,7 +28,7 @@ function searchQuery(params: URLSearchParams): SearchQuery {
   for (const name of ["indoor", "outdoor", "freeEntry", "openNow"] as const) {
     if (params.get(name) === "true") query[name] = true;
   }
-  const amenities = [...params.getAll("amenities"), ...params.getAll("amenities[]")];
+  const amenities = [...params.getAll("amenities"), ...params.getAll("amenities[]")].slice(0, 10);
   if (amenities.length) query.amenities = amenities;
   return query;
 }

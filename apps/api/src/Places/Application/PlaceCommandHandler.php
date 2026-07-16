@@ -28,6 +28,7 @@ use App\Places\Domain\ValueObject\AgeRange;
 use App\Places\Domain\ValueObject\Coordinates;
 use App\Places\Domain\ValueObject\PlaceName;
 use App\Places\Domain\ValueObject\PlaceSlug;
+use App\Places\Domain\VerificationStatus;
 use App\Places\Domain\WeeklyOpeningInterval;
 use App\Shared\Application\Clock;
 use App\Shared\Application\TransactionManager;
@@ -74,7 +75,7 @@ final readonly class PlaceCommandHandler
     public function updateCoreDetails(UpdatePlaceCoreDetails $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
-            $place->updateCoreDetails(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->addressLine2, $command->postalCode, $this->places->cityBySlug($command->citySlug), $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $command->indoor, $command->outdoor, $command->freeEntry, $command->priceDescription, $command->websiteUrl, $command->phone, $command->verificationStatus, $this->clock->now());
+            $place->updateCoreDetails(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->addressLine2, $command->postalCode, $this->places->cityBySlug($command->citySlug), $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $command->indoor, $command->outdoor, $command->freeEntry, $command->priceDescription, $command->websiteUrl, $command->phone, VerificationStatus::from($command->verificationStatus->value), $this->clock->now());
         });
     }
 

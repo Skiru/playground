@@ -10,6 +10,32 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
 {
+    public function testStaleAdminEditShowsAReadableConflictWithoutOverwritingChanges(): void
+    {
+        $client = self::createClient();
+        $client->disableReboot();
+        $connection = self::getContainer()->get(Connection::class);
+        self::assertInstanceOf(Connection::class, $connection);
+        $id = '00000000-0000-7000-8000-000000000400';
+        $original = $connection->fetchAssociative('SELECT name,version FROM places WHERE id=:id', ['id' => $id]);
+        self::assertIsArray($original);
+
+        $login = $client->request('GET', '/admin/login');
+        $client->request('POST', '/admin/login', ['_username' => 'admin@example.test', '_password' => 'test-password', '_csrf_token' => $login->filter('input[name="_csrf_token"]')->attr('value')], [], ['HTTP_ORIGIN' => 'http://localhost']);
+        $edit = $client->request('GET', '/admin/places/'.$id.'/edit');
+        $staleVersion = (int) $original['version'];
+        $connection->executeStatement('UPDATE places SET name=:name,version=version+1 WHERE id=:id', ['id' => $id, 'name' => 'Concurrent administrator update']);
+
+        try {
+            $client->request('POST', '/admin/places/'.$id.'/edit', ['_token' => $edit->filter('input[name="_token"]')->attr('value'), 'version' => (string) $staleVersion, 'name' => 'Stale overwrite attempt', 'slug' => 'demo-1-demo-bawialnia-mokotow', 'shortDescription' => 'Complete short description', 'description' => 'Complete description', 'addressLine1' => 'Demo 1', 'postalCode' => '00-001', 'city' => 'warszawa', 'countryCode' => 'PL', 'latitude' => '52.2297', 'longitude' => '21.0122', 'timezone' => 'Europe/Warsaw', 'indoor' => '1', 'verificationStatus' => 'admin_verified', 'primaryCategory' => 'bawialnie', 'categories' => 'bawialnie', 'amenities' => '', 'ageZones' => 'Children|0|72|', 'weeklyOpeningHours' => '', 'specialOpeningDays' => '', 'externalReferences' => '']);
+            self::assertResponseIsSuccessful();
+            self::assertSelectorTextContains('[role="alert"]', 'another administrator');
+            self::assertSame('Concurrent administrator update', $connection->fetchOne('SELECT name FROM places WHERE id=:id', ['id' => $id]));
+        } finally {
+            $connection->executeStatement('UPDATE places SET name=:name,version=:version WHERE id=:id', ['id' => $id, 'name' => $original['name'], 'version' => $original['version']]);
+        }
+    }
+
     public function testAdministratorBuildsPublishesAndUnpublishesTheWholeAggregate(): void
     {
         $client = self::createClient();

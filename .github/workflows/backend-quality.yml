@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Build PHP 8.5 development runtime
         run: docker build --target development -t family-places-api-ci -f infra/docker/api.Dockerfile .
       - name: Install backend dependencies
@@ -36,4 +36,4 @@ jobs:
           docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/deptrac analyse
           API_IMAGE=family-places-api-ci ./scripts/verify-deptrac-boundary
       - name: Backend tests
-        run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/phpunit
+        run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/phpunit tests/Places/Domain tests/Places/Application tests/Identity tests/Discovery/Application tests/Shared

@@ -22,11 +22,11 @@ use App\Places\Application\Command\SpecialOpeningIntervalInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
 use App\Places\Application\Command\UpdatePlaceCoreDetails;
+use App\Places\Application\Command\VerificationStatusInput;
 use App\Places\Application\Command\WeeklyOpeningIntervalInput;
 use App\Places\Application\ConcurrentPlaceModification;
 use App\Places\Application\PlaceCommandHandler;
 use App\Places\Application\PlaceRepository;
-use App\Places\Domain\VerificationStatus;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -107,7 +107,7 @@ final class PlaceAdminController extends AbstractController
             }
             try {
                 $version = $request->request->getInt('version');
-                $core = new UpdatePlaceCoreDetails($id, $version++, $request->request->getString('name'), $request->request->getString('slug'), $request->request->getString('shortDescription'), $request->request->getString('description'), $request->request->getString('addressLine1'), $request->request->getString('postalCode'), $request->request->getString('city'), $request->request->getString('countryCode'), (float) $request->request->getString('latitude'), (float) $request->request->getString('longitude'), $request->request->getString('timezone'), $request->request->getBoolean('indoor'), $request->request->getBoolean('outdoor'), $request->request->getBoolean('freeEntry'), VerificationStatus::from($request->request->getString('verificationStatus')), self::nullable($request->request->getString('addressLine2')), self::nullable($request->request->getString('priceDescription')), self::nullable($request->request->getString('websiteUrl')), self::nullable($request->request->getString('phone')));
+                $core = new UpdatePlaceCoreDetails($id, $version++, $request->request->getString('name'), $request->request->getString('slug'), $request->request->getString('shortDescription'), $request->request->getString('description'), $request->request->getString('addressLine1'), $request->request->getString('postalCode'), $request->request->getString('city'), $request->request->getString('countryCode'), (float) $request->request->getString('latitude'), (float) $request->request->getString('longitude'), $request->request->getString('timezone'), $request->request->getBoolean('indoor'), $request->request->getBoolean('outdoor'), $request->request->getBoolean('freeEntry'), VerificationStatusInput::from($request->request->getString('verificationStatus')), self::nullable($request->request->getString('addressLine2')), self::nullable($request->request->getString('priceDescription')), self::nullable($request->request->getString('websiteUrl')), self::nullable($request->request->getString('phone')));
                 $categorySlugs = self::csv($request->request->getString('categories'));
                 $categories = new ReplacePlaceCategories($id, $version++, $categorySlugs, $request->request->getString('primaryCategory'));
                 $amenities = new ReplacePlaceAmenities($id, $version++, self::csv($request->request->getString('amenities')));
