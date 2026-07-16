@@ -11,7 +11,7 @@ describe("places route", () => {
       meta: { sort: "relevance" },
     }} />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("1 propozycji");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("1 propozycja dla rodziny");
     expect(screen.getByRole("link", { name: "Demo Bawialnia" })).toHaveAttribute("href", "/miejsca/demo-bawialnia");
     expect(screen.getByText("bezpłatnie")).toBeInTheDocument();
   });

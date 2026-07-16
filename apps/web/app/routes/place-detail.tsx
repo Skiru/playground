@@ -2,6 +2,7 @@ import type { GetPlaceBySlugResponse } from "@family-places/api-client";
 
 import { SiteHeader } from "../components/SiteHeader";
 import { loadPlace } from "../lib/api.server";
+import { content } from "../content";
 import type { Route } from "./+types/place-detail";
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -10,36 +11,36 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `${loaderData.place.name} | FamilyPlaces` : "Miejsce | FamilyPlaces" }, { name: "description", content: loaderData?.place.short_description ?? "Szczegóły rodzinnego miejsca." }];
+  return [{ title: loaderData ? content.metadata.placeDetailTitleSuffix(loaderData.place.name) : `Miejsce | ${content.common.siteTitle}` }, { name: "description", content: loaderData?.place.short_description ?? content.metadata.placeDetailDescriptionFallback }];
 }
 
 export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
   return (
     <article className="place-detail">
       <header>
-        <p className="eyebrow">{place.city_name} · miejsce zweryfikowane</p>
+        <p className="eyebrow">{place.city_name}{content.places.placeMetaSeparator}{content.places.verifiedPlace}</p>
         <h1>{place.name}</h1>
         <p className="lede">{place.short_description}</p>
       </header>
       <div className="detail-grid">
         <section>
-          <h2>O miejscu</h2>
+          <h2>{content.places.aboutPlace}</h2>
           <p>{place.description}</p>
-          <h2>Udogodnienia</h2>
+          <h2>{content.places.amenitiesHeading}</h2>
           <ul className="amenity-list">
             {place.amenities?.map((amenity) => <li key={amenity.slug}>{amenity.name}</li>)}
           </ul>
         </section>
         <aside>
-          <h2>Informacje</h2>
+          <h2>{content.places.infoHeading}</h2>
           <dl>
-            <dt>Adres</dt><dd>{place.address_line1}, {place.postal_code} {place.city_name}</dd>
-            <dt>Przestrzeń</dt><dd>{place.indoor ? "wewnątrz" : ""}{place.indoor && place.outdoor ? " i " : ""}{place.outdoor ? "na zewnątrz" : ""}</dd>
-            <dt>Wstęp</dt><dd>{place.free_entry ? "bezpłatny" : "sprawdź cennik na miejscu"}</dd>
+            <dt>{content.places.addressLabel}</dt><dd>{place.address_line1}, {place.postal_code} {place.city_name}</dd>
+            <dt>{content.places.spaceLabel}</dt><dd>{place.indoor ? content.places.indoor : ""}{place.indoor && place.outdoor ? content.places.spaceAnd : ""}{place.outdoor ? content.places.outdoor : ""}</dd>
+            <dt>{content.places.entryLabel}</dt><dd>{place.free_entry ? content.places.freeEntryLabel : content.places.paidEntryLabel}</dd>
           </dl>
         </aside>
       </div>
-      <p><a className="back-link" href="/miejsca">← Wróć do katalogu</a></p>
+      <p><a className="back-link" href="/miejsca">{content.common.backToCatalog}</a></p>
     </article>
   );
 }

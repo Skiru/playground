@@ -1,0 +1,17 @@
+export const home = {
+  eyebrow: "Rodzinne odkrywanie miasta",
+  heading: "Miejsca dobrane do wieku, nie do przypadku.",
+  lede: "Sprawdź zweryfikowane miejsca i dopasuj je do wieku dziecka, miasta oraz potrzeb całej rodziny.",
+  queryLabel: "Czego szukasz?",
+  queryPlaceholder: "Bawialnia, park, kawiarnia",
+  cityLabel: "Miasto",
+  ageLabel: "Wiek dziecka",
+  anyOption: "Dowolny",
+  ageOptionUnder2: "do 2 lat",
+  ageOption3to5: "3-5 lat",
+  ageOption6to9: "6-9 lat",
+  ageOption10Plus: "10+ lat",
+  showPlacesButton: "Pokaż miejsca",
+  popularHeading: "Popularne kierunki",
+  selectCategoryType: "Wybierz rodzaj miejsca",
+};

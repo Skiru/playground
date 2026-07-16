@@ -1,0 +1,18 @@
+export const map = {
+  mapExplorerHeading: "Mapa",
+  mapUnavailableSummary: "Wersja tekstowa miejsc (mapa niedostępna)",
+  loading: "Ładowanie mapy...",
+  spatialViewEyebrow: "Widok przestrzenny",
+  mapResultsHeading: "Mapa wyników",
+  interactiveMapLabel: "Interaktywna mapa znalezionych miejsc",
+  refreshing: "Odświeżanie obszaru mapy…",
+  retryButton: "Spróbuj ponownie",
+  placesOnMap: (count: number) => `Miejsca widoczne na mapie (${count})`,
+  noPlacesInArea: "Brak miejsc w tym obszarze.",
+  missingConfig: "Brak konfiguracji dostawcy mapy.",
+  noWebGl: "Ta przeglądarka nie obsługuje WebGL. Lista wyników pozostaje dostępna.",
+  loadModuleError: "Moduł mapy nie może zostać załadowany. Lista wyników pozostaje dostępna.",
+  loadStyleError: "Nie udało się załadować stylu lub danych dostawcy mapy.",
+  apiError: (status: number) => `API mapy zwróciło status ${status}.`,
+  refreshError: "Nie udało się odświeżyć mapy.",
+};

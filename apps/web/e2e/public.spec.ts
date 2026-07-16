@@ -19,7 +19,7 @@ test("city, category, age, radius, amenities AND and search reach results and de
   await page.getByLabel("Wiek dziecka").selectOption("36");
   await page.getByRole("button", { name: "Pokaż miejsca" }).click();
   await expect(page).toHaveURL(/city=warszawa/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("propozycji");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("propozyc");
 
   await page.getByLabel("Kategoria").selectOption("bawialnie");
   await page.getByLabel("Latitude").fill("52.2297");

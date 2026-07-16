@@ -3,6 +3,7 @@ import type { SearchPlacesData, SearchPlacesResponse } from "@family-places/api-
 import { MapExplorer } from "../components/MapExplorer";
 import { SiteHeader } from "../components/SiteHeader";
 import { loadAmenities, loadCategories, loadCities, loadMapPlaces, loadPlaces } from "../lib/api.server";
+import { content } from "../content";
 import type { Route } from "./+types/places";
 
 type SearchQuery = NonNullable<SearchPlacesData["query"]>;
@@ -68,38 +69,38 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export function meta() {
-  return [{ title: "Katalog miejsc | FamilyPlaces" }, { name: "description", content: "Znajdź rodzinne miejsca według miasta, wieku i udogodnień." }];
+  return [{ title: content.metadata.catalogTitle }, { name: "description", content: content.metadata.catalogDescription }];
 }
 
 export function PlacesView({ places, previousPageUrl, nextPageUrl }: { places: SearchPlacesResponse; previousPageUrl?: string | null; nextPageUrl?: string | null }) {
   return (
     <section className="results" aria-labelledby="results-heading">
       <div className="section-heading">
-        <p className="eyebrow">Znalezione miejsca</p>
-        <h1 id="results-heading">{places.pagination.totalItems} propozycji dla rodziny</h1>
+        <p className="eyebrow">{content.places.resultsEyebrow}</p>
+        <h1 id="results-heading">{content.places.resultsHeadingPlural(places.pagination.totalItems)}</h1>
       </div>
       {places.items.length ? (
         <ol className="place-grid">
           {places.items.map((place) => (
             <li key={place.id}>
               <article className="place-card">
-                <p className="place-meta">{place.city} · {place.indoor ? "wewnątrz" : "na zewnątrz"}</p>
+                <p className="place-meta">{place.city}{content.places.placeMetaSeparator}{place.indoor ? content.places.indoor : content.places.outdoor}</p>
                 <h2><a href={`/miejsca/${place.slug}`}>{place.name}</a></h2>
                 <p>{place.short_description}</p>
                 <div className="tag-row">
                   {place.categories?.map((category) => <span key={category.slug}>{category.name}</span>)}
-                  {place.free_entry ? <span>bezpłatnie</span> : null}
+                  {place.free_entry ? <span>{content.places.freeEntry}</span> : null}
                 </div>
               </article>
             </li>
           ))}
         </ol>
-      ) : <p className="empty-state">Brak miejsc dla tych filtrów. Zmień kryteria i spróbuj ponownie.</p>}
+      ) : <p className="empty-state">{content.places.noResults}</p>}
       {previousPageUrl || nextPageUrl ? (
-        <nav className="pagination" aria-label="Strony wyników">
-          {previousPageUrl ? <a href={previousPageUrl}>← Poprzednia</a> : <span />}
-          <span>Strona {places.pagination.page} z {places.pagination.totalPages}</span>
-          {nextPageUrl ? <a href={nextPageUrl}>Następna →</a> : <span />}
+        <nav className="pagination" aria-label={content.places.paginationLabel}>
+          {previousPageUrl ? <a href={previousPageUrl}>{content.places.previousPage}</a> : <span />}
+          <span>{content.places.paginationPageInfo(places.pagination.page, places.pagination.totalPages)}</span>
+          {nextPageUrl ? <a href={nextPageUrl}>{content.places.nextPage}</a> : <span />}
         </nav>
       ) : null}
     </section>
@@ -111,16 +112,16 @@ export default function Places({ loaderData }: Route.ComponentProps) {
     <main className="shell">
       <SiteHeader />
       <form className="filter-bar" method="get">
-        <label>Szukaj <input name="q" defaultValue={loaderData.filters.q} /></label>
-        <label>Miasto <select name="city" defaultValue={loaderData.filters.city ?? ""}><option value="">Wszystkie</option>{loaderData.cities.map((city) => <option key={city.id} value={city.slug}>{city.name}</option>)}</select></label>
-        <label>Kategoria <select name="category" defaultValue={loaderData.filters.category ?? ""}><option value="">Wszystkie</option>{loaderData.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
-        <label>Wiek w miesiącach <input name="ageMonths" type="number" min="0" max="216" defaultValue={loaderData.filters.ageMonths} /></label>
-        <label>Latitude <input name="latitude" type="number" min="-90" max="90" step="any" defaultValue={loaderData.filters.latitude} /></label>
-        <label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" defaultValue={loaderData.filters.longitude} /></label>
-        <label>Promień km <input name="radiusKm" type="number" min="1" max="100" step="1" defaultValue={loaderData.filters.radiusKm} /></label>
-        <label className="check"><input name="indoor" type="checkbox" value="true" defaultChecked={loaderData.filters.indoor === "true"} /> wewnątrz</label>
-        <fieldset><legend>Udogodnienia (wszystkie wybrane)</legend>{loaderData.amenities.slice(0, 8).map((amenity) => { const params = new URLSearchParams(loaderData.resourceQuery); return <label className="check" key={amenity.id}><input name="amenities[]" type="checkbox" value={amenity.slug} defaultChecked={[...params.getAll("amenities"), ...params.getAll("amenities[]")].includes(amenity.slug)} /> {amenity.name}</label>; })}</fieldset>
-        <button type="submit">Filtruj</button>
+        <label>{content.places.formSearch} <input name="q" defaultValue={loaderData.filters.q} /></label>
+        <label>{content.places.formCity} <select name="city" defaultValue={loaderData.filters.city ?? ""}><option value="">{content.places.allCitiesOption}</option>{loaderData.cities.map((city) => <option key={city.id} value={city.slug}>{city.name}</option>)}</select></label>
+        <label>{content.places.formCategory} <select name="category" defaultValue={loaderData.filters.category ?? ""}><option value="">{content.places.allCategoriesOption}</option>{loaderData.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
+        <label>{content.places.formAge} <input name="ageMonths" type="number" min="0" max="216" defaultValue={loaderData.filters.ageMonths} /></label>
+        <label>{content.places.formLat} <input name="latitude" type="number" min="-90" max="90" step="any" defaultValue={loaderData.filters.latitude} /></label>
+        <label>{content.places.formLng} <input name="longitude" type="number" min="-180" max="180" step="any" defaultValue={loaderData.filters.longitude} /></label>
+        <label>{content.places.formRadius} <input name="radiusKm" type="number" min="1" max="100" step="1" defaultValue={loaderData.filters.radiusKm} /></label>
+        <label className="check"><input name="indoor" type="checkbox" value="true" defaultChecked={loaderData.filters.indoor === "true"} /> {content.places.formIndoor}</label>
+        <fieldset><legend>{content.places.formAmenitiesHeader}</legend>{loaderData.amenities.slice(0, 8).map((amenity) => { const params = new URLSearchParams(loaderData.resourceQuery); return <label className="check" key={amenity.id}><input name="amenities[]" type="checkbox" value={amenity.slug} defaultChecked={[...params.getAll("amenities"), ...params.getAll("amenities[]")].includes(amenity.slug)} /> {amenity.name}</label>; })}</fieldset>
+        <button type="submit">{content.places.filterButton}</button>
       </form>
       <div className="results-layout">
         <PlacesView places={loaderData.places} previousPageUrl={loaderData.previousPageUrl} nextPageUrl={loaderData.nextPageUrl} />

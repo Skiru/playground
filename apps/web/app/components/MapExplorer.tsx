@@ -1,6 +1,7 @@
 import type { GetMapPlacesResponse } from "@family-places/api-client";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { content } from "../content";
 
 type Feature = GetMapPlacesResponse["features"][number];
 type RequestState = "idle" | "loading" | "error";
@@ -20,7 +21,7 @@ export function MapExplorer({
   const retryRequest = useRef<() => void>(() => {});
   const [remoteFeatures, setRemoteFeatures] = useState<Feature[] | null>(null);
   const [requestState, setRequestState] = useState<RequestState>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(styleUrl ? null : "Brak konfiguracji dostawcy mapy.");
+  const [errorMessage, setErrorMessage] = useState<string | null>(styleUrl ? null : content.map.missingConfig);
   const features = remoteFeatures ?? initialFeatures;
   const [initialLongitude, initialLatitude] = initialFeatures[0]?.geometry.coordinates ?? [21.0122, 52.2297];
 
@@ -29,7 +30,7 @@ export function MapExplorer({
     if (!supportsWebGl()) {
       queueMicrotask(() => {
         setRequestState("error");
-        setErrorMessage("Ta przeglądarka nie obsługuje WebGL. Lista wyników pozostaje dostępna.");
+        setErrorMessage(content.map.noWebGl);
       });
       return;
     }
@@ -77,7 +78,7 @@ export function MapExplorer({
           setErrorMessage(null);
           try {
             const response = await fetch(`/resources/map-places?${params}`, { signal: activeController.signal });
-            if (!response.ok) throw new Error(`API mapy zwróciło status ${response.status}.`);
+            if (!response.ok) throw new Error(content.map.apiError(response.status));
             const data = (await response.json()) as GetMapPlacesResponse;
             if (disposed || currentRequest !== requestId) return;
             setRemoteFeatures(data.features);
@@ -86,7 +87,7 @@ export function MapExplorer({
           } catch (error) {
             if (disposed || currentRequest !== requestId || (error instanceof DOMException && error.name === "AbortError")) return;
             setRequestState("error");
-            setErrorMessage(error instanceof Error ? error.message : "Nie udało się odświeżyć mapy.");
+            setErrorMessage(error instanceof Error ? error.message : content.map.refreshError);
           }
         };
         const scheduleLoad = () => {
@@ -98,7 +99,7 @@ export function MapExplorer({
         map.on("error", () => {
           if (disposed) return;
           setRequestState("error");
-          setErrorMessage("Nie udało się załadować stylu lub danych dostawcy mapy.");
+          setErrorMessage(content.map.loadStyleError);
         });
         destroy = () => {
           if (debounceTimer) clearTimeout(debounceTimer);
@@ -111,7 +112,7 @@ export function MapExplorer({
       .catch(() => {
         if (disposed) return;
         setRequestState("error");
-        setErrorMessage("Moduł mapy nie może zostać załadowany. Lista wyników pozostaje dostępna.");
+        setErrorMessage(content.map.loadModuleError);
       });
 
     return () => {
@@ -124,14 +125,14 @@ export function MapExplorer({
   return (
     <section className="map-panel" aria-labelledby="map-heading" aria-busy={requestState === "loading"}>
       <div className="section-heading">
-        <p className="eyebrow">Widok przestrzenny</p>
-        <h2 id="map-heading">Mapa wyników</h2>
+        <p className="eyebrow">{content.map.spatialViewEyebrow}</p>
+        <h2 id="map-heading">{content.map.mapResultsHeading}</h2>
       </div>
-      {styleUrl ? <div className="map-canvas" ref={container} role="region" aria-label="Interaktywna mapa znalezionych miejsc" /> : null}
-      {requestState === "loading" ? <p role="status">Odświeżanie obszaru mapy…</p> : null}
-      {errorMessage ? <div role="alert"><p>{errorMessage}</p>{styleUrl ? <button type="button" onClick={() => retryRequest.current()}>Spróbuj ponownie</button> : null}</div> : null}
+      {styleUrl ? <div className="map-canvas" ref={container} role="region" aria-label={content.map.interactiveMapLabel} /> : null}
+      {requestState === "loading" ? <p role="status">{content.map.refreshing}</p> : null}
+      {errorMessage ? <div role="alert"><p>{errorMessage}</p>{styleUrl ? <button type="button" onClick={() => retryRequest.current()}>{content.map.retryButton}</button> : null}</div> : null}
       <details className="map-fallback" open={!styleUrl || requestState === "error" || features.length === 0}>
-        <summary>Miejsca widoczne na mapie ({features.length})</summary>
+        <summary>{content.map.placesOnMap(features.length)}</summary>
         {features.length ? (
           <ul>
             {features.map((feature) => (
@@ -140,7 +141,7 @@ export function MapExplorer({
               </li>
             ))}
           </ul>
-        ) : <p>Brak miejsc w tym obszarze.</p>}
+        ) : <p>{content.map.noPlacesInArea}</p>}
       </details>
     </section>
   );
