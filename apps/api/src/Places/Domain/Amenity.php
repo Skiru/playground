@@ -26,6 +26,14 @@ final class Amenity
         return $this->id;
     }
 
+    public static function reconstitute(Uuid $id, string $name, string $slug, string $group, string $iconKey, bool $enabled, int $displayOrder): self
+    {
+        $amenity = new self($name, $slug, $group, $iconKey, $enabled, $displayOrder);
+        $amenity->id = $id;
+
+        return $amenity;
+    }
+
     public function name(): string
     {
         return $this->name;

@@ -1,0 +1,30 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "checkpoint": "R0",
+  "status": "PASS",
+  "decision": "PROCEED_TO_C2R_A",
+  "checkedAt": "2026-07-16T12:30:13+02:00",
+  "timezone": "Europe/Warsaw",
+  "repository": "Skiru/playground",
+  "workingDirectory": "/Users/mkoziol/projects/playground",
+  "branch": "feat/family-places-platform-v1",
+  "headSha": "5f246ae95e2cf530028f5d4c3a618c060139c6de",
+  "headTree": "c8846bb3cfbc0880851a3c0aa7b5bfd0ee460863",
+  "expectedSha": "5f246ae95e2cf530028f5d4c3a618c060139c6de",
+  "previouslyCertifiedCodeSha": "650d418fdabf07403658cc1b1c9b0b3bff44a1c6",
+  "previouslyCertifiedCodeIsAncestor": true,
+  "origin": "https://github.com/Skiru/playground.git",
+  "cleanWorktree": true,
+  "commands": [
+    "pwd",
+    "git remote -v",
+    "git branch --show-current",
+    "git rev-parse HEAD",
+    "git rev-parse HEAD^{tree}",
+    "git status --short",
+    "git log --oneline --decorate -15",
+    "git merge-base --is-ancestor 650d418fdabf07403658cc1b1c9b0b3bff44a1c6 HEAD"
+  ],
+  "findings": [],
+  "result": "Exact-HEAD preflight contract satisfied; C2R remediation is authorized. C3 remains forbidden."
+}

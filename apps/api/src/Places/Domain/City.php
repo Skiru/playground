@@ -39,6 +39,26 @@ final class City
         return $this->id;
     }
 
+    public static function reconstitute(
+        Uuid $id,
+        string $name,
+        string $slug,
+        string $countryCode,
+        Coordinates $center,
+        int $defaultZoom,
+        int $defaultRadiusKm,
+        string $timezone,
+        bool $enabled,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        $city = new self($name, $slug, $countryCode, $center, $defaultZoom, $defaultRadiusKm, $timezone, $enabled, $createdAt);
+        $city->id = $id;
+        $city->updatedAt = $updatedAt;
+
+        return $city;
+    }
+
     public function name(): string
     {
         return $this->name;

@@ -18,12 +18,19 @@ final class Place
     private float $longitude;
     private PlaceStatus $status = PlaceStatus::DRAFT;
     private VerificationStatus $verificationStatus = VerificationStatus::UNVERIFIED;
+    private int $version = 1;
     /** @var list<Category> */
     private array $categories = [];
     /** @var list<Amenity> */
     private array $amenities = [];
     /** @var list<PlaceAgeZone> */
     private array $ageZones = [];
+    /** @var list<WeeklyOpeningInterval> */
+    private array $weeklyOpeningHours = [];
+    /** @var list<SpecialOpeningDay> */
+    private array $specialOpeningDays = [];
+    /** @var list<ExternalPlaceReference> */
+    private array $externalReferences = [];
     private ?string $addressLine2 = null;
     private ?string $priceDescription = null;
     private ?string $websiteUrl = null;
@@ -69,6 +76,59 @@ final class Place
     public function id(): Uuid
     {
         return $this->id;
+    }
+
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function markPersisted(int $version): void
+    {
+        if ($version <= $this->version) {
+            throw new \LogicException('Persisted version must increase.');
+        }
+        $this->version = $version;
+    }
+
+    public static function reconstitute(
+        Uuid $id,
+        int $version,
+        PlaceName $name,
+        PlaceSlug $slug,
+        string $shortDescription,
+        string $description,
+        string $addressLine1,
+        string $postalCode,
+        City $city,
+        string $countryCode,
+        Coordinates $coordinates,
+        string $timezone,
+        Category $primaryCategory,
+        bool $indoor,
+        bool $outdoor,
+        bool $freeEntry,
+        \DateTimeImmutable $createdAt,
+        PlaceStatus $status,
+        VerificationStatus $verificationStatus,
+        \DateTimeImmutable $updatedAt,
+        ?\DateTimeImmutable $publishedAt,
+        ?\DateTimeImmutable $verifiedAt,
+        ?string $addressLine2 = null,
+        ?string $priceDescription = null,
+        ?string $websiteUrl = null,
+        ?string $phone = null,
+    ): self {
+        $place = new self($name, $slug, $shortDescription, $description, $addressLine1, $postalCode, $city, $countryCode, $coordinates, $timezone, $primaryCategory, $indoor, $outdoor, $freeEntry, $createdAt, $addressLine2, $priceDescription, $websiteUrl, $phone);
+        $place->id = $id;
+        $place->version = $version;
+        $place->status = $status;
+        $place->verificationStatus = $verificationStatus;
+        $place->updatedAt = $updatedAt;
+        $place->publishedAt = $publishedAt;
+        $place->verifiedAt = $verifiedAt;
+
+        return $place;
     }
 
     public function slug(): string
@@ -219,14 +279,144 @@ final class Place
         $this->categories[] = $category;
     }
 
+    /** @param list<Category> $categories */
+    public function replaceCategories(array $categories, Category $primaryCategory, \DateTimeImmutable $now): void
+    {
+        if ([] === $categories || !array_any($categories, static fn (Category $category): bool => $category->id()->equals($primaryCategory->id()))) {
+            throw new \InvalidArgumentException('Categories must include the primary category.');
+        }
+        $this->categories = $categories;
+        $this->primaryCategory = $primaryCategory;
+        $this->updatedAt = $now;
+    }
+
     public function addAmenity(Amenity $amenity): void
     {
         $this->amenities[] = $amenity;
     }
 
+    /** @param list<Amenity> $amenities */
+    public function replaceAmenities(array $amenities, \DateTimeImmutable $now): void
+    {
+        $this->amenities = $amenities;
+        $this->updatedAt = $now;
+    }
+
     public function addAgeZone(PlaceAgeZone $ageZone): void
     {
         $this->ageZones[] = $ageZone;
+    }
+
+    /** @param list<PlaceAgeZone> $ageZones */
+    public function replaceAgeZones(array $ageZones, \DateTimeImmutable $now): void
+    {
+        $this->ageZones = $ageZones;
+        $this->updatedAt = $now;
+    }
+
+    /** @return list<WeeklyOpeningInterval> */
+    public function weeklyOpeningHours(): array
+    {
+        return $this->weeklyOpeningHours;
+    }
+
+    /** @param list<WeeklyOpeningInterval> $intervals */
+    public function replaceWeeklyOpeningHours(array $intervals, \DateTimeImmutable $now): void
+    {
+        self::assertIntervalsDoNotOverlap($intervals);
+        $this->weeklyOpeningHours = $intervals;
+        $this->updatedAt = $now;
+    }
+
+    /** @return list<SpecialOpeningDay> */
+    public function specialOpeningDays(): array
+    {
+        return $this->specialOpeningDays;
+    }
+
+    /** @param list<SpecialOpeningDay> $days */
+    public function replaceSpecialOpeningDays(array $days, \DateTimeImmutable $now): void
+    {
+        $dates = [];
+        foreach ($days as $day) {
+            $date = $day->localDate()->format('Y-m-d');
+            if (isset($dates[$date])) {
+                throw new \InvalidArgumentException('Special opening dates must be unique.');
+            }
+            $dates[$date] = true;
+        }
+        $this->specialOpeningDays = $days;
+        $this->updatedAt = $now;
+    }
+
+    /** @return list<ExternalPlaceReference> */
+    public function externalReferences(): array
+    {
+        return $this->externalReferences;
+    }
+
+    /** @param list<ExternalPlaceReference> $references */
+    public function replaceExternalReferences(array $references, \DateTimeImmutable $now): void
+    {
+        $keys = [];
+        foreach ($references as $reference) {
+            $key = $reference->provider()."\0".$reference->externalId();
+            if (isset($keys[$key])) {
+                throw new \InvalidArgumentException('External provider and identifier must be unique.');
+            }
+            $keys[$key] = true;
+        }
+        $this->externalReferences = $references;
+        $this->updatedAt = $now;
+    }
+
+    public function updateCoreDetails(
+        PlaceName $name,
+        PlaceSlug $slug,
+        string $shortDescription,
+        string $description,
+        string $addressLine1,
+        ?string $addressLine2,
+        string $postalCode,
+        City $city,
+        string $countryCode,
+        Coordinates $coordinates,
+        string $timezone,
+        bool $indoor,
+        bool $outdoor,
+        bool $freeEntry,
+        ?string $priceDescription,
+        ?string $websiteUrl,
+        ?string $phone,
+        VerificationStatus $verificationStatus,
+        \DateTimeImmutable $now,
+    ): void {
+        if (PlaceStatus::ARCHIVED === $this->status) {
+            throw new \DomainException('An archived place cannot be edited.');
+        }
+        if (2 !== \strlen($countryCode) || false === timezone_open($timezone)) {
+            throw new \InvalidArgumentException('Invalid country code or timezone.');
+        }
+        $this->name = $name->value;
+        $this->slug = $slug->value;
+        $this->shortDescription = trim($shortDescription);
+        $this->description = trim($description);
+        $this->addressLine1 = trim($addressLine1);
+        $this->addressLine2 = $addressLine2;
+        $this->postalCode = trim($postalCode);
+        $this->city = $city;
+        $this->countryCode = strtoupper($countryCode);
+        $this->latitude = $coordinates->latitude;
+        $this->longitude = $coordinates->longitude;
+        $this->timezone = $timezone;
+        $this->indoor = $indoor;
+        $this->outdoor = $outdoor;
+        $this->freeEntry = $freeEntry;
+        $this->priceDescription = $priceDescription;
+        $this->websiteUrl = $websiteUrl;
+        $this->phone = $phone;
+        $this->verificationStatus = $verificationStatus;
+        $this->updatedAt = $now;
     }
 
     /** @return list<string> */
@@ -291,6 +481,7 @@ final class Place
 
     public function unpublish(\DateTimeImmutable $now): void
     {
+        $this->assertStatus(PlaceStatus::PUBLISHED);
         $this->status = PlaceStatus::DRAFT;
         $this->publishedAt = null;
         $this->updatedAt = $now;
@@ -298,20 +489,59 @@ final class Place
 
     public function markNeedsReverification(\DateTimeImmutable $now): void
     {
+        $this->assertStatus(PlaceStatus::PUBLISHED);
         $this->status = PlaceStatus::NEEDS_REVERIFICATION;
         $this->updatedAt = $now;
     }
 
     public function markTemporarilyClosed(\DateTimeImmutable $now): void
     {
+        $this->assertStatus(PlaceStatus::PUBLISHED);
         $this->status = PlaceStatus::TEMPORARILY_CLOSED;
         $this->updatedAt = $now;
     }
 
     public function archive(\DateTimeImmutable $now): void
     {
+        if (PlaceStatus::ARCHIVED === $this->status) {
+            throw new \DomainException('Place is already archived.');
+        }
         $this->status = PlaceStatus::ARCHIVED;
         $this->publishedAt = null;
         $this->updatedAt = $now;
+    }
+
+    public function reopen(\DateTimeImmutable $now): void
+    {
+        $this->assertStatus(PlaceStatus::TEMPORARILY_CLOSED);
+        $this->status = PlaceStatus::PUBLISHED;
+        $this->updatedAt = $now;
+    }
+
+    private function assertStatus(PlaceStatus $required): void
+    {
+        if ($required !== $this->status) {
+            throw new \DomainException(\sprintf('Transition from %s is not allowed.', $this->status->value));
+        }
+    }
+
+    /** @param list<WeeklyOpeningInterval> $intervals */
+    private static function assertIntervalsDoNotOverlap(array $intervals): void
+    {
+        $byDay = [];
+        foreach ($intervals as $interval) {
+            $byDay[$interval->weekday()][] = $interval;
+        }
+        foreach ($byDay as $dayIntervals) {
+            usort($dayIntervals, static fn (WeeklyOpeningInterval $a, WeeklyOpeningInterval $b): int => $a->sequence() <=> $b->sequence());
+            foreach ($dayIntervals as $index => $interval) {
+                if ($interval->sequence() !== $index + 1) {
+                    throw new \InvalidArgumentException('Opening interval sequence must be contiguous.');
+                }
+                if ($index > 0 && $dayIntervals[$index - 1]->closesAt() > $interval->opensAt()) {
+                    throw new \InvalidArgumentException('Opening intervals cannot overlap.');
+                }
+            }
+        }
     }
 }

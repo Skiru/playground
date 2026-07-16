@@ -1,0 +1,39 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "checkpoint": "C2R-A",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T12:50:06+02:00",
+  "inputHead": "5f246ae95e2cf530028f5d4c3a618c060139c6de",
+  "singleWriteModel": true,
+  "atomicPublication": true,
+  "optimisticLocking": true,
+  "publicationRowLock": true,
+  "statusEnum": true,
+  "rawArrayApplicationCommands": false,
+  "legacyGatewayRegistered": false,
+  "evidence": {
+    "commandDtos": 14,
+    "transactionManager": "App\\Shared\\Application\\TransactionManager",
+    "repository": "App\\Places\\Infrastructure\\Doctrine\\PlaceRepository",
+    "transitionMatrixTests": 19,
+    "postgresqlWriteModelTests": 2,
+    "coordinateOrderRegression": true,
+    "staleVersionRegression": true,
+    "transactionRollbackRegression": true
+  },
+  "gates": {
+    "composerValidateStrict": "PASS",
+    "phpCsFixer": "PASS",
+    "phpstanLevel8": "PASS",
+    "deptrac": "PASS",
+    "symfonyContainerLint": "PASS",
+    "migrationsFromZeroPostgresql18Postgis": "PASS",
+    "fixtures": "PASS",
+    "phpunit": "PASS (46 tests, 80 assertions)"
+  },
+  "notes": [
+    "ManagePlace, AdminPlaceGateway, DbalAdminPlaceGateway, and direct aggregate handler services were removed.",
+    "All administration mutations now enter through typed command DTOs and PlaceCommandHandler.",
+    "Publish executes load-for-update, transition validation, completeness validation, and aggregate persistence in one DBAL transaction."
+  ]
+}

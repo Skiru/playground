@@ -4,7 +4,7 @@ doctrine:
         server_version: '18'
         profiling_collect_backtrace: '%kernel.debug%'
         # Places is intentionally DBAL-managed; ORM schema validation owns Identity only.
-        schema_filter: '~^users$~'
+        schema_filter: '~^(users|doctrine_migration_versions)$~'
         types:
             geography:
                 class: Jsor\Doctrine\PostGIS\Types\GeographyType

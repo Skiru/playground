@@ -54,13 +54,14 @@ services:
         alias: App\Shared\Infrastructure\Clock\SystemClock
         public: true
 
+    App\Shared\Application\TransactionManager: '@App\Shared\Infrastructure\Doctrine\DbalTransactionManager'
+
     App\Shared\Infrastructure\Logging\CorrelationIdProcessor:
         tags: [monolog.processor]
 
     App\Identity\Application\UserRepository: '@App\Identity\Infrastructure\Doctrine\UserRepository'
     App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
-    App\Places\Application\AdminPlaceGateway: '@App\Places\Infrastructure\Doctrine\DbalAdminPlaceGateway'
 
     Jsor\Doctrine\PostGIS\Event\ORMSchemaEventListener:
         tags: [{ name: doctrine.event_listener, event: postGenerateSchemaTable, connection: default }]

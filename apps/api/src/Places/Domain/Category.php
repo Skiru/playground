@@ -26,6 +26,14 @@ final class Category
         return $this->id;
     }
 
+    public static function reconstitute(Uuid $id, string $name, string $slug, ?string $description, string $iconKey, bool $enabled, int $displayOrder): self
+    {
+        $category = new self($name, $slug, $description, $iconKey, $enabled, $displayOrder);
+        $category->id = $id;
+
+        return $category;
+    }
+
     public function name(): string
     {
         return $this->name;
