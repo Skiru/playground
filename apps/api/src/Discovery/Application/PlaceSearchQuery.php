@@ -61,11 +61,11 @@ final readonly class PlaceSearchQuery
         if (null !== $q && mb_strlen($q) > 100) {
             throw new \InvalidArgumentException('q cannot exceed 100 characters.');
         }
-        if ($page < 1 || $pageSize < 1 || $pageSize > 50) {
+        if ($page < 1 || $page > 5000 || $pageSize < 1 || $pageSize > 50 || ($page - 1) * $pageSize > 50000) {
             throw new \InvalidArgumentException('Invalid pagination.');
         }
-        if (\count($amenities) > 20) {
-            throw new \InvalidArgumentException('At most 20 amenities are allowed.');
+        if (\count($amenities) > 10) {
+            throw new \InvalidArgumentException('At most 10 amenities are allowed.');
         }
         if (!\in_array($sort, ['relevance', 'distance', 'name', 'recentlyVerified'], true)) {
             throw new \InvalidArgumentException('Unsupported sort value.');

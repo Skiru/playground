@@ -237,7 +237,11 @@ export type GetMapPlacesResponses = {
                 ];
             };
             properties: {
-                [key: string]: unknown;
+                slug: string;
+                name: string;
+                indoor: boolean;
+                outdoor: boolean;
+                freeEntry: boolean;
             };
         }>;
     };
@@ -350,38 +354,27 @@ export type SearchPlacesResponses = {
             slug: string;
             name: string;
             short_description: string;
-            description?: string;
-            city?: string;
-            city_name?: string;
-            address_line1?: string;
-            postal_code?: string;
-            categories?: Array<{
-                slug?: string;
-                name?: string;
+            city: string;
+            categories: Array<{
+                slug: string;
+                name: string;
             }>;
-            amenities?: Array<{
-                slug?: string;
-                name?: string;
+            min_age_months: number;
+            max_age_months: number | null;
+            indoor: boolean;
+            outdoor: boolean;
+            free_entry: boolean;
+            verification_status: string;
+            amenities: Array<{
+                slug: string;
+                name: string;
             }>;
-            min_age_months?: number | null;
-            max_age_months?: number | null;
-            indoor?: boolean;
-            outdoor?: boolean;
-            free_entry?: boolean;
-            verification_status?: string;
-            distance_meters?: number | null;
+            distance_meters: number | null;
             longitude: number;
             latitude: number;
-            is_open_now?: boolean;
-            age_zones?: Array<{
-                [key: string]: unknown;
-            }>;
-            weekly_opening?: Array<{
-                [key: string]: unknown;
-            }>;
-            special_opening?: Array<{
-                [key: string]: unknown;
-            }>;
+            is_open_now: boolean;
+            complete: boolean;
+            relevance_score: number;
         }>;
         pagination: {
             page: number;
@@ -390,7 +383,7 @@ export type SearchPlacesResponses = {
             totalPages: number;
         };
         meta: {
-            sort?: string;
+            sort: string;
         };
     };
 };
@@ -434,38 +427,39 @@ export type GetPlaceBySlugResponses = {
         slug: string;
         name: string;
         short_description: string;
-        description?: string;
-        city?: string;
-        city_name?: string;
-        address_line1?: string;
-        postal_code?: string;
-        categories?: Array<{
-            slug?: string;
-            name?: string;
+        description: string;
+        city_name: string;
+        city_slug: string;
+        address_line1: string;
+        address_line2: string | null;
+        postal_code: string;
+        country_code: string;
+        categories: Array<{
+            slug: string;
+            name: string;
         }>;
-        amenities?: Array<{
-            slug?: string;
-            name?: string;
+        amenities: Array<{
+            slug: string;
+            name: string;
         }>;
-        min_age_months?: number | null;
-        max_age_months?: number | null;
-        indoor?: boolean;
-        outdoor?: boolean;
-        free_entry?: boolean;
-        verification_status?: string;
-        distance_meters?: number | null;
+        age_zones: Array<{
+            [key: string]: unknown;
+        }>;
+        weekly_opening: Array<{
+            [key: string]: unknown;
+        }>;
+        special_opening: Array<{
+            [key: string]: unknown;
+        }>;
+        indoor: boolean;
+        outdoor: boolean;
+        free_entry: boolean;
+        price_description: string | null;
+        website_url: string | null;
+        phone: string | null;
+        verification_status: string;
         longitude: number;
         latitude: number;
-        is_open_now?: boolean;
-        age_zones?: Array<{
-            [key: string]: unknown;
-        }>;
-        weekly_opening?: Array<{
-            [key: string]: unknown;
-        }>;
-        special_opening?: Array<{
-            [key: string]: unknown;
-        }>;
     };
 };
 

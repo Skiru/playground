@@ -341,7 +341,31 @@
                                                     },
                                                     "properties": {
                                                         "type": "object",
-                                                        "additionalProperties": true
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "slug",
+                                                            "name",
+                                                            "indoor",
+                                                            "outdoor",
+                                                            "freeEntry"
+                                                        ],
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "indoor": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "outdoor": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "freeEntry": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -575,7 +599,8 @@
                             "type": "array",
                             "items": {
                                 "type": "string"
-                            }
+                            },
+                            "maxItems": 10
                         },
                         "style": "form",
                         "explode": true
@@ -635,7 +660,8 @@
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "maxLength": 100
                         },
                         "style": "form",
                         "explode": true
@@ -647,7 +673,9 @@
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5000
                         },
                         "style": "form",
                         "explode": true
@@ -659,7 +687,9 @@
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
                         },
                         "style": "form",
                         "explode": true
@@ -698,18 +728,33 @@
                                         "pagination",
                                         "meta"
                                     ],
+                                    "additionalProperties": false,
                                     "properties": {
                                         "items": {
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
+                                                "additionalProperties": false,
                                                 "required": [
                                                     "id",
                                                     "slug",
                                                     "name",
                                                     "short_description",
+                                                    "city",
+                                                    "categories",
+                                                    "min_age_months",
+                                                    "max_age_months",
+                                                    "indoor",
+                                                    "outdoor",
+                                                    "free_entry",
+                                                    "verification_status",
+                                                    "amenities",
+                                                    "distance_meters",
                                                     "longitude",
-                                                    "latitude"
+                                                    "latitude",
+                                                    "is_open_now",
+                                                    "complete",
+                                                    "relevance_score"
                                                 ],
                                                 "properties": {
                                                     "id": {
@@ -725,39 +770,18 @@
                                                     "short_description": {
                                                         "type": "string"
                                                     },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
                                                     "city": {
-                                                        "type": "string"
-                                                    },
-                                                    "city_name": {
-                                                        "type": "string"
-                                                    },
-                                                    "address_line1": {
-                                                        "type": "string"
-                                                    },
-                                                    "postal_code": {
                                                         "type": "string"
                                                     },
                                                     "categories": {
                                                         "type": "array",
                                                         "items": {
                                                             "type": "object",
-                                                            "properties": {
-                                                                "slug": {
-                                                                    "type": "string"
-                                                                },
-                                                                "name": {
-                                                                    "type": "string"
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                                    "amenities": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "required": [
+                                                                "slug",
+                                                                "name"
+                                                            ],
                                                             "properties": {
                                                                 "slug": {
                                                                     "type": "string"
@@ -769,10 +793,7 @@
                                                         }
                                                     },
                                                     "min_age_months": {
-                                                        "type": [
-                                                            "integer",
-                                                            "null"
-                                                        ]
+                                                        "type": "integer"
                                                     },
                                                     "max_age_months": {
                                                         "type": [
@@ -792,6 +813,25 @@
                                                     "verification_status": {
                                                         "type": "string"
                                                     },
+                                                    "amenities": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "required": [
+                                                                "slug",
+                                                                "name"
+                                                            ],
+                                                            "properties": {
+                                                                "slug": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
                                                     "distance_meters": {
                                                         "type": [
                                                             "number",
@@ -807,23 +847,11 @@
                                                     "is_open_now": {
                                                         "type": "boolean"
                                                     },
-                                                    "age_zones": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object"
-                                                        }
+                                                    "complete": {
+                                                        "type": "boolean"
                                                     },
-                                                    "weekly_opening": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object"
-                                                        }
-                                                    },
-                                                    "special_opening": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object"
-                                                        }
+                                                    "relevance_score": {
+                                                        "type": "number"
                                                     }
                                                 }
                                             }
@@ -853,6 +881,9 @@
                                         },
                                         "meta": {
                                             "type": "object",
+                                            "required": [
+                                                "sort"
+                                            ],
                                             "properties": {
                                                 "sort": {
                                                     "type": "string"
@@ -1028,7 +1059,8 @@
                             "type": "array",
                             "items": {
                                 "type": "string"
-                            }
+                            },
+                            "maxItems": 10
                         },
                         "style": "form",
                         "explode": true
@@ -1088,7 +1120,8 @@
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "maxLength": 100
                         },
                         "style": "form",
                         "explode": true
@@ -1100,7 +1133,9 @@
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5000
                         },
                         "style": "form",
                         "explode": true
@@ -1112,7 +1147,9 @@
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
                         },
                         "style": "form",
                         "explode": true
@@ -1146,11 +1183,31 @@
                             "application/json": {
                                 "schema": {
                                     "type": "object",
+                                    "additionalProperties": false,
                                     "required": [
                                         "id",
                                         "slug",
                                         "name",
                                         "short_description",
+                                        "description",
+                                        "city_name",
+                                        "city_slug",
+                                        "address_line1",
+                                        "address_line2",
+                                        "postal_code",
+                                        "country_code",
+                                        "categories",
+                                        "amenities",
+                                        "age_zones",
+                                        "weekly_opening",
+                                        "special_opening",
+                                        "indoor",
+                                        "outdoor",
+                                        "free_entry",
+                                        "price_description",
+                                        "website_url",
+                                        "phone",
+                                        "verification_status",
                                         "longitude",
                                         "latitude"
                                     ],
@@ -1171,22 +1228,36 @@
                                         "description": {
                                             "type": "string"
                                         },
-                                        "city": {
+                                        "city_name": {
                                             "type": "string"
                                         },
-                                        "city_name": {
+                                        "city_slug": {
                                             "type": "string"
                                         },
                                         "address_line1": {
                                             "type": "string"
                                         },
+                                        "address_line2": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
                                         "postal_code": {
+                                            "type": "string"
+                                        },
+                                        "country_code": {
                                             "type": "string"
                                         },
                                         "categories": {
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "slug",
+                                                    "name"
+                                                ],
                                                 "properties": {
                                                     "slug": {
                                                         "type": "string"
@@ -1201,6 +1272,11 @@
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "slug",
+                                                    "name"
+                                                ],
                                                 "properties": {
                                                     "slug": {
                                                         "type": "string"
@@ -1210,45 +1286,6 @@
                                                     }
                                                 }
                                             }
-                                        },
-                                        "min_age_months": {
-                                            "type": [
-                                                "integer",
-                                                "null"
-                                            ]
-                                        },
-                                        "max_age_months": {
-                                            "type": [
-                                                "integer",
-                                                "null"
-                                            ]
-                                        },
-                                        "indoor": {
-                                            "type": "boolean"
-                                        },
-                                        "outdoor": {
-                                            "type": "boolean"
-                                        },
-                                        "free_entry": {
-                                            "type": "boolean"
-                                        },
-                                        "verification_status": {
-                                            "type": "string"
-                                        },
-                                        "distance_meters": {
-                                            "type": [
-                                                "number",
-                                                "null"
-                                            ]
-                                        },
-                                        "longitude": {
-                                            "type": "number"
-                                        },
-                                        "latitude": {
-                                            "type": "number"
-                                        },
-                                        "is_open_now": {
-                                            "type": "boolean"
                                         },
                                         "age_zones": {
                                             "type": "array",
@@ -1267,6 +1304,42 @@
                                             "items": {
                                                 "type": "object"
                                             }
+                                        },
+                                        "indoor": {
+                                            "type": "boolean"
+                                        },
+                                        "outdoor": {
+                                            "type": "boolean"
+                                        },
+                                        "free_entry": {
+                                            "type": "boolean"
+                                        },
+                                        "price_description": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "website_url": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "phone": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "verification_status": {
+                                            "type": "string"
+                                        },
+                                        "longitude": {
+                                            "type": "number"
+                                        },
+                                        "latitude": {
+                                            "type": "number"
                                         }
                                     }
                                 }

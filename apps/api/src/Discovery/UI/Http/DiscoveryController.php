@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Discovery\UI\Http;
 
+use App\Discovery\Application\Dto\PaginationMetadata;
 use App\Discovery\Application\PlaceReadModel;
 use App\Discovery\Application\PlaceSearchQuery;
 use App\Shared\Application\CorrelationId;
@@ -50,7 +51,7 @@ final readonly class DiscoveryController
         $result = $this->places->search($query);
         $totalPages = 0 === $result['total'] ? 0 : (int) ceil($result['total'] / $query->pageSize);
 
-        return new JsonResponse(['items' => $result['items'], 'pagination' => ['page' => $query->page, 'pageSize' => $query->pageSize, 'totalItems' => $result['total'], 'totalPages' => $totalPages], 'meta' => ['sort' => $query->sort]]);
+        return new JsonResponse(['items' => $result['items'], 'pagination' => new PaginationMetadata($query->page, $query->pageSize, $result['total'], $totalPages), 'meta' => ['sort' => $query->sort]]);
     }
 
     #[Route('/api/v1/places/{slug}', name: 'api_place_details', requirements: ['slug' => '[a-z0-9-]+'], methods: ['GET'])]
@@ -61,7 +62,7 @@ final readonly class DiscoveryController
             return self::problem($request, 404, 'place_not_found', 'Place not found.');
         }
 
-        return new JsonResponse($place);
+        return new JsonResponse($place->jsonSerialize());
     }
 
     #[Route('/api/v1/map/places', name: 'api_map_places', methods: ['GET'])]

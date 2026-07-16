@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Discovery\Infrastructure\Doctrine;
 
+use App\Discovery\Application\Dto\AgeSummary;
+use App\Discovery\Application\Dto\MapPlaceFeature;
+use App\Discovery\Application\Dto\OpeningStatus;
+use App\Discovery\Application\Dto\PlaceDetails;
+use App\Discovery\Application\Dto\PlaceListItem;
 use App\Discovery\Application\PlaceReadModel;
 use App\Discovery\Application\PlaceSearchQuery;
 use App\Shared\Application\Clock;
@@ -17,9 +22,10 @@ final readonly class PlaceReadRepository implements PlaceReadModel
     {
     }
 
-    /** @return array{items: list<array<string, mixed>>, total: int} */
+    /** @return array{items: list<PlaceListItem>, total: int} */
     public function search(PlaceSearchQuery $query): array
     {
+        $this->connection->executeStatement('SET statement_timeout TO 2000');
         [$where, $parameters, $types] = $this->filters($query);
         $distance = null !== $query->latitude
             ? 'ST_Distance(p.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography)'
@@ -58,7 +64,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
         }
         $count = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM places p JOIN cities c ON c.id = p.city_id WHERE '.implode(' AND ', $where), $countParameters, $types);
 
-        return ['items' => array_map(self::normalizeRow(...), $items), 'total' => $count];
+        return ['items' => array_map(self::listItem(...), $items), 'total' => $count];
     }
 
     /** @return list<array<string, mixed>> */
@@ -72,10 +78,9 @@ final readonly class PlaceReadRepository implements PlaceReadModel
         return $this->connection->fetchAllAssociative('SELECT '.$columns.' FROM '.$table.' WHERE enabled = true ORDER BY '.('cities' === $table ? 'name' : 'display_order, name'));
     }
 
-    /** @return array<string, mixed>|null */
-    public function details(string $slug): ?array
+    public function details(string $slug): ?PlaceDetails
     {
-        $row = $this->connection->fetchAssociative('SELECT p.*, c.name AS city_name, c.slug AS city_slug,
+        $row = $this->connection->fetchAssociative('SELECT p.id,p.slug,p.name,p.short_description,p.description,p.address_line1,p.address_line2,p.postal_code,p.country_code,p.indoor,p.outdoor,p.free_entry,p.price_description,p.website_url,p.phone,p.verification_status,p.longitude,p.latitude,c.name AS city_name,c.slug AS city_slug,
             COALESCE((SELECT json_agg(json_build_object(\'slug\', cat.slug, \'name\', cat.name) ORDER BY cat.display_order) FROM place_categories pc JOIN categories cat ON cat.id=pc.category_id WHERE pc.place_id=p.id), \'[]\'::json) categories,
             COALESCE((SELECT json_agg(json_build_object(\'slug\', a.slug, \'name\', a.name) ORDER BY a.display_order) FROM place_amenities pa JOIN amenities a ON a.id=pa.amenity_id WHERE pa.place_id=p.id), \'[]\'::json) amenities,
             COALESCE((SELECT json_agg(json_build_object(\'name\', z.name, \'minAgeMonths\', z.min_age_months, \'maxAgeMonths\', z.max_age_months, \'notes\', z.notes) ORDER BY z.min_age_months) FROM place_age_zones z WHERE z.place_id=p.id), \'[]\'::json) age_zones,
@@ -83,12 +88,13 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             COALESCE((SELECT json_agg(json_build_object(\'localDate\', s.local_date, \'closed\', s.closed, \'note\', s.note) ORDER BY s.local_date) FROM special_opening_days s WHERE s.place_id=p.id), \'[]\'::json) special_opening
             FROM places p JOIN cities c ON c.id=p.city_id WHERE p.slug=:slug AND p.status=\'published\'', ['slug' => $slug]);
 
-        return false === $row ? null : self::normalizeRow($row);
+        return false === $row ? null : self::detailsItem($row);
     }
 
-    /** @return array{features: list<array<string, mixed>>, truncated: bool} */
+    /** @return array{features: list<MapPlaceFeature>, truncated: bool} */
     public function map(float $west, float $south, float $east, float $north, PlaceSearchQuery $query): array
     {
+        $this->connection->executeStatement('SET statement_timeout TO 2000');
         [$where, $parameters, $types] = $this->filters($query);
         if (null === $query->radiusKm) {
             unset($parameters['latitude'], $parameters['longitude']);
@@ -97,7 +103,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
         $parameters += ['west' => $west, 'south' => $south, 'east' => $east, 'north' => $north];
         $rows = $this->connection->fetchAllAssociative('SELECT p.id,p.slug,p.name,p.longitude,p.latitude,p.indoor,p.outdoor,p.free_entry FROM places p JOIN cities c ON c.id=p.city_id WHERE '.implode(' AND ', $where).' ORDER BY p.id LIMIT 501', $parameters, $types);
         $truncated = \count($rows) > 500;
-        $features = array_map(static fn (array $row): array => ['type' => 'Feature', 'id' => $row['id'], 'geometry' => ['type' => 'Point', 'coordinates' => [(float) $row['longitude'], (float) $row['latitude']]], 'properties' => ['slug' => $row['slug'], 'name' => $row['name'], 'indoor' => (bool) $row['indoor'], 'outdoor' => (bool) $row['outdoor'], 'freeEntry' => (bool) $row['free_entry']]], \array_slice($rows, 0, 500));
+        $features = array_map(static fn (array $row): MapPlaceFeature => new MapPlaceFeature('Feature', (string) $row['id'], ['type' => 'Point', 'coordinates' => [(float) $row['longitude'], (float) $row['latitude']]], ['slug' => (string) $row['slug'], 'name' => (string) $row['name'], 'indoor' => (bool) $row['indoor'], 'outdoor' => (bool) $row['outdoor'], 'freeEntry' => (bool) $row['free_entry']]), \array_slice($rows, 0, 500));
 
         return ['features' => $features, 'truncated' => $truncated];
     }
@@ -135,8 +141,9 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             }
         }
         if (null !== $query->q) {
-            $where[] = 'p.normalized_name ILIKE :q';
+            $where[] = '(p.normalized_name ILIKE :q OR immutable_unaccent(p.name) ILIKE immutable_unaccent(:q) OR to_tsvector(\'simple\', immutable_unaccent(p.short_description || \' \' || p.description)) @@ websearch_to_tsquery(\'simple\', immutable_unaccent(:searchQuery)))';
             $parameters['q'] = '%'.mb_strtolower($query->q).'%';
+            $parameters['searchQuery'] = $query->q;
         }
         if (null !== $query->latitude) {
             $parameters['latitude'] = $query->latitude;
@@ -155,27 +162,60 @@ final readonly class PlaceReadRepository implements PlaceReadModel
 
     private static function openExpression(): string
     {
-        return '(EXISTS (SELECT 1 FROM special_opening_days sd WHERE sd.place_id=p.id AND sd.local_date=(CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::date AND sd.closed=false AND EXISTS (SELECT 1 FROM special_opening_intervals si WHERE si.special_opening_day_id=sd.id AND ((si.closes_next_day=false AND (CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time BETWEEN si.opens_at AND si.closes_at) OR (si.closes_next_day=true AND ((CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time>=si.opens_at OR (CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time<=si.closes_at))))) OR (NOT EXISTS (SELECT 1 FROM special_opening_days sd WHERE sd.place_id=p.id AND sd.local_date=(CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::date) AND EXISTS (SELECT 1 FROM weekly_opening_intervals wi WHERE wi.place_id=p.id AND ((wi.weekday=EXTRACT(ISODOW FROM (CAST(:now AS timestamptz) AT TIME ZONE p.timezone)) AND ((wi.closes_next_day=false AND (CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time BETWEEN wi.opens_at AND wi.closes_at) OR (wi.closes_next_day=true AND (CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time>=wi.opens_at))) OR (wi.closes_next_day=true AND wi.weekday=CASE WHEN EXTRACT(ISODOW FROM (CAST(:now AS timestamptz) AT TIME ZONE p.timezone))=1 THEN 7 ELSE EXTRACT(ISODOW FROM (CAST(:now AS timestamptz) AT TIME ZONE p.timezone))-1 END AND (CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time<=wi.closes_at)))))';
+        $localDate = '(CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::date';
+        $localTime = '(CAST(:now AS timestamptz) AT TIME ZONE p.timezone)::time';
+        $weekday = 'EXTRACT(ISODOW FROM (CAST(:now AS timestamptz) AT TIME ZONE p.timezone))';
+        $previousWeekday = 'CASE WHEN '.$weekday.'=1 THEN 7 ELSE '.$weekday.'-1 END';
+
+        return '(EXISTS (SELECT 1 FROM special_opening_days sd JOIN special_opening_intervals si ON si.special_opening_day_id=sd.id WHERE sd.place_id=p.id AND sd.local_date='.$localDate.' AND sd.closed=false AND ((si.closes_next_day=false AND '.$localTime.' BETWEEN si.opens_at AND si.closes_at) OR (si.closes_next_day=true AND '.$localTime.'>=si.opens_at))) OR EXISTS (SELECT 1 FROM special_opening_days sd JOIN special_opening_intervals si ON si.special_opening_day_id=sd.id WHERE sd.place_id=p.id AND sd.local_date='.$localDate.'-1 AND sd.closed=false AND si.closes_next_day=true AND '.$localTime.'<=si.closes_at AND NOT EXISTS (SELECT 1 FROM special_opening_days current_sd WHERE current_sd.place_id=p.id AND current_sd.local_date='.$localDate.' AND current_sd.closed=true)) OR (NOT EXISTS (SELECT 1 FROM special_opening_days sd WHERE sd.place_id=p.id AND sd.local_date='.$localDate.') AND EXISTS (SELECT 1 FROM weekly_opening_intervals wi WHERE wi.place_id=p.id AND ((wi.weekday='.$weekday.' AND ((wi.closes_next_day=false AND '.$localTime.' BETWEEN wi.opens_at AND wi.closes_at) OR (wi.closes_next_day=true AND '.$localTime.'>=wi.opens_at))) OR (wi.closes_next_day=true AND wi.weekday='.$previousWeekday.' AND '.$localTime.'<=wi.closes_at)))))';
     }
 
-    /**
-     * @param array<string, mixed> $row
-     *
-     * @return array<string, mixed>
-     */
-    private static function normalizeRow(array $row): array
+    /** @param array<string, mixed> $row */
+    private static function listItem(array $row): PlaceListItem
     {
-        foreach (['categories', 'amenities', 'age_zones', 'weekly_opening', 'special_opening'] as $key) {
-            if (isset($row[$key]) && \is_string($row[$key])) {
-                $row[$key] = json_decode($row[$key], true, flags: \JSON_THROW_ON_ERROR);
-            }
-        }
-        foreach (['latitude', 'longitude', 'distance_meters', 'relevance_score'] as $key) {
-            if (isset($row[$key])) {
-                $row[$key] = (float) $row[$key];
-            }
+        return new PlaceListItem((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['city'], self::namedItems($row['categories']), new AgeSummary((int) $row['min_age_months'], null === $row['max_age_months'] ? null : (int) $row['max_age_months']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], (string) $row['verification_status'], self::namedItems($row['amenities']), null === $row['distance_meters'] ? null : (float) $row['distance_meters'], (float) $row['longitude'], (float) $row['latitude'], new OpeningStatus((bool) $row['is_open_now']), (bool) $row['complete'], (float) $row['relevance_score']);
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function detailsItem(array $row): PlaceDetails
+    {
+        return new PlaceDetails((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['description'], (string) $row['city_name'], (string) $row['city_slug'], (string) $row['address_line1'], null === $row['address_line2'] ? null : (string) $row['address_line2'], (string) $row['postal_code'], (string) $row['country_code'], self::namedItems($row['categories']), self::namedItems($row['amenities']), self::ageZones($row['age_zones']), self::weeklyOpening($row['weekly_opening']), self::specialOpening($row['special_opening']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], null === $row['price_description'] ? null : (string) $row['price_description'], null === $row['website_url'] ? null : (string) $row['website_url'], null === $row['phone'] ? null : (string) $row['phone'], (string) $row['verification_status'], (float) $row['longitude'], (float) $row['latitude']);
+    }
+
+    /** @return list<array{slug: string, name: string}> */
+    private static function namedItems(mixed $value): array
+    {
+        /** @var list<array{slug: string, name: string}> $items */
+        $items = self::jsonList($value);
+
+        return $items;
+    }
+
+    /** @return list<array{name: string, minAgeMonths: int, maxAgeMonths: ?int, notes: ?string}> */
+    private static function ageZones(mixed $value): array
+    {
+        return array_map(static fn (array $item): array => ['name' => (string) $item['name'], 'minAgeMonths' => (int) $item['minAgeMonths'], 'maxAgeMonths' => null === $item['maxAgeMonths'] ? null : (int) $item['maxAgeMonths'], 'notes' => null === $item['notes'] ? null : (string) $item['notes']], self::jsonList($value));
+    }
+
+    /** @return list<array{weekday: int, sequence: int, opensAt: string, closesAt: string, closesNextDay: bool}> */
+    private static function weeklyOpening(mixed $value): array
+    {
+        return array_map(static fn (array $item): array => ['weekday' => (int) $item['weekday'], 'sequence' => (int) $item['sequence'], 'opensAt' => (string) $item['opensAt'], 'closesAt' => (string) $item['closesAt'], 'closesNextDay' => (bool) $item['closesNextDay']], self::jsonList($value));
+    }
+
+    /** @return list<array{localDate: string, closed: bool, note: ?string}> */
+    private static function specialOpening(mixed $value): array
+    {
+        return array_map(static fn (array $item): array => ['localDate' => (string) $item['localDate'], 'closed' => (bool) $item['closed'], 'note' => null === $item['note'] ? null : (string) $item['note']], self::jsonList($value));
+    }
+
+    /** @return list<array<string, mixed>> */
+    private static function jsonList(mixed $value): array
+    {
+        if (\is_string($value)) {
+            $value = json_decode($value, true, flags: \JSON_THROW_ON_ERROR);
         }
 
-        return $row;
+        return \is_array($value) ? array_values($value) : [];
     }
 }

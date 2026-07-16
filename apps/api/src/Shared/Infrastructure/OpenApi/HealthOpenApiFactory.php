@@ -79,6 +79,13 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
         if ('array' === $type) {
             $schema['items'] = ['type' => 'string'];
         }
+        $schema += match ($name) {
+            'page' => ['minimum' => 1, 'maximum' => 5000],
+            'pageSize' => ['minimum' => 1, 'maximum' => 50],
+            'q' => ['maxLength' => 100],
+            'amenities' => ['maxItems' => 10],
+            default => [],
+        };
 
         return new Parameter($name, 'query', $name.' filter.', $required, schema: $schema);
     }
@@ -121,13 +128,25 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     /** @return array<string, mixed> */
     private static function searchSchema(): array
     {
-        return ['type' => 'object', 'required' => ['items', 'pagination', 'meta'], 'properties' => ['items' => ['type' => 'array', 'items' => self::placeSchema()], 'pagination' => self::paginationSchema(), 'meta' => ['type' => 'object', 'properties' => ['sort' => ['type' => 'string']]]]];
+        return ['type' => 'object', 'required' => ['items', 'pagination', 'meta'], 'additionalProperties' => false, 'properties' => ['items' => ['type' => 'array', 'items' => self::listItemSchema()], 'pagination' => self::paginationSchema(), 'meta' => ['type' => 'object', 'required' => ['sort'], 'properties' => ['sort' => ['type' => 'string']]]]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function listItemSchema(): array
+    {
+        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'city', 'categories', 'min_age_months', 'max_age_months', 'indoor', 'outdoor', 'free_entry', 'verification_status', 'amenities', 'distance_meters', 'longitude', 'latitude', 'is_open_now', 'complete', 'relevance_score'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'city' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'min_age_months' => ['type' => 'integer'], 'max_age_months' => ['type' => ['integer', 'null']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'verification_status' => ['type' => 'string'], 'amenities' => self::namedItemsSchema(), 'distance_meters' => ['type' => ['number', 'null']], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'is_open_now' => ['type' => 'boolean'], 'complete' => ['type' => 'boolean'], 'relevance_score' => ['type' => 'number']]];
     }
 
     /** @return array<string, mixed> */
     private static function placeSchema(): array
     {
-        return ['type' => 'object', 'required' => ['id', 'slug', 'name', 'short_description', 'longitude', 'latitude'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'description' => ['type' => 'string'], 'city' => ['type' => 'string'], 'city_name' => ['type' => 'string'], 'address_line1' => ['type' => 'string'], 'postal_code' => ['type' => 'string'], 'categories' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['slug' => ['type' => 'string'], 'name' => ['type' => 'string']]]], 'amenities' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['slug' => ['type' => 'string'], 'name' => ['type' => 'string']]]], 'min_age_months' => ['type' => ['integer', 'null']], 'max_age_months' => ['type' => ['integer', 'null']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'verification_status' => ['type' => 'string'], 'distance_meters' => ['type' => ['number', 'null']], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'is_open_now' => ['type' => 'boolean'], 'age_zones' => ['type' => 'array', 'items' => ['type' => 'object']], 'weekly_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'special_opening' => ['type' => 'array', 'items' => ['type' => 'object']]]];
+        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'description', 'city_name', 'city_slug', 'address_line1', 'address_line2', 'postal_code', 'country_code', 'categories', 'amenities', 'age_zones', 'weekly_opening', 'special_opening', 'indoor', 'outdoor', 'free_entry', 'price_description', 'website_url', 'phone', 'verification_status', 'longitude', 'latitude'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'description' => ['type' => 'string'], 'city_name' => ['type' => 'string'], 'city_slug' => ['type' => 'string'], 'address_line1' => ['type' => 'string'], 'address_line2' => ['type' => ['string', 'null']], 'postal_code' => ['type' => 'string'], 'country_code' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'amenities' => self::namedItemsSchema(), 'age_zones' => ['type' => 'array', 'items' => ['type' => 'object']], 'weekly_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'special_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'price_description' => ['type' => ['string', 'null']], 'website_url' => ['type' => ['string', 'null']], 'phone' => ['type' => ['string', 'null']], 'verification_status' => ['type' => 'string'], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number']]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function namedItemsSchema(): array
+    {
+        return ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => false, 'required' => ['slug', 'name'], 'properties' => ['slug' => ['type' => 'string'], 'name' => ['type' => 'string']]]];
     }
 
     /** @return array<string, mixed> */
@@ -154,7 +173,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                                     'coordinates' => ['type' => 'array', 'items' => ['type' => 'number'], 'minItems' => 2, 'maxItems' => 2],
                                 ],
                             ],
-                            'properties' => ['type' => 'object', 'additionalProperties' => true],
+                            'properties' => ['type' => 'object', 'additionalProperties' => false, 'required' => ['slug', 'name', 'indoor', 'outdoor', 'freeEntry'], 'properties' => ['slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'freeEntry' => ['type' => 'boolean']]],
                         ],
                     ],
                 ],
