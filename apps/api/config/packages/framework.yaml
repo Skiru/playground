@@ -5,6 +5,16 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    rate_limiter:
+        place_search:
+            policy: token_bucket
+            limit: 60
+            rate: { interval: '1 minute', amount: 60 }
+        map_places:
+            policy: token_bucket
+            limit: 30
+            rate: { interval: '1 minute', amount: 30 }
+
     #esi: true
     #fragments: true
 

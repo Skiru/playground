@@ -30,6 +30,14 @@ security:
 
 when@test:
     security:
+        providers:
+            test_users:
+                memory:
+                    users:
+                        admin@example.test: { password: '$2y$04$1gdB2/YIo.5sVRE7JpMdR.AL2c9cef8DPnEm/4fDHp/syvn/zOTBK', roles: [ROLE_ADMIN] }
+        firewalls:
+            main:
+                provider: test_users
         password_hashers:
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto

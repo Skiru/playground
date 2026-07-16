@@ -4,6 +4,473 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type GetAmenitiesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/amenities';
+};
+
+export type GetAmenitiesResponses = {
+    /**
+     * Reference collection.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            name: string;
+            slug: string;
+            icon_key: string;
+            display_order: number;
+        }>;
+        pagination: {
+            page: number;
+            pageSize: number;
+            totalItems: number;
+            totalPages: number;
+        };
+        meta: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type GetAmenitiesResponse = GetAmenitiesResponses[keyof GetAmenitiesResponses];
+
+export type GetCategoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/categories';
+};
+
+export type GetCategoriesResponses = {
+    /**
+     * Reference collection.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            name: string;
+            slug: string;
+            icon_key: string;
+            display_order: number;
+        }>;
+        pagination: {
+            page: number;
+            pageSize: number;
+            totalItems: number;
+            totalPages: number;
+        };
+        meta: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type GetCategoriesResponse = GetCategoriesResponses[keyof GetCategoriesResponses];
+
+export type GetCitiesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/cities';
+};
+
+export type GetCitiesResponses = {
+    /**
+     * Reference collection.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            name: string;
+            slug: string;
+            country_code: string;
+            default_zoom: number;
+            default_radius_km: number;
+            timezone: string;
+        }>;
+        pagination: {
+            page: number;
+            pageSize: number;
+            totalItems: number;
+            totalPages: number;
+        };
+        meta: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type GetCitiesResponse = GetCitiesResponses[keyof GetCitiesResponses];
+
+export type GetMapPlacesData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * west filter.
+         */
+        west: number;
+        /**
+         * south filter.
+         */
+        south: number;
+        /**
+         * east filter.
+         */
+        east: number;
+        /**
+         * north filter.
+         */
+        north: number;
+        /**
+         * zoom filter.
+         */
+        zoom: number;
+        /**
+         * city filter.
+         */
+        city?: string;
+        /**
+         * category filter.
+         */
+        category?: string;
+        /**
+         * ageMonths filter.
+         */
+        ageMonths?: number;
+        /**
+         * latitude filter.
+         */
+        latitude?: number;
+        /**
+         * longitude filter.
+         */
+        longitude?: number;
+        /**
+         * radiusKm filter.
+         */
+        radiusKm?: number;
+        /**
+         * amenities filter.
+         */
+        amenities?: Array<string>;
+        /**
+         * indoor filter.
+         */
+        indoor?: boolean;
+        /**
+         * outdoor filter.
+         */
+        outdoor?: boolean;
+        /**
+         * freeEntry filter.
+         */
+        freeEntry?: boolean;
+        /**
+         * openNow filter.
+         */
+        openNow?: boolean;
+        /**
+         * q filter.
+         */
+        q?: string;
+        /**
+         * page filter.
+         */
+        page?: number;
+        /**
+         * pageSize filter.
+         */
+        pageSize?: number;
+        /**
+         * sort filter.
+         */
+        sort?: string;
+    };
+    url: '/api/v1/map/places';
+};
+
+export type GetMapPlacesErrors = {
+    /**
+     * RFC 9457 invalid_query Problem Details.
+     */
+    400: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * RFC 9457 rate_limit_exceeded Problem Details with Retry-After.
+     */
+    429: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type GetMapPlacesError = GetMapPlacesErrors[keyof GetMapPlacesErrors];
+
+export type GetMapPlacesResponses = {
+    /**
+     * GeoJSON FeatureCollection, at most 500 features.
+     */
+    200: {
+        type: 'FeatureCollection';
+        truncated: boolean;
+        features: Array<{
+            type: 'Feature';
+            geometry: {
+                type?: string;
+                coordinates?: [
+                    number,
+                    number
+                ];
+            };
+            properties: {
+                [key: string]: unknown;
+            };
+        }>;
+    };
+};
+
+export type GetMapPlacesResponse = GetMapPlacesResponses[keyof GetMapPlacesResponses];
+
+export type SearchPlacesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * city filter.
+         */
+        city?: string;
+        /**
+         * category filter.
+         */
+        category?: string;
+        /**
+         * ageMonths filter.
+         */
+        ageMonths?: number;
+        /**
+         * latitude filter.
+         */
+        latitude?: number;
+        /**
+         * longitude filter.
+         */
+        longitude?: number;
+        /**
+         * radiusKm filter.
+         */
+        radiusKm?: number;
+        /**
+         * amenities filter.
+         */
+        amenities?: Array<string>;
+        /**
+         * indoor filter.
+         */
+        indoor?: boolean;
+        /**
+         * outdoor filter.
+         */
+        outdoor?: boolean;
+        /**
+         * freeEntry filter.
+         */
+        freeEntry?: boolean;
+        /**
+         * openNow filter.
+         */
+        openNow?: boolean;
+        /**
+         * q filter.
+         */
+        q?: string;
+        /**
+         * page filter.
+         */
+        page?: number;
+        /**
+         * pageSize filter.
+         */
+        pageSize?: number;
+        /**
+         * sort filter.
+         */
+        sort?: string;
+    };
+    url: '/api/v1/places';
+};
+
+export type SearchPlacesErrors = {
+    /**
+     * RFC 9457 invalid_query Problem Details.
+     */
+    400: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * RFC 9457 rate_limit_exceeded Problem Details with Retry-After.
+     */
+    429: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type SearchPlacesError = SearchPlacesErrors[keyof SearchPlacesErrors];
+
+export type SearchPlacesResponses = {
+    /**
+     * Paginated place cards.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            slug: string;
+            name: string;
+            short_description: string;
+            description?: string;
+            city?: string;
+            city_name?: string;
+            address_line1?: string;
+            postal_code?: string;
+            categories?: Array<{
+                slug?: string;
+                name?: string;
+            }>;
+            amenities?: Array<{
+                slug?: string;
+                name?: string;
+            }>;
+            min_age_months?: number | null;
+            max_age_months?: number | null;
+            indoor?: boolean;
+            outdoor?: boolean;
+            free_entry?: boolean;
+            verification_status?: string;
+            distance_meters?: number | null;
+            longitude: number;
+            latitude: number;
+            is_open_now?: boolean;
+            age_zones?: Array<{
+                [key: string]: unknown;
+            }>;
+            weekly_opening?: Array<{
+                [key: string]: unknown;
+            }>;
+            special_opening?: Array<{
+                [key: string]: unknown;
+            }>;
+        }>;
+        pagination: {
+            page: number;
+            pageSize: number;
+            totalItems: number;
+            totalPages: number;
+        };
+        meta: {
+            sort?: string;
+        };
+    };
+};
+
+export type SearchPlacesResponse = SearchPlacesResponses[keyof SearchPlacesResponses];
+
+export type GetPlaceBySlugData = {
+    body?: never;
+    path: {
+        /**
+         * Published place slug.
+         */
+        slug: string;
+    };
+    query?: never;
+    url: '/api/v1/places/{slug}';
+};
+
+export type GetPlaceBySlugErrors = {
+    /**
+     * RFC 9457 place_not_found Problem Details.
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type GetPlaceBySlugError = GetPlaceBySlugErrors[keyof GetPlaceBySlugErrors];
+
+export type GetPlaceBySlugResponses = {
+    /**
+     * Published place details.
+     */
+    200: {
+        id: string;
+        slug: string;
+        name: string;
+        short_description: string;
+        description?: string;
+        city?: string;
+        city_name?: string;
+        address_line1?: string;
+        postal_code?: string;
+        categories?: Array<{
+            slug?: string;
+            name?: string;
+        }>;
+        amenities?: Array<{
+            slug?: string;
+            name?: string;
+        }>;
+        min_age_months?: number | null;
+        max_age_months?: number | null;
+        indoor?: boolean;
+        outdoor?: boolean;
+        free_entry?: boolean;
+        verification_status?: string;
+        distance_meters?: number | null;
+        longitude: number;
+        latitude: number;
+        is_open_now?: boolean;
+        age_zones?: Array<{
+            [key: string]: unknown;
+        }>;
+        weekly_opening?: Array<{
+            [key: string]: unknown;
+        }>;
+        special_opening?: Array<{
+            [key: string]: unknown;
+        }>;
+    };
+};
+
+export type GetPlaceBySlugResponse = GetPlaceBySlugResponses[keyof GetPlaceBySlugResponses];
+
 export type GetHealthLiveData = {
     body?: never;
     path?: never;

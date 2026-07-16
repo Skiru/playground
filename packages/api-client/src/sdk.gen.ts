@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses } from './types.gen';
+import type { GetAmenitiesData, GetAmenitiesResponses, GetCategoriesData, GetCategoriesResponses, GetCitiesData, GetCitiesResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetMapPlacesData, GetMapPlacesErrors, GetMapPlacesResponses, GetPlaceBySlugData, GetPlaceBySlugErrors, GetPlaceBySlugResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,40 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * List enabled amenities
+ */
+export const getAmenities = <ThrowOnError extends boolean = false>(options?: Options<GetAmenitiesData, ThrowOnError>): RequestResult<GetAmenitiesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetAmenitiesResponses, unknown, ThrowOnError>({ url: '/api/v1/amenities', ...options });
+
+/**
+ * List enabled categories
+ */
+export const getCategories = <ThrowOnError extends boolean = false>(options?: Options<GetCategoriesData, ThrowOnError>): RequestResult<GetCategoriesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetCategoriesResponses, unknown, ThrowOnError>({ url: '/api/v1/categories', ...options });
+
+/**
+ * List enabled cities
+ */
+export const getCities = <ThrowOnError extends boolean = false>(options?: Options<GetCitiesData, ThrowOnError>): RequestResult<GetCitiesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetCitiesResponses, unknown, ThrowOnError>({ url: '/api/v1/cities', ...options });
+
+/**
+ * List published places in a map bounding box
+ *
+ * Rejects antimeridian crossing and oversized bounding boxes.
+ */
+export const getMapPlaces = <ThrowOnError extends boolean = false>(options: Options<GetMapPlacesData, ThrowOnError>): RequestResult<GetMapPlacesResponses, GetMapPlacesErrors, ThrowOnError> => (options.client ?? client).get<GetMapPlacesResponses, GetMapPlacesErrors, ThrowOnError>({ url: '/api/v1/map/places', ...options });
+
+/**
+ * Search published places
+ *
+ * Filters published places. Amenities use AND semantics. Radius is 1-100 km and page size is at most 50.
+ */
+export const searchPlaces = <ThrowOnError extends boolean = false>(options?: Options<SearchPlacesData, ThrowOnError>): RequestResult<SearchPlacesResponses, SearchPlacesErrors, ThrowOnError> => (options?.client ?? client).get<SearchPlacesResponses, SearchPlacesErrors, ThrowOnError>({ url: '/api/v1/places', ...options });
+
+/**
+ * Get published place details
+ */
+export const getPlaceBySlug = <ThrowOnError extends boolean = false>(options: Options<GetPlaceBySlugData, ThrowOnError>): RequestResult<GetPlaceBySlugResponses, GetPlaceBySlugErrors, ThrowOnError> => (options.client ?? client).get<GetPlaceBySlugResponses, GetPlaceBySlugErrors, ThrowOnError>({ url: '/api/v1/places/{slug}', ...options });
 
 /**
  * Liveness probe

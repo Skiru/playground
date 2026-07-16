@@ -12,6 +12,1325 @@
         }
     ],
     "paths": {
+        "/api/v1/amenities": {
+            "get": {
+                "operationId": "getAmenities",
+                "tags": [
+                    "Discovery"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reference collection.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination",
+                                        "meta"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "slug",
+                                                    "icon_key",
+                                                    "display_order"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "icon_key": {
+                                                        "type": "string"
+                                                    },
+                                                    "display_order": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "page",
+                                                "pageSize",
+                                                "totalItems",
+                                                "totalPages"
+                                            ],
+                                            "properties": {
+                                                "page": {
+                                                    "type": "integer"
+                                                },
+                                                "pageSize": {
+                                                    "type": "integer"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "List enabled amenities",
+                "security": []
+            }
+        },
+        "/api/v1/categories": {
+            "get": {
+                "operationId": "getCategories",
+                "tags": [
+                    "Discovery"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reference collection.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination",
+                                        "meta"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "slug",
+                                                    "icon_key",
+                                                    "display_order"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "icon_key": {
+                                                        "type": "string"
+                                                    },
+                                                    "display_order": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "page",
+                                                "pageSize",
+                                                "totalItems",
+                                                "totalPages"
+                                            ],
+                                            "properties": {
+                                                "page": {
+                                                    "type": "integer"
+                                                },
+                                                "pageSize": {
+                                                    "type": "integer"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "List enabled categories",
+                "security": []
+            }
+        },
+        "/api/v1/cities": {
+            "get": {
+                "operationId": "getCities",
+                "tags": [
+                    "Discovery"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reference collection.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination",
+                                        "meta"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "slug",
+                                                    "country_code",
+                                                    "default_zoom",
+                                                    "default_radius_km",
+                                                    "timezone"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "country_code": {
+                                                        "type": "string"
+                                                    },
+                                                    "default_zoom": {
+                                                        "type": "integer"
+                                                    },
+                                                    "default_radius_km": {
+                                                        "type": "integer"
+                                                    },
+                                                    "timezone": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "page",
+                                                "pageSize",
+                                                "totalItems",
+                                                "totalPages"
+                                            ],
+                                            "properties": {
+                                                "page": {
+                                                    "type": "integer"
+                                                },
+                                                "pageSize": {
+                                                    "type": "integer"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "List enabled cities",
+                "security": []
+            }
+        },
+        "/api/v1/map/places": {
+            "get": {
+                "operationId": "getMapPlaces",
+                "tags": [
+                    "Discovery"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "GeoJSON FeatureCollection, at most 500 features.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "type",
+                                        "features",
+                                        "truncated"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "FeatureCollection"
+                                            ]
+                                        },
+                                        "truncated": {
+                                            "type": "boolean"
+                                        },
+                                        "features": {
+                                            "type": "array",
+                                            "maxItems": 500,
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "type",
+                                                    "geometry",
+                                                    "properties"
+                                                ],
+                                                "properties": {
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Feature"
+                                                        ]
+                                                    },
+                                                    "geometry": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "coordinates": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "number"
+                                                                },
+                                                                "minItems": 2,
+                                                                "maxItems": 2
+                                                            }
+                                                        }
+                                                    },
+                                                    "properties": {
+                                                        "type": "object",
+                                                        "additionalProperties": true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "RFC 9457 invalid_query Problem Details.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "type",
+                                        "title",
+                                        "status",
+                                        "detail",
+                                        "code",
+                                        "correlationId"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        },
+                                        "correlationId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "RFC 9457 rate_limit_exceeded Problem Details with Retry-After.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "type",
+                                        "title",
+                                        "status",
+                                        "detail",
+                                        "code",
+                                        "correlationId"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        },
+                                        "correlationId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "List published places in a map bounding box",
+                "description": "Rejects antimeridian crossing and oversized bounding boxes.",
+                "parameters": [
+                    {
+                        "name": "west",
+                        "in": "query",
+                        "description": "west filter.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "south",
+                        "in": "query",
+                        "description": "south filter.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "east",
+                        "in": "query",
+                        "description": "east filter.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "north",
+                        "in": "query",
+                        "description": "north filter.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "zoom",
+                        "in": "query",
+                        "description": "zoom filter.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "description": "city filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "description": "category filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "ageMonths",
+                        "in": "query",
+                        "description": "ageMonths filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "latitude",
+                        "in": "query",
+                        "description": "latitude filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "longitude",
+                        "in": "query",
+                        "description": "longitude filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "radiusKm",
+                        "in": "query",
+                        "description": "radiusKm filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "amenities",
+                        "in": "query",
+                        "description": "amenities filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "indoor",
+                        "in": "query",
+                        "description": "indoor filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "outdoor",
+                        "in": "query",
+                        "description": "outdoor filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "freeEntry",
+                        "in": "query",
+                        "description": "freeEntry filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "openNow",
+                        "in": "query",
+                        "description": "openNow filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "q filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "page filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "pageSize filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "sort filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    }
+                ],
+                "security": []
+            }
+        },
+        "/api/v1/places": {
+            "get": {
+                "operationId": "searchPlaces",
+                "tags": [
+                    "Discovery"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated place cards.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination",
+                                        "meta"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "slug",
+                                                    "name",
+                                                    "short_description",
+                                                    "longitude",
+                                                    "latitude"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "short_description": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "city": {
+                                                        "type": "string"
+                                                    },
+                                                    "city_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "address_line1": {
+                                                        "type": "string"
+                                                    },
+                                                    "postal_code": {
+                                                        "type": "string"
+                                                    },
+                                                    "categories": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "slug": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "amenities": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "slug": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "min_age_months": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "max_age_months": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "indoor": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "outdoor": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "free_entry": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "verification_status": {
+                                                        "type": "string"
+                                                    },
+                                                    "distance_meters": {
+                                                        "type": [
+                                                            "number",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "longitude": {
+                                                        "type": "number"
+                                                    },
+                                                    "latitude": {
+                                                        "type": "number"
+                                                    },
+                                                    "is_open_now": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "age_zones": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "weekly_opening": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "special_opening": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "page",
+                                                "pageSize",
+                                                "totalItems",
+                                                "totalPages"
+                                            ],
+                                            "properties": {
+                                                "page": {
+                                                    "type": "integer"
+                                                },
+                                                "pageSize": {
+                                                    "type": "integer"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "sort": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "RFC 9457 invalid_query Problem Details.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "type",
+                                        "title",
+                                        "status",
+                                        "detail",
+                                        "code",
+                                        "correlationId"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        },
+                                        "correlationId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "RFC 9457 rate_limit_exceeded Problem Details with Retry-After.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "type",
+                                        "title",
+                                        "status",
+                                        "detail",
+                                        "code",
+                                        "correlationId"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        },
+                                        "correlationId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Search published places",
+                "description": "Filters published places. Amenities use AND semantics. Radius is 1-100 km and page size is at most 50.",
+                "parameters": [
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "description": "city filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "description": "category filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "ageMonths",
+                        "in": "query",
+                        "description": "ageMonths filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "latitude",
+                        "in": "query",
+                        "description": "latitude filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "longitude",
+                        "in": "query",
+                        "description": "longitude filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "radiusKm",
+                        "in": "query",
+                        "description": "radiusKm filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "amenities",
+                        "in": "query",
+                        "description": "amenities filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "indoor",
+                        "in": "query",
+                        "description": "indoor filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "outdoor",
+                        "in": "query",
+                        "description": "outdoor filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "freeEntry",
+                        "in": "query",
+                        "description": "freeEntry filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "openNow",
+                        "in": "query",
+                        "description": "openNow filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "q filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "page filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "pageSize filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "sort filter.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "form",
+                        "explode": true
+                    }
+                ],
+                "security": []
+            }
+        },
+        "/api/v1/places/{slug}": {
+            "get": {
+                "operationId": "getPlaceBySlug",
+                "tags": [
+                    "Discovery"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Published place details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "slug",
+                                        "name",
+                                        "short_description",
+                                        "longitude",
+                                        "latitude"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "slug": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "short_description": {
+                                            "type": "string"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "city": {
+                                            "type": "string"
+                                        },
+                                        "city_name": {
+                                            "type": "string"
+                                        },
+                                        "address_line1": {
+                                            "type": "string"
+                                        },
+                                        "postal_code": {
+                                            "type": "string"
+                                        },
+                                        "categories": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "amenities": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "min_age_months": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        },
+                                        "max_age_months": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        },
+                                        "indoor": {
+                                            "type": "boolean"
+                                        },
+                                        "outdoor": {
+                                            "type": "boolean"
+                                        },
+                                        "free_entry": {
+                                            "type": "boolean"
+                                        },
+                                        "verification_status": {
+                                            "type": "string"
+                                        },
+                                        "distance_meters": {
+                                            "type": [
+                                                "number",
+                                                "null"
+                                            ]
+                                        },
+                                        "longitude": {
+                                            "type": "number"
+                                        },
+                                        "latitude": {
+                                            "type": "number"
+                                        },
+                                        "is_open_now": {
+                                            "type": "boolean"
+                                        },
+                                        "age_zones": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "weekly_opening": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "special_opening": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "RFC 9457 place_not_found Problem Details.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "type",
+                                        "title",
+                                        "status",
+                                        "detail",
+                                        "code",
+                                        "correlationId"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string"
+                                        },
+                                        "correlationId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Get published place details",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "description": "Published place slug.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    }
+                ],
+                "security": []
+            }
+        },
         "/api/v1/health/live": {
             "get": {
                 "operationId": "getHealthLive",
