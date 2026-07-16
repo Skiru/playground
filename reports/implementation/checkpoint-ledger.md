@@ -8,7 +8,7 @@
 | C2A | identity, Places schema and fixtures | C1R PASS | PASS at `2c21804d7b5ffbe652601ae1ae6d02fcfdd92c83`, pushed |
 | C2B | discovery API and administration | C2A PASS | PASS at `e2ebdd3cf85b83b11029b74ce5d3e2755e45c0a7`, pushed |
 | C2C | SSR catalogue and map enhancement | C2B PASS | PASS at `c596932fa741514d58c1b47eca24b139a39aa24b`, pushed |
-| C2D | review, handoff and certification | C2C PASS | final review and remote CI evidence |
+| C2D | review, handoff and certification | C2C PASS | PASS on `650d418fdabf07403658cc1b1c9b0b3bff44a1c6`; all 6 remote checks successful |
 | C3-C8 | forbidden in this run | separate authorization | not started |
 
 Initialization commit: `5671a1cc6161c0c1e7a281f0b19654f2cadc66c6`.

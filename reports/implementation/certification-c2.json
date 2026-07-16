@@ -1,0 +1,78 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_MONOREPO_V1_C1R_C2",
+  "certification": "C2",
+  "status": "READY_FOR_C3",
+  "certifiedSha": "650d418fdabf07403658cc1b1c9b0b3bff44a1c6",
+  "branch": "feat/family-places-platform-v1",
+  "pullRequest": "https://github.com/Skiru/playground/pull/1",
+  "completedAt": "2026-07-16T12:12:08+02:00",
+  "checkpointChain": {
+    "C1R": "af8672eb3b762927a4092f0abc5fe93e2bdb8859",
+    "C2A": "2c21804d7b5ffbe652601ae1ae6d02fcfdd92c83",
+    "C2B": "e2ebdd3cf85b83b11029b74ce5d3e2755e45c0a7",
+    "C2C": "c596932fa741514d58c1b47eca24b139a39aa24b",
+    "C2D": "650d418fdabf07403658cc1b1c9b0b3bff44a1c6"
+  },
+  "remoteChecks": [
+    {
+      "name": "Backend quality / backend",
+      "status": "success",
+      "run": "https://github.com/Skiru/playground/actions/runs/29489656126"
+    },
+    {
+      "name": "Containers / build",
+      "status": "success",
+      "run": "https://github.com/Skiru/playground/actions/runs/29489656114"
+    },
+    {
+      "name": "Frontend quality / frontend",
+      "status": "success",
+      "run": "https://github.com/Skiru/playground/actions/runs/29489656155"
+    },
+    {
+      "name": "Integration / smoke",
+      "status": "success",
+      "run": "https://github.com/Skiru/playground/actions/runs/29489656124"
+    },
+    {
+      "name": "Security / audit",
+      "status": "success",
+      "run": "https://github.com/Skiru/playground/actions/runs/29489656147"
+    },
+    {
+      "name": "Security / dependency-review",
+      "status": "success",
+      "run": "https://github.com/Skiru/playground/actions/runs/29489656147"
+    }
+  ],
+  "review": {
+    "p0": [],
+    "p1": [],
+    "functional": "PASS",
+    "architecture": "PASS",
+    "securityOperations": "PASS"
+  },
+  "requiredEvidence": {
+    "migrationsFromZero": "PASS",
+    "postgisAndSpatialIndex": "PASS",
+    "publishedOnlyApi": "PASS",
+    "adminPublicationWorkflow": "PASS",
+    "openApiAndGeneratedClientDrift": "PASS",
+    "ssrHomeResultsDetails": "PASS",
+    "mapProgressiveEnhancement": "PASS",
+    "productionImagesAndRuntime": "PASS",
+    "desktopAndMobile": "PASS",
+    "remoteCi": "PASS"
+  },
+  "scopeExclusionsVerified": [
+    "Google login",
+    "public registration",
+    "favorites",
+    "reviews",
+    "forum",
+    "uploads"
+  ],
+  "mergeStatus": "no conflicts; merge not performed",
+  "selfReferentialSha": false,
+  "nextAction": "C3 may begin only under separate authorization."
+}
