@@ -1,0 +1,12 @@
+# Gitleaks configuration file
+# Identification: GITLEAKS-IGNORE-FALSE-POSITIVES
+# Justification: Exclude generated machine-readable Trivy JSON reports containing public GPG keys
+# Owner: Mateusz Koziol
+# Expiration: 2027-07-16
+
+[allowlist]
+description = "Ignore Trivy scan report false positives"
+paths = [
+    '''reports/security/trivy-api\.json''',
+    '''reports/security/trivy-worker\.json'''
+]
