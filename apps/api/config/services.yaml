@@ -50,6 +50,9 @@ services:
     App\Administration\Infrastructure\:
         resource: '../src/Administration/Infrastructure/'
 
+    App\Administration\UI\:
+        resource: '../src/Administration/UI/'
+
     App\Shared\Application\Clock:
         alias: App\Shared\Infrastructure\Clock\SystemClock
         public: true

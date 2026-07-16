@@ -4,27 +4,22 @@ declare(strict_types=1);
 
 namespace App\Administration\Infrastructure\Http;
 
-use App\Places\Application\Command\AgeZoneInput;
+use App\Administration\UI\Form\PlaceAdminCommandFactory;
+use App\Administration\UI\Form\PlaceAdminFormData;
+use App\Administration\UI\Form\PlaceAdminFormMapper;
+use App\Administration\UI\Form\Type\PlaceAdminFormType;
 use App\Places\Application\Command\ArchivePlace;
-use App\Places\Application\Command\CreatePlaceDraft;
-use App\Places\Application\Command\ExternalReferenceInput;
 use App\Places\Application\Command\MarkPlaceNeedsReverification;
 use App\Places\Application\Command\MarkPlaceTemporarilyClosed;
-use App\Places\Application\Command\OpeningHoursModeInput;
 use App\Places\Application\Command\PublishPlace;
-use App\Places\Application\Command\SpecialOpeningDayInput;
-use App\Places\Application\Command\SpecialOpeningDayModeInput;
-use App\Places\Application\Command\SpecialOpeningIntervalInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
-use App\Places\Application\Command\UpdatePlaceAggregate;
-use App\Places\Application\Command\VerificationStatusInput;
-use App\Places\Application\Command\WeeklyOpeningIntervalInput;
 use App\Places\Application\ConcurrentPlaceModification;
 use App\Places\Application\PlaceCommandHandler;
 use App\Places\Application\PlaceRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,8 +30,13 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 final class PlaceAdminController extends AbstractController
 {
-    public function __construct(private readonly PlaceRepository $places, private readonly PlaceCommandHandler $commands, private readonly LoggerInterface $logger)
-    {
+    public function __construct(
+        private readonly PlaceRepository $places,
+        private readonly PlaceCommandHandler $commands,
+        private readonly PlaceAdminFormMapper $formMapper,
+        private readonly PlaceAdminCommandFactory $commandFactory,
+        private readonly LoggerInterface $logger,
+    ) {
     }
 
     #[Route('', name: 'admin_places', methods: ['GET'])]
@@ -48,42 +48,24 @@ final class PlaceAdminController extends AbstractController
     #[Route('/new', name: 'admin_places_new', methods: ['GET', 'POST'])]
     public function create(Request $request): Response
     {
-        if ($request->isMethod('POST')) {
-            if (!$this->isCsrfTokenValid('create-place', (string) $request->request->get('_token'))) {
-                throw $this->createAccessDeniedException('Invalid CSRF token.');
-            }
+        $data = $this->formMapper->createData();
+        $form = $this->createForm(PlaceAdminFormType::class, $data, ['csrf_token_id' => 'create-place']);
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
             try {
-                $id = $this->commands->create(new CreatePlaceDraft(
-                    name: $request->request->getString('name'),
-                    slug: $request->request->getString('slug'),
-                    shortDescription: $request->request->getString('shortDescription'),
-                    description: $request->request->getString('description'),
-                    addressLine1: $request->request->getString('addressLine1'),
-                    postalCode: $request->request->getString('postalCode'),
-                    citySlug: $request->request->getString('city'),
-                    countryCode: 'PL',
-                    latitude: (float) $request->request->getString('latitude'),
-                    longitude: (float) $request->request->getString('longitude'),
-                    timezone: 'Europe/Warsaw',
-                    categorySlug: $request->request->getString('category'),
-                    indoor: $request->request->getBoolean('indoor'),
-                    outdoor: $request->request->getBoolean('outdoor'),
-                    freeEntry: $request->request->getBoolean('freeEntry'),
-                    categorySlugs: [$request->request->getString('category')],
-                    ageZones: '' === $request->request->getString('minAgeMonths') ? [] : [new AgeZoneInput('Strefa główna', $request->request->getInt('minAgeMonths'), '' === $request->request->getString('maxAgeMonths') ? null : $request->request->getInt('maxAgeMonths'))],
-                ));
+                $this->commands->create($this->commandFactory->create($data));
                 $this->addFlash('success', 'Draft place created.');
 
                 return $this->redirectToRoute('admin_places');
-            } catch (\InvalidArgumentException $exception) {
-                $this->addFlash('error', $exception->getMessage());
+            } catch (\DomainException|\InvalidArgumentException $exception) {
+                $form->addError(new FormError($exception->getMessage()));
             } catch (\Doctrine\DBAL\Exception $exception) {
                 $this->logger->error('Place draft creation failed.', ['exception' => $exception]);
-                $this->addFlash('error', 'Place could not be created. Try again.');
+                $form->addError(new FormError('Place could not be created. Try again.'));
             }
         }
 
-        return $this->render('admin/places/new.html.twig');
+        return $this->render('admin/places/new.html.twig', ['form' => $form]);
     }
 
     #[Route('/{id}', name: 'admin_places_view', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
@@ -95,55 +77,23 @@ final class PlaceAdminController extends AbstractController
     #[Route('/{id}/edit', name: 'admin_places_edit', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET', 'POST'])]
     public function edit(string $id, Request $request): Response
     {
-        if ($request->isMethod('POST')) {
-            if (!$this->isCsrfTokenValid('edit-place-'.$id, $request->request->getString('_token'))) {
-                throw $this->createAccessDeniedException('Invalid CSRF token.');
-            }
+        $data = $request->isMethod('POST') ? new PlaceAdminFormData() : $this->formMapper->editData($this->places->get($id));
+        $form = $this->createForm(PlaceAdminFormType::class, $data, ['csrf_token_id' => 'edit-place-'.$id]);
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
             try {
-                $categorySlugs = self::csv($request->request->getString('categories'));
-                $weekly = self::weeklyHours($request->request->getString('weeklyOpeningHours'));
-                $this->commands->update(new UpdatePlaceAggregate(
-                    placeId: $id,
-                    expectedVersion: $request->request->getInt('version'),
-                    name: $request->request->getString('name'),
-                    slug: $request->request->getString('slug'),
-                    shortDescription: $request->request->getString('shortDescription'),
-                    description: $request->request->getString('description'),
-                    addressLine1: $request->request->getString('addressLine1'),
-                    postalCode: $request->request->getString('postalCode'),
-                    citySlug: $request->request->getString('city'),
-                    countryCode: $request->request->getString('countryCode'),
-                    latitude: (float) $request->request->getString('latitude'),
-                    longitude: (float) $request->request->getString('longitude'),
-                    timezone: $request->request->getString('timezone'),
-                    indoor: $request->request->getBoolean('indoor'),
-                    outdoor: $request->request->getBoolean('outdoor'),
-                    freeEntry: $request->request->getBoolean('freeEntry'),
-                    verificationStatus: VerificationStatusInput::from($request->request->getString('verificationStatus')),
-                    categorySlugs: $categorySlugs,
-                    primaryCategorySlug: $request->request->getString('primaryCategory'),
-                    amenitySlugs: self::csv($request->request->getString('amenities')),
-                    ageZones: self::ageZones($request->request->getString('ageZones')),
-                    openingHoursMode: [] === $weekly ? OpeningHoursModeInput::UNKNOWN : OpeningHoursModeInput::SCHEDULED,
-                    weeklyOpeningHours: $weekly,
-                    specialOpeningDays: self::specialDays($request->request->getString('specialOpeningDays')),
-                    externalReferences: self::externalReferences($request->request->getString('externalReferences')),
-                    addressLine2: self::nullable($request->request->getString('addressLine2')),
-                    priceDescription: self::nullable($request->request->getString('priceDescription')),
-                    websiteUrl: self::nullable($request->request->getString('websiteUrl')),
-                    phone: self::nullable($request->request->getString('phone')),
-                ));
+                $this->commands->update($this->commandFactory->update($id, $data));
                 $this->addFlash('success', 'Place aggregate updated.');
 
                 return $this->redirectToRoute('admin_places_view', ['id' => $id]);
-            } catch (ConcurrentPlaceModification|\DomainException|\InvalidArgumentException $exception) {
-                $this->addFlash('error', $exception->getMessage());
+            } catch (ConcurrentPlaceModification) {
+                $form->addError(new FormError('This place was changed by another administrator. Your submitted data is preserved; reload the latest version before saving again.'));
+            } catch (\DomainException|\InvalidArgumentException $exception) {
+                $form->addError(new FormError($exception->getMessage()));
             }
         }
 
-        $place = $this->places->get($id);
-
-        return $this->render('admin/places/edit.html.twig', ['place' => $place, 'cities' => $this->places->allCities(), 'categories' => $this->places->allCategories(), 'amenities' => $this->places->allAmenities()]);
+        return $this->render('admin/places/edit.html.twig', ['form' => $form, 'placeId' => $id]);
     }
 
     #[Route('/{id}/{action}', name: 'admin_places_action', requirements: ['id' => '[0-9a-f-]{36}', 'action' => 'submit|publish|unpublish|reverify|close|archive'], methods: ['POST'])]
@@ -168,81 +118,5 @@ final class PlaceAdminController extends AbstractController
         }
 
         return $this->redirectToRoute('admin_places');
-    }
-
-    private static function nullable(string $value): ?string
-    {
-        $value = trim($value);
-
-        return '' === $value ? null : $value;
-    }
-
-    /** @return list<string> */
-    private static function csv(string $value): array
-    {
-        return array_values(array_unique(array_filter(array_map(trim(...), explode(',', $value)), static fn (string $item): bool => '' !== $item)));
-    }
-
-    /** @return list<AgeZoneInput> */
-    private static function ageZones(string $value): array
-    {
-        $result = [];
-        foreach (self::lines($value) as $line) {
-            $parts = array_pad(explode('|', $line), 4, '');
-            $result[] = new AgeZoneInput(trim($parts[0]), (int) $parts[1], '' === trim($parts[2]) ? null : (int) $parts[2], self::nullable($parts[3]));
-        }
-
-        return $result;
-    }
-
-    /** @return list<WeeklyOpeningIntervalInput> */
-    private static function weeklyHours(string $value): array
-    {
-        $result = [];
-        foreach (self::lines($value) as $line) {
-            $parts = array_pad(explode('|', $line), 5, '');
-            $result[] = new WeeklyOpeningIntervalInput((int) $parts[0], (int) $parts[1], trim($parts[2]), trim($parts[3]), '1' === trim($parts[4]));
-        }
-
-        return $result;
-    }
-
-    /** @return list<SpecialOpeningDayInput> */
-    private static function specialDays(string $value): array
-    {
-        $result = [];
-        foreach (self::lines($value) as $line) {
-            $parts = array_pad(explode('|', $line), 4, '');
-            $closed = '1' === trim($parts[1]);
-            $intervals = [];
-            if (!$closed) {
-                foreach (array_filter(explode(';', $parts[3])) as $encodedInterval) {
-                    $interval = array_pad(explode(',', $encodedInterval), 4, '');
-                    $intervals[] = new SpecialOpeningIntervalInput((int) $interval[0], trim($interval[1]), trim($interval[2]), '1' === trim($interval[3]));
-                }
-            }
-            $mode = $closed ? SpecialOpeningDayModeInput::CLOSED : ([] === $intervals ? SpecialOpeningDayModeInput::OPEN_24_HOURS : SpecialOpeningDayModeInput::CUSTOM);
-            $result[] = new SpecialOpeningDayInput(trim($parts[0]), $mode, self::nullable($parts[2]), $intervals);
-        }
-
-        return $result;
-    }
-
-    /** @return list<ExternalReferenceInput> */
-    private static function externalReferences(string $value): array
-    {
-        $result = [];
-        foreach (self::lines($value) as $line) {
-            $parts = array_pad(explode('|', $line), 3, '');
-            $result[] = new ExternalReferenceInput(trim($parts[0]), trim($parts[1]), self::nullable($parts[2]));
-        }
-
-        return $result;
-    }
-
-    /** @return list<string> */
-    private static function lines(string $value): array
-    {
-        return array_values(array_filter(array_map(trim(...), preg_split('/\R/', $value) ?: []), static fn (string $line): bool => '' !== $line));
     }
 }

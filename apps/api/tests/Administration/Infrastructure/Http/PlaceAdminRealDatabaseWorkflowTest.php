@@ -27,8 +27,9 @@ final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
         $connection->executeStatement('UPDATE places SET name=:name,version=version+1 WHERE id=:id', ['id' => $id, 'name' => 'Concurrent administrator update']);
 
         try {
-            $client->request('POST', '/admin/places/'.$id.'/edit', ['_token' => $edit->filter('input[name="_token"]')->attr('value'), 'version' => (string) $staleVersion, 'name' => 'Stale overwrite attempt', 'slug' => 'demo-1-demo-bawialnia-mokotow', 'shortDescription' => 'Complete short description', 'description' => 'Complete description', 'addressLine1' => 'Demo 1', 'postalCode' => '00-001', 'city' => 'warszawa', 'countryCode' => 'PL', 'latitude' => '52.2297', 'longitude' => '21.0122', 'timezone' => 'Europe/Warsaw', 'indoor' => '1', 'verificationStatus' => 'admin_verified', 'primaryCategory' => 'bawialnie', 'categories' => 'bawialnie', 'amenities' => '', 'ageZones' => 'Children|0|72|', 'weeklyOpeningHours' => '', 'specialOpeningDays' => '', 'externalReferences' => '']);
-            self::assertResponseIsSuccessful();
+            $payload = $this->formPayload($edit->filter('input[name="place_admin_form[_token]"]')->attr('value'), $staleVersion, 'Stale overwrite attempt', 'demo-1-demo-bawialnia-mokotow');
+            $client->request('POST', '/admin/places/'.$id.'/edit', ['place_admin_form' => $payload]);
+            self::assertResponseStatusCodeSame(422);
             self::assertSelectorTextContains('[role="alert"]', 'another administrator');
             self::assertSame('Concurrent administrator update', $connection->fetchOne('SELECT name FROM places WHERE id=:id', ['id' => $id]));
         } finally {
@@ -49,9 +50,8 @@ final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
         self::assertResponseRedirects('/admin');
 
         $new = $client->request('GET', '/admin/places/new');
-        $client->request('POST', '/admin/places/new', [
-            '_token' => $new->filter('input[name="_token"]')->attr('value'), 'name' => 'C2R Admin Workflow', 'slug' => 'c2r-admin-workflow', 'shortDescription' => 'Administrative workflow place', 'description' => 'Complete aggregate managed through typed commands.', 'city' => 'warszawa', 'category' => 'bawialnie', 'addressLine1' => 'Testowa 10', 'postalCode' => '00-010', 'latitude' => '52.24', 'longitude' => '21.02', 'indoor' => '1',
-        ]);
+        $createPayload = $this->formPayload($new->filter('input[name="place_admin_form[_token]"]')->attr('value'), null, 'C2R Admin Workflow', 'c2r-admin-workflow');
+        $client->request('POST', '/admin/places/new', ['place_admin_form' => $createPayload]);
         self::assertResponseRedirects('/admin/places');
         $id = (string) $connection->fetchOne("SELECT id FROM places WHERE slug='c2r-admin-workflow'");
         self::assertNotSame('', $id);
@@ -61,9 +61,15 @@ final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
 
         $edit = $client->request('GET', '/admin/places/'.$id.'/edit');
         self::assertResponseIsSuccessful();
-        $client->request('POST', '/admin/places/'.$id.'/edit', [
-            '_token' => $edit->filter('input[name="_token"]')->attr('value'), 'version' => '1', 'name' => 'C2R Admin Workflow', 'slug' => 'c2r-admin-workflow', 'shortDescription' => 'Administrative workflow place', 'description' => 'Complete aggregate managed through typed commands.', 'addressLine1' => 'Testowa 10', 'addressLine2' => 'Lokal 2', 'postalCode' => '00-010', 'city' => 'warszawa', 'countryCode' => 'PL', 'latitude' => '52.24', 'longitude' => '21.02', 'timezone' => 'Europe/Warsaw', 'indoor' => '1', 'freeEntry' => '1', 'priceDescription' => 'Bezpłatnie', 'websiteUrl' => 'https://example.test/place', 'phone' => '+48123456789', 'verificationStatus' => 'unverified', 'primaryCategory' => 'bawialnie', 'categories' => 'bawialnie,parki', 'amenities' => 'parking,wifi', 'ageZones' => "Maluchy|6|36|Opiekun wymagany\nDzieci|37|120|", 'weeklyOpeningHours' => "1|1|09:00|12:00|0\n1|2|13:00|18:00|0\n6|1|20:00|01:00|1", 'specialOpeningDays' => "2026-12-24|1|Wigilia|\n2026-12-31|0|Sylwester|1,10:00,14:00,0;2,20:00,01:00,1", 'externalReferences' => "osm|node-123|https://www.openstreetmap.org/node/123\npartner|abc|",
-        ]);
+        $editPayload = $this->formPayload($edit->filter('input[name="place_admin_form[_token]"]')->attr('value'), 1, 'C2R Admin Workflow', 'c2r-admin-workflow');
+        $editPayload['categorySlugs'] = ['bawialnie', 'parki'];
+        $editPayload['amenitySlugs'] = ['parking', 'wifi'];
+        $editPayload['ageZones'] = [['name' => 'Maluchy', 'minAgeMonths' => '6', 'maxAgeMonths' => '36', 'notes' => 'Opiekun wymagany'], ['name' => 'Dzieci', 'minAgeMonths' => '37', 'maxAgeMonths' => '120', 'notes' => '']];
+        $editPayload['openingHoursMode'] = 'scheduled';
+        $editPayload['weeklyOpeningHours'] = [['weekday' => '1', 'opensAt' => '09:00', 'closesAt' => '12:00'], ['weekday' => '1', 'opensAt' => '13:00', 'closesAt' => '18:00'], ['weekday' => '6', 'opensAt' => '20:00', 'closesAt' => '01:00', 'closesNextDay' => '1']];
+        $editPayload['specialOpeningDays'] = [['localDate' => '2026-12-24', 'mode' => 'closed', 'note' => 'Wigilia', 'intervals' => []], ['localDate' => '2026-12-31', 'mode' => 'custom', 'note' => 'Sylwester', 'intervals' => [['opensAt' => '10:00', 'closesAt' => '14:00'], ['opensAt' => '20:00', 'closesAt' => '01:00', 'closesNextDay' => '1']]]];
+        $editPayload['externalReferences'] = [['provider' => 'osm', 'externalId' => 'node-123', 'sourceUrl' => 'https://www.openstreetmap.org/node/123'], ['provider' => 'partner', 'externalId' => 'abc', 'sourceUrl' => '']];
+        $client->request('POST', '/admin/places/'.$id.'/edit', ['place_admin_form' => $editPayload]);
         self::assertResponseRedirects('/admin/places/'.$id);
         self::assertSame(2, (int) $connection->fetchOne('SELECT COUNT(*) FROM place_age_zones WHERE place_id=:id', ['id' => $id]));
         self::assertSame(3, (int) $connection->fetchOne('SELECT COUNT(*) FROM weekly_opening_intervals WHERE place_id=:id', ['id' => $id]));
@@ -81,6 +87,43 @@ final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
         self::assertResponseStatusCodeSame(404);
     }
 
+    public function testOverlapErrorIsRenderedWithTheStructuredCollectionAndPreservesSubmittedData(): void
+    {
+        $client = self::createClient();
+        $client->disableReboot();
+        $connection = self::getContainer()->get(Connection::class);
+        self::assertInstanceOf(Connection::class, $connection);
+        $id = '00000000-0000-7000-8000-000000000400';
+        $this->login($client);
+        $edit = $client->request('GET', '/admin/places/'.$id.'/edit');
+        $version = (int) $connection->fetchOne('SELECT version FROM places WHERE id=:id', ['id' => $id]);
+        $payload = $this->formPayload($edit->filter('input[name="place_admin_form[_token]"]')->attr('value'), $version, 'Preserved structured value', 'demo-1-demo-bawialnia-mokotow');
+        $payload['openingHoursMode'] = 'scheduled';
+        $payload['weeklyOpeningHours'] = [['weekday' => '1', 'opensAt' => '09:00', 'closesAt' => '13:00'], ['weekday' => '1', 'opensAt' => '12:00', 'closesAt' => '14:00']];
+
+        $client->request('POST', '/admin/places/'.$id.'/edit', ['place_admin_form' => $payload]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('body', 'overlaps another weekly interval');
+        self::assertSelectorExists('input[name="place_admin_form[core][name]"][value="Preserved structured value"]');
+        self::assertSame($version, (int) $connection->fetchOne('SELECT version FROM places WHERE id=:id', ['id' => $id]));
+    }
+
+    public function testInvalidFormCsrfCannotCreateAPlace(): void
+    {
+        $client = self::createClient();
+        $client->disableReboot();
+        $connection = self::getContainer()->get(Connection::class);
+        self::assertInstanceOf(Connection::class, $connection);
+        $this->login($client);
+        $payload = $this->formPayload('invalid-token', null, 'Rejected CSRF', 'rejected-csrf-place');
+
+        $client->request('POST', '/admin/places/new', ['place_admin_form' => $payload]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(0, (int) $connection->fetchOne("SELECT COUNT(*) FROM places WHERE slug='rejected-csrf-place'"));
+    }
+
     private function workflowAction(KernelBrowser $client, string $id, string $action, int $version): void
     {
         $view = $client->request('GET', '/admin/places/'.$id);
@@ -88,5 +131,30 @@ final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
         $token = $view->filter('form[action$="/'.$action.'"] input[name="_token"]')->attr('value');
         $client->request('POST', '/admin/places/'.$id.'/'.$action, ['_token' => $token, 'version' => (string) $version]);
         self::assertResponseRedirects('/admin/places');
+    }
+
+    private function login(KernelBrowser $client): void
+    {
+        $login = $client->request('GET', '/admin/login');
+        $client->request('POST', '/admin/login', ['_username' => 'admin@example.test', '_password' => 'test-password', '_csrf_token' => $login->filter('input[name="_csrf_token"]')->attr('value')], [], ['HTTP_ORIGIN' => 'http://localhost']);
+        self::assertResponseRedirects('/admin');
+    }
+
+    /** @return array<string, mixed> */
+    private function formPayload(string $token, ?int $version, string $name, string $slug): array
+    {
+        return [
+            '_token' => $token,
+            'expectedVersion' => null === $version ? '' : (string) $version,
+            'core' => ['name' => $name, 'slug' => $slug, 'shortDescription' => 'Administrative workflow place', 'description' => 'Complete aggregate managed through typed commands.', 'addressLine1' => 'Testowa 10', 'addressLine2' => '', 'postalCode' => '00-010', 'citySlug' => 'warszawa', 'countryCode' => 'PL', 'latitude' => '52.24', 'longitude' => '21.02', 'timezone' => 'Europe/Warsaw', 'indoor' => '1', 'freeEntry' => '1', 'priceDescription' => 'Bezpłatnie', 'websiteUrl' => 'https://example.test/place', 'phone' => '+48123456789', 'verificationStatus' => 'unverified'],
+            'categorySlugs' => ['bawialnie'],
+            'primaryCategorySlug' => 'bawialnie',
+            'amenitySlugs' => [],
+            'ageZones' => [['name' => 'Children', 'minAgeMonths' => '0', 'maxAgeMonths' => '72', 'notes' => '']],
+            'openingHoursMode' => 'unknown',
+            'weeklyOpeningHours' => [],
+            'specialOpeningDays' => [],
+            'externalReferences' => [],
+        ];
     }
 }

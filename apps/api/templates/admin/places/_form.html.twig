@@ -1,0 +1,36 @@
+{{ form_start(form, {attr: {class: 'place-admin-form', novalidate: 'novalidate'}}) }}
+    {% if not form.vars.valid %}<div role="alert" tabindex="-1">{{ form_errors(form) }}</div>{% endif %}
+    {{ form_widget(form.expectedVersion) }}
+    <fieldset>
+        <legend>Dane podstawowe</legend>
+        {{ form_widget(form.core) }}
+    </fieldset>
+    <fieldset>
+        <legend>Klasyfikacja</legend>
+        <label for="category-filter">Filtruj kategorie</label>
+        <input id="category-filter" type="search" data-choice-filter="{{ form.categorySlugs.vars.id }}" autocomplete="off">
+        {{ form_row(form.categorySlugs) }}
+        {{ form_row(form.primaryCategorySlug) }}
+        <label for="amenity-filter">Filtruj udogodnienia</label>
+        <input id="amenity-filter" type="search" data-choice-filter="{{ form.amenitySlugs.vars.id }}" autocomplete="off">
+        {{ form_row(form.amenitySlugs) }}
+    </fieldset>
+    <fieldset>
+        <legend>Strefy wieku</legend>
+        {{ form_row(form.ageZones) }}
+    </fieldset>
+    <fieldset>
+        <legend>Godziny otwarcia</legend>
+        {{ form_row(form.openingHoursMode) }}
+        {{ form_row(form.weeklyOpeningHours) }}
+    </fieldset>
+    <fieldset>
+        <legend>Dni specjalne</legend>
+        {{ form_row(form.specialOpeningDays) }}
+    </fieldset>
+    <fieldset>
+        <legend>Referencje zewnętrzne</legend>
+        {{ form_row(form.externalReferences) }}
+    </fieldset>
+    <button type="submit" class="primary-action">{{ submitLabel }}</button>
+{{ form_end(form) }}

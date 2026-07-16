@@ -19,6 +19,7 @@ deptrac:
         - { name: DiscoveryInfrastructure, collectors: [{ type: classLike, value: App\\Discovery\\Infrastructure\\.* }] }
         - { name: DiscoveryUI, collectors: [{ type: classLike, value: App\\Discovery\\UI\\.* }] }
         - { name: AdministrationInfrastructure, collectors: [{ type: classLike, value: App\\Administration\\Infrastructure\\.* }] }
+        - { name: AdministrationUI, collectors: [{ type: classLike, value: App\\Administration\\UI\\.* }] }
     ruleset:
         SharedDomain: []
         SharedApplication: [SharedDomain]
@@ -34,4 +35,5 @@ deptrac:
         DiscoveryApplication: [SharedDomain, SharedApplication, PlacesApplication]
         DiscoveryInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, DiscoveryApplication, PlacesApplication]
         DiscoveryUI: [SharedApplication, DiscoveryApplication]
-        AdministrationInfrastructure: [SharedApplication, IdentityApplication, PlacesApplication]
+        AdministrationInfrastructure: [SharedApplication, IdentityApplication, PlacesApplication, AdministrationUI]
+        AdministrationUI: [PlacesDomain, PlacesApplication]

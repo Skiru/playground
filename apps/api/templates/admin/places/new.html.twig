@@ -1,17 +1,11 @@
 {% extends 'base.html.twig' %}
 {% block title %}Nowe miejsce | FamilyPlaces Admin{% endblock %}
+{% block stylesheets %}{% include 'admin/places/_form_styles.html.twig' %}{% endblock %}
 {% block body %}
-<main><h1>Nowe miejsce</h1>
-{% for message in app.flashes('error') %}<p role="alert">{{ message }}</p>{% endfor %}
-<form method="post">
-<input type="hidden" name="_token" value="{{ csrf_token('create-place') }}">
-<label>Nazwa <input name="name" required></label><label>Slug <input name="slug" pattern="[a-z0-9-]+" required></label>
-<label>Krótki opis <textarea name="shortDescription" required></textarea></label><label>Opis <textarea name="description" required></textarea></label>
-<label>Miasto <select name="city"><option value="warszawa">Warszawa</option><option value="krakow">Kraków</option><option value="wroclaw">Wrocław</option><option value="gdansk">Gdańsk</option><option value="poznan">Poznań</option></select></label>
-<label>Kategoria <select name="category"><option value="bawialnie">Bawialnie</option><option value="parki">Parki rodzinne</option><option value="kawiarnie">Kawiarnie rodzinne</option></select></label>
-<label>Adres <input name="addressLine1" required></label><label>Kod pocztowy <input name="postalCode" required></label>
-<label>Szerokość geograficzna <input name="latitude" type="number" step="any" required></label><label>Długość geograficzna <input name="longitude" type="number" step="any" required></label>
-<label>Wiek od (miesiące) <input name="minAgeMonths" type="number" min="0" max="216"></label><label>Wiek do <input name="maxAgeMonths" type="number" min="0" max="216"></label>
-<label><input type="checkbox" name="indoor" value="1"> Wewnątrz</label><label><input type="checkbox" name="outdoor" value="1"> Na zewnątrz</label><label><input type="checkbox" name="freeEntry" value="1"> Bezpłatne</label>
-<button type="submit">Utwórz draft</button></form></main>
+<main class="place-form-page">
+    <nav><a href="{{ path('admin_places') }}">Anuluj</a></nav>
+    <h1>Nowe miejsce</h1>
+    {% include 'admin/places/_form.html.twig' with {submitLabel: 'Utwórz cały draft'} %}
+</main>
 {% endblock %}
+{% block javascripts %}{% include 'admin/places/_form_script.html.twig' %}{% endblock %}

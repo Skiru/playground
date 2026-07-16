@@ -1,0 +1,17 @@
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const enhanceCollections=(root=document)=>root.querySelectorAll('[data-prototype]').forEach((collection)=>{
+    if(collection.dataset.enhanced)return;
+    collection.dataset.enhanced='true';
+    let index=collection.children.length;
+    const label=collection.closest('fieldset')?.querySelector('legend')?.textContent?.trim()||'kolekcji';
+    const add=document.createElement('button');add.type='button';add.textContent=`Dodaj wiersz: ${label}`;add.className='add-row';
+    const addRemove=(row)=>{if(row.querySelector(':scope > .remove-row'))return;row.classList.add('collection-row');const remove=document.createElement('button');remove.type='button';remove.className='remove-row';remove.textContent='Usuń ten wiersz';remove.setAttribute('aria-label',`Usuń wiersz z ${label}`);remove.addEventListener('click',()=>row.remove());row.append(remove)};
+    [...collection.children].forEach(addRemove);
+    add.addEventListener('click',()=>{const token=(collection.dataset.prototype.match(/__[a-z0-9_]+?__/ig)||['__name__']).find(t=>!t.toLowerCase().includes('label'))||'__name__';const row=document.createElement('div');row.innerHTML=collection.dataset.prototype.split(token).join(String(index++));addRemove(row);collection.insertBefore(row,add);enhanceCollections(row);row.querySelector('input,select,textarea')?.focus()});
+    collection.append(add);
+  });
+  enhanceCollections();
+  document.querySelectorAll('[data-choice-filter]').forEach((filter)=>filter.addEventListener('input',()=>{const value=filter.value.toLocaleLowerCase('pl');document.querySelectorAll(`#${CSS.escape(filter.dataset.choiceFilter)} label`).forEach((label)=>label.classList.toggle('choice-filter-hidden',!label.textContent.toLocaleLowerCase('pl').includes(value))) }));
+});
+</script>
