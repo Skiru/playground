@@ -4,4 +4,4 @@ set -eu
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_dir"
 ./scripts/api-export
-docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$repo_dir:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/api-client generate'
+docker run --rm -u "$(id -u):$(id -g)" -e CI=true -e HOME=/tmp -v "$repo_dir:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/api-client generate'
