@@ -44,8 +44,16 @@ final readonly class PlaceCommandHandler
         return $this->transactions->transactional(function () use ($command): string {
             $now = $this->clock->now();
             $city = $this->places->cityBySlug($command->citySlug);
-            $category = $this->places->categoryBySlug($command->categorySlug);
-            $place = new Place(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->postalCode, $city, $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $category, $command->indoor, $command->outdoor, $command->freeEntry, $now, $command->addressLine2, $command->priceDescription, $command->websiteUrl, $command->phone);
+            $categorySlugs = [] === $command->categorySlugs ? [$command->categorySlug] : $command->categorySlugs;
+            $categories = $this->places->categoriesBySlugs($categorySlugs);
+            $primaryCategory = $this->primaryCategory($categories, $command->categorySlug);
+            $amenities = $this->places->amenitiesBySlugs($command->amenitySlugs);
+            $place = new Place(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->postalCode, $city, $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $primaryCategory, $command->indoor, $command->outdoor, $command->freeEntry, $now, $command->addressLine2, $command->priceDescription, $command->websiteUrl, $command->phone, $command->openingHoursMode);
+            $place->replaceCategories($categories, $primaryCategory, $now);
+            $place->replaceAmenities($amenities, $now);
+            $place->replaceAgeZones($this->ageZones($place, $command->ageZones), $now);
+            $place->replaceOpeningSchedule($command->openingHoursMode, $this->weeklyIntervals($place, $command->weeklyOpeningHours), $this->specialDays($place, $command->specialOpeningDays), $now);
+            $place->replaceExternalReferences($this->externalReferences($place, $command->externalReferences), $now);
             $this->places->add($place);
 
             return $place->id()->toRfc4122();
@@ -190,5 +198,66 @@ final readonly class PlaceCommandHandler
     private function time(string $value): \DateTimeImmutable
     {
         return new \DateTimeImmutable('1970-01-01 '.$value);
+    }
+
+    /** @param list<\App\Places\Domain\Category> $categories */
+    private function primaryCategory(array $categories, string $slug): \App\Places\Domain\Category
+    {
+        foreach ($categories as $category) {
+            if ($category->slug() === $slug) {
+                return $category;
+            }
+        }
+
+        throw new \InvalidArgumentException('Primary category must be selected as a category.');
+    }
+
+    /**
+     * @param list<Command\AgeZoneInput> $inputs
+     *
+     * @return list<PlaceAgeZone>
+     */
+    private function ageZones(Place $place, array $inputs): array
+    {
+        return array_map(static fn ($input): PlaceAgeZone => new PlaceAgeZone($place, $input->name, new AgeRange($input->minAgeMonths, $input->maxAgeMonths), $input->notes, 'admin'), $inputs);
+    }
+
+    /**
+     * @param list<Command\WeeklyOpeningIntervalInput> $inputs
+     *
+     * @return list<WeeklyOpeningInterval>
+     */
+    private function weeklyIntervals(Place $place, array $inputs): array
+    {
+        return array_map(fn ($input): WeeklyOpeningInterval => new WeeklyOpeningInterval($place, $input->weekday, $input->sequence, $this->time($input->opensAt), $this->time($input->closesAt), $input->closesNextDay), $inputs);
+    }
+
+    /**
+     * @param list<Command\SpecialOpeningDayInput> $inputs
+     *
+     * @return list<SpecialOpeningDay>
+     */
+    private function specialDays(Place $place, array $inputs): array
+    {
+        $days = [];
+        foreach ($inputs as $input) {
+            $day = new SpecialOpeningDay($place, new \DateTimeImmutable($input->localDate), $input->closed, $input->note);
+            foreach ($input->intervals as $interval) {
+                $day->addInterval(new SpecialOpeningInterval($day, $interval->sequence, $this->time($interval->opensAt), $this->time($interval->closesAt), $interval->closesNextDay));
+            }
+            $days[] = $day;
+        }
+
+        return $days;
+    }
+
+    /**
+     * @param list<Command\ExternalReferenceInput> $inputs
+     *
+     * @return list<ExternalPlaceReference>
+     */
+    private function externalReferences(Place $place, array $inputs): array
+    {
+        return array_map(static fn ($input): ExternalPlaceReference => new ExternalPlaceReference($place, $input->provider, $input->externalId, $input->sourceUrl), $inputs);
     }
 }

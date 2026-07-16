@@ -1,0 +1,44 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R2_DOMAIN_INTEGRITY_AND_ADMIN_UX_CLOSURE",
+  "checkpoint": "R0",
+  "status": "PASS",
+  "decision": "PROCEED_TO_C2R2_A",
+  "checkedAt": "2026-07-16T15:06:21+02:00",
+  "timezone": "Europe/Warsaw",
+  "repository": "Skiru/playground",
+  "workingDirectory": "/Users/mkoziol/projects/playground",
+  "branch": "feat/family-places-platform-v1",
+  "headSha": "6849b2b90fc703f489d9f4a8e6198d9d47e1f1c2",
+  "headTree": "4d559744cb07b8e12032d9f3382ed0404fa5edf6",
+  "expectedSha": "6849b2b90fc703f489d9f4a8e6198d9d47e1f1c2",
+  "previouslyCertifiedCodeSha": "c88a1704e66309db2984396885cb43468da60044",
+  "previouslyCertifiedCodeTree": "8d2927eadf3da188e47b0e57acf236b0abcc452f",
+  "previouslyCertifiedCodeIsAncestor": true,
+  "origin": "https://github.com/Skiru/playground.git",
+  "cleanWorktree": true,
+  "pullRequest": {
+    "number": 1,
+    "state": "open",
+    "headRef": "feat/family-places-platform-v1",
+    "headSha": "6849b2b90fc703f489d9f4a8e6198d9d47e1f1c2",
+    "baseRef": "main",
+    "merged": false,
+    "mergedAt": null,
+    "source": "https://api.github.com/repos/Skiru/playground/pulls/1"
+  },
+  "commands": [
+    "pwd",
+    "git remote -v",
+    "git branch --show-current",
+    "git rev-parse HEAD",
+    "git rev-parse HEAD^{tree}",
+    "git status --short",
+    "git log --oneline --decorate -20",
+    "git merge-base --is-ancestor c88a1704e66309db2984396885cb43468da60044 HEAD"
+  ],
+  "findings": [],
+  "toolingNotes": [
+    "The gh CLI was unavailable; PR state was verified through the public GitHub REST API."
+  ],
+  "result": "Exact-state preflight contract satisfied; C2R2 remediation is authorized. C3 and merge remain forbidden."
+}

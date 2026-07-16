@@ -59,6 +59,7 @@ final class Place
         ?string $priceDescription = null,
         ?string $websiteUrl = null,
         ?string $phone = null,
+        private OpeningHoursMode $openingHoursMode = OpeningHoursMode::UNKNOWN,
     ) {
         $this->id = Uuid::v7();
         $this->name = $name->value;
@@ -118,8 +119,9 @@ final class Place
         ?string $priceDescription = null,
         ?string $websiteUrl = null,
         ?string $phone = null,
+        OpeningHoursMode $openingHoursMode = OpeningHoursMode::UNKNOWN,
     ): self {
-        $place = new self($name, $slug, $shortDescription, $description, $addressLine1, $postalCode, $city, $countryCode, $coordinates, $timezone, $primaryCategory, $indoor, $outdoor, $freeEntry, $createdAt, $addressLine2, $priceDescription, $websiteUrl, $phone);
+        $place = new self($name, $slug, $shortDescription, $description, $addressLine1, $postalCode, $city, $countryCode, $coordinates, $timezone, $primaryCategory, $indoor, $outdoor, $freeEntry, $createdAt, $addressLine2, $priceDescription, $websiteUrl, $phone, $openingHoursMode);
         $place->id = $id;
         $place->version = $version;
         $place->status = $status;
@@ -318,6 +320,25 @@ final class Place
     public function weeklyOpeningHours(): array
     {
         return $this->weeklyOpeningHours;
+    }
+
+    public function openingHoursMode(): OpeningHoursMode
+    {
+        return $this->openingHoursMode;
+    }
+
+    /**
+     * @param list<WeeklyOpeningInterval> $weeklyIntervals
+     * @param list<SpecialOpeningDay>     $specialDays
+     */
+    public function replaceOpeningSchedule(OpeningHoursMode $mode, array $weeklyIntervals, array $specialDays, \DateTimeImmutable $now): void
+    {
+        if (OpeningHoursMode::SCHEDULED !== $mode && [] !== $weeklyIntervals) {
+            throw new \InvalidArgumentException('Weekly intervals require scheduled opening hours mode.');
+        }
+        $this->replaceWeeklyOpeningHours($weeklyIntervals, $now);
+        $this->replaceSpecialOpeningDays($specialDays, $now);
+        $this->openingHoursMode = $mode;
     }
 
     /** @param list<WeeklyOpeningInterval> $intervals */

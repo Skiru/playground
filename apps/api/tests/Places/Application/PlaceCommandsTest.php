@@ -23,6 +23,15 @@ use App\Places\Application\Command\UnpublishPlace;
 use App\Places\Application\Command\UpdatePlaceCoreDetails;
 use App\Places\Application\Command\VerificationStatusInput;
 use App\Places\Application\Command\WeeklyOpeningIntervalInput;
+use App\Places\Application\PlaceCommandHandler;
+use App\Places\Application\PlaceRepository;
+use App\Places\Domain\Category;
+use App\Places\Domain\City;
+use App\Places\Domain\OpeningHoursMode;
+use App\Places\Domain\Place;
+use App\Places\Domain\ValueObject\Coordinates;
+use App\Shared\Application\Clock;
+use App\Shared\Application\TransactionManager;
 use PHPUnit\Framework\TestCase;
 
 final class PlaceCommandsTest extends TestCase
@@ -53,5 +62,55 @@ final class PlaceCommandsTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         new PublishPlace('id', 0);
+    }
+
+    public function testCompleteDraftUsesOneTransactionOneBatchPerDictionaryAndOneAggregateAdd(): void
+    {
+        $now = new \DateTimeImmutable('2026-07-16T10:00:00Z');
+        $city = new City('Warszawa', 'warszawa', 'PL', new Coordinates(52.2, 21.0), 12, 15, 'Europe/Warsaw', true, $now);
+        $primary = new Category('Parks', 'parks', null, 'parks', true, 1);
+        $secondary = new Category('Museums', 'museums', null, 'museums', true, 2);
+        $places = $this->createMock(PlaceRepository::class);
+        $places->expects(self::once())->method('cityBySlug')->with('warszawa')->willReturn($city);
+        $places->expects(self::once())->method('categoriesBySlugs')->with(['parks', 'museums'])->willReturn([$primary, $secondary]);
+        $places->expects(self::once())->method('amenitiesBySlugs')->with([])->willReturn([]);
+        $places->expects(self::never())->method('categoryBySlug');
+        $places->expects(self::once())->method('add')->willReturnCallback(static function (Place $place): void {
+            self::assertSame(1, $place->version());
+            self::assertCount(2, $place->categories());
+            self::assertCount(1, $place->ageZones());
+            self::assertCount(1, $place->weeklyOpeningHours());
+            self::assertCount(1, $place->specialOpeningDays());
+            self::assertCount(1, $place->externalReferences());
+        });
+        $transactions = $this->createMock(TransactionManager::class);
+        $transactions->expects(self::once())->method('transactional')->willReturnCallback(static fn (callable $operation): mixed => $operation());
+        $clock = $this->createStub(Clock::class);
+        $clock->method('now')->willReturn($now);
+        $handler = new PlaceCommandHandler($places, $transactions, $clock);
+
+        $handler->create(new CreatePlaceDraft(
+            'Place',
+            'place',
+            'Short',
+            'Description',
+            'Street 1',
+            '00-001',
+            'warszawa',
+            'PL',
+            52.2,
+            21.0,
+            'Europe/Warsaw',
+            'parks',
+            true,
+            false,
+            false,
+            categorySlugs: ['parks', 'museums'],
+            ageZones: [new AgeZoneInput('Children', 12, 72)],
+            openingHoursMode: OpeningHoursMode::SCHEDULED,
+            weeklyOpeningHours: [new WeeklyOpeningIntervalInput(1, 1, '09:00', '18:00', false)],
+            specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', true, null, [])],
+            externalReferences: [new ExternalReferenceInput('osm', '123')],
+        ));
     }
 }

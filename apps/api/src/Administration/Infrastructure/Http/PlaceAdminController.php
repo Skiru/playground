@@ -73,10 +73,9 @@ final class PlaceAdminController extends AbstractController
                     indoor: $request->request->getBoolean('indoor'),
                     outdoor: $request->request->getBoolean('outdoor'),
                     freeEntry: $request->request->getBoolean('freeEntry'),
+                    categorySlugs: [$request->request->getString('category')],
+                    ageZones: '' === $request->request->getString('minAgeMonths') ? [] : [new AgeZoneInput('Strefa główna', $request->request->getInt('minAgeMonths'), '' === $request->request->getString('maxAgeMonths') ? null : $request->request->getInt('maxAgeMonths'))],
                 ));
-                if ('' !== $request->request->getString('minAgeMonths')) {
-                    $this->commands->replaceAgeZones(new ReplacePlaceAgeZones($id, 1, [new AgeZoneInput('Strefa główna', $request->request->getInt('minAgeMonths'), '' === $request->request->getString('maxAgeMonths') ? null : $request->request->getInt('maxAgeMonths'))]));
-                }
                 $this->addFlash('success', 'Draft place created.');
 
                 return $this->redirectToRoute('admin_places');

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Places\Application\Command;
 
+use App\Places\Domain\OpeningHoursMode;
+
 final readonly class CreatePlaceDraft
 {
     public function __construct(
@@ -26,6 +28,19 @@ final readonly class CreatePlaceDraft
         public ?string $priceDescription = null,
         public ?string $websiteUrl = null,
         public ?string $phone = null,
+        /** @var list<string> */
+        public array $categorySlugs = [],
+        /** @var list<string> */
+        public array $amenitySlugs = [],
+        /** @var list<AgeZoneInput> */
+        public array $ageZones = [],
+        public OpeningHoursMode $openingHoursMode = OpeningHoursMode::UNKNOWN,
+        /** @var list<WeeklyOpeningIntervalInput> */
+        public array $weeklyOpeningHours = [],
+        /** @var list<SpecialOpeningDayInput> */
+        public array $specialOpeningDays = [],
+        /** @var list<ExternalReferenceInput> */
+        public array $externalReferences = [],
     ) {
         if ('' === trim($name) || '' === trim($slug) || '' === trim($citySlug) || '' === trim($categorySlug)) {
             throw new \InvalidArgumentException('Name, slug, city, and category are required.');

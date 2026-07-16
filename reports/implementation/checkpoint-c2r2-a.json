@@ -1,0 +1,41 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R2_DOMAIN_INTEGRITY_AND_ADMIN_UX_CLOSURE",
+  "checkpoint": "C2R2-A",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T15:17:12+02:00",
+  "inputHead": "6849b2b90fc703f489d9f4a8e6198d9d47e1f1c2",
+  "atomicDraftCreation": true,
+  "singleAggregateAdd": true,
+  "initialVersion": 1,
+  "controllerFollowUpAgeZoneWrite": false,
+  "typedCompleteCommand": true,
+  "batchCategoryResolution": true,
+  "batchAmenityResolution": true,
+  "explicitOpeningHoursMode": true,
+  "evidence": {
+    "completeAggregatePersistence": "PASS",
+    "invalidAgeRangeLeavesZeroRows": "PASS",
+    "missingCategoryLeavesZeroRows": "PASS",
+    "invalidScheduleLeavesZeroRows": "PASS",
+    "duplicateExternalReferenceLeavesZeroRows": "PASS",
+    "relationPersistenceFailureRollback": "PASS",
+    "oneTransactionAndOneAddAssertion": "PASS",
+    "messengerEventsPublishedOnFailure": 0
+  },
+  "gates": {
+    "domainAndApplicationTests": "PASS (26 tests, 37 assertions)",
+    "postgresqlIntegrationAndRollbackTests": "PASS (5 tests, 28 assertions)",
+    "phpCsFixer": "PASS",
+    "phpstanLevel8": "PASS",
+    "deptrac": "PASS (0 violations, 0 errors)",
+    "symfonyContainerLint": "PASS",
+    "gitDiffCheck": "PASS",
+    "adversarialReview": "PASS (P0=0, P1=0)"
+  },
+  "notes": [
+    "CreatePlaceDraft now carries typed inputs for every aggregate collection.",
+    "All dictionaries and child objects are resolved and validated before PlaceRepository::add().",
+    "The repository add and all relation inserts execute inside one DBAL transaction.",
+    "The opening-hours mode migration backfills existing interval-bearing places as scheduled and all others as unknown."
+  ]
+}
