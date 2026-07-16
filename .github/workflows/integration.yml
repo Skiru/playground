@@ -24,10 +24,12 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Install frozen frontend and Chromium
+      - name: Install frozen frontend
         run: |
-          corepack pnpm install --frozen-lockfile
-          corepack pnpm exec playwright install --with-deps chromium
+          npm install --global pnpm@11.13.1
+          pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Build test runtime
         run: docker compose -f compose.yaml -f compose.test.yaml build api
       - name: Migrate from zero and load deterministic fixtures
@@ -41,11 +43,11 @@ jobs:
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
       - name: Frontend quality, SSR and generated client drift
         run: |
-          corepack pnpm --filter @family-places/api-client build
-          corepack pnpm --filter @family-places/web lint
-          corepack pnpm --filter @family-places/web typecheck
-          corepack pnpm --filter @family-places/web test
-          corepack pnpm --filter @family-places/web build
+          pnpm --filter @family-places/api-client build
+          pnpm --filter @family-places/web lint
+          pnpm --filter @family-places/web typecheck
+          pnpm --filter @family-places/web test
+          pnpm --filter @family-places/web build
           docker tag family-places-api:latest family-places-api:development
           ./scripts/api-check
       - name: Reset deterministic data after tests
@@ -60,7 +62,7 @@ jobs:
         env:
           WEB_BASE_URL: http://127.0.0.1:3000
           API_BASE_URL_BROWSER: http://127.0.0.1:8080
-        run: corepack pnpm --filter @family-places/web e2e
+        run: pnpm --filter @family-places/web e2e
       - name: Expanded production smoke
         run: ./scripts/smoke
       - name: Upload browser artifacts
