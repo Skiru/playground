@@ -4,17 +4,30 @@ services:
       target: development
     environment:
       APP_ENV: test
+      APP_DEBUG: 0
+      APP_SECRET: deterministic-test-secret
+      DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
   worker:
     build:
       target: development
     environment:
       APP_ENV: test
+      APP_DEBUG: 0
+      APP_SECRET: deterministic-test-secret
+      DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
   web:
     build:
       target: build
     environment:
       NODE_ENV: test
+      MAP_STYLE_URL: http://map-style.invalid/style.json
+      MAP_ATTRIBUTION: Test map provider
+      MAP_PROVIDER_NAME: Test map provider
   database:
+    environment:
+      POSTGRES_DB: family_places_test
+      POSTGRES_USER: family_places_test
+      POSTGRES_PASSWORD: family_places_test
     volumes:
       - database-test-data:/var/lib/postgresql
 

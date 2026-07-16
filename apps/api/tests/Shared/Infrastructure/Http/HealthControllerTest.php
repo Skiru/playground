@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Shared\Infrastructure\Http;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Uid\UuidV7;
 
 final class HealthControllerTest extends WebTestCase
 {
@@ -26,5 +28,17 @@ final class HealthControllerTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertNotSame("invalid\nvalue", $client->getResponse()->headers->get('X-Correlation-ID'));
+        $generated = (string) $client->getResponse()->headers->get('X-Correlation-ID');
+        self::assertTrue(Uuid::isValid($generated));
+        self::assertInstanceOf(UuidV7::class, Uuid::fromString($generated));
+    }
+
+    public function testValidCorrelationIdIsPreserved(): void
+    {
+        $client = self::createClient();
+        $correlationId = Uuid::v7()->toRfc4122();
+        $client->request('GET', '/api/v1/health/live', server: ['HTTP_X_CORRELATION_ID' => $correlationId]);
+
+        self::assertResponseHeaderSame('X-Correlation-ID', $correlationId);
     }
 }

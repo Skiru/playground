@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "./scripts/dev",
     "check": "./scripts/check",
+    "lint": "pnpm --filter @family-places/web lint",
+    "typecheck": "pnpm --filter @family-places/web typecheck",
+    "build": "pnpm --filter @family-places/api-client build && pnpm --filter @family-places/web build",
     "test": "./scripts/test",
     "smoke": "./scripts/smoke",
     "fixtures": "./scripts/fixtures",

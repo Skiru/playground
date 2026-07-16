@@ -16,14 +16,16 @@ EXPOSE 3000
 
 FROM dependencies AS build
 COPY . .
-RUN pnpm --filter @family-places/api-client build && pnpm --filter @family-places/web build
+RUN pnpm --filter @family-places/api-client build \
+    && pnpm --filter @family-places/web build \
+    && pnpm --filter @family-places/web --prod deploy --legacy /prod/web \
+    && cp -R apps/web/build /prod/web/build \
+    && test -x /prod/web/node_modules/.bin/react-router-serve
 
 FROM node:24-bookworm-slim AS production
-ENV NODE_ENV=production
+ENV NODE_ENV=production PORT=3000
 WORKDIR /app
-COPY --from=build /workspace/apps/web/build ./build
-COPY --from=build /workspace/apps/web/package.json ./package.json
-COPY --from=dependencies /workspace/node_modules ./node_modules
+COPY --from=build --chown=node:node /prod/web/ ./
 USER node
 EXPOSE 3000
-CMD ["node", "./node_modules/@react-router/serve/bin.js", "./build/server/index.js"]
+CMD ["./node_modules/.bin/react-router-serve", "./build/server/index.js"]

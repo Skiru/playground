@@ -7,9 +7,10 @@ services:
       dockerfile: infra/docker/api.Dockerfile
       target: production
     environment:
-      APP_ENV: ${APP_ENV:-prod}
-      APP_SECRET: ${APP_SECRET:-local-development-secret}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8}
+      APP_ENV:
+      APP_DEBUG:
+      APP_SECRET:
+      DATABASE_URL:
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
       SERVER_NAME: :80
     depends_on:
@@ -20,8 +21,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    ports:
-      - "127.0.0.1:8080:80"
     networks: [edge, internal]
 
   worker:
@@ -32,9 +31,10 @@ services:
     command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=128M"]
     working_dir: /app
     environment:
-      APP_ENV: ${APP_ENV:-prod}
-      APP_SECRET: ${APP_SECRET:-local-development-secret}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8}
+      APP_ENV:
+      APP_DEBUG:
+      APP_SECRET:
+      DATABASE_URL:
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
     depends_on:
       database:
@@ -49,12 +49,11 @@ services:
       dockerfile: infra/docker/web.Dockerfile
       target: production
     environment:
-      NODE_ENV: production
-      API_BASE_URL: ${API_BASE_URL:-http://api}
-      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:8080}
-      MAP_STYLE_URL: ${MAP_STYLE_URL:-https://demotiles.maplibre.org/style.json}
-      MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:-MapLibre demonstration tiles}
-      MAP_PROVIDER_NAME: ${MAP_PROVIDER_NAME:-MapLibre Demo Tiles}
+      NODE_ENV:
+      API_BASE_URL: http://api
+      MAP_STYLE_URL:
+      MAP_ATTRIBUTION:
+      MAP_PROVIDER_NAME:
       PORT: 3000
     depends_on:
       api:
@@ -64,17 +63,15 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    ports:
-      - "127.0.0.1:3000:3000"
     networks: [edge]
 
   database:
     image: postgis/postgis:18-3.6@sha256:c893f6f2652d11e13f50f8623045b3523991b41d038b4d213dc040f42641f0d7
     platform: linux/amd64
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-family_places}
-      POSTGRES_USER: ${POSTGRES_USER:-family_places}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_places}
+      POSTGRES_DB:
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -94,13 +91,6 @@ services:
       timeout: 3s
       retries: 5
     networks: [internal]
-
-  mailpit:
-    image: axllent/mailpit:v1.27
-    profiles: [dev]
-    ports:
-      - "127.0.0.1:8025:8025"
-    networks: [edge, internal]
 
 volumes:
   database-data:

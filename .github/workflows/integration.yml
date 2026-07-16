@@ -1,6 +1,7 @@
 name: Integration
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -8,15 +9,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Start stack
         run: docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml up --build --wait -d database api worker web
       - name: Verify PostGIS and HTTP
         run: |
+          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml exec -T api php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml exec -T api php bin/console doctrine:migrations:status
           docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml exec -T database psql -U family_places -d family_places -c 'SELECT PostGIS_Full_Version();'
           ./scripts/smoke
       - name: Service logs

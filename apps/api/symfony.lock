@@ -88,6 +88,9 @@
             ".php-cs-fixer.dist.php"
         ]
     },
+    "jsor/doctrine-postgis": {
+        "version": "v2.4.0"
+    },
     "phpstan/phpstan": {
         "version": "2.2.5"
     },

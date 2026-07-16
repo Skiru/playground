@@ -1,0 +1,16 @@
+.git
+**/.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/vendor
+**/var
+**/.cache
+**/coverage
+**/playwright-report
+**/test-results
+reports
+.DS_Store
+.idea
+.vscode

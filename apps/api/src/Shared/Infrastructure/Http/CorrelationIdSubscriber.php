@@ -11,15 +11,15 @@ use Symfony\Component\Uid\Uuid;
 
 final class CorrelationIdSubscriber
 {
-    private const ATTRIBUTE = '_correlation_id';
-    private const HEADER = 'X-Correlation-ID';
+    public const ATTRIBUTE = '_correlation_id';
+    public const HEADER = 'X-Correlation-ID';
 
     #[AsEventListener(priority: 100)]
     public function onRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
         $supplied = $request->headers->get(self::HEADER);
-        $correlationId = \is_string($supplied) && 1 === preg_match('/^[A-Za-z0-9._-]{1,64}$/', $supplied)
+        $correlationId = \is_string($supplied) && Uuid::isValid($supplied)
             ? $supplied
             : Uuid::v7()->toRfc4122();
 

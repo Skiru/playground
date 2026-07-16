@@ -14,10 +14,45 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
-    # makes classes in src/ available to be used as services
-    # this creates a service per class whose id is the fully-qualified class name
-    App\:
-        resource: '../src/'
+    App\Shared\Application\:
+        resource: '../src/Shared/Application/'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    App\Shared\Infrastructure\:
+        resource: '../src/Shared/Infrastructure/'
+
+    App\Identity\Application\:
+        resource: '../src/Identity/Application/'
+
+    App\Identity\Infrastructure\:
+        resource: '../src/Identity/Infrastructure/'
+
+    App\Identity\UI\:
+        resource: '../src/Identity/UI/'
+
+    App\Places\Application\:
+        resource: '../src/Places/Application/'
+
+    App\Places\Infrastructure\:
+        resource: '../src/Places/Infrastructure/'
+
+    App\Places\UI\:
+        resource: '../src/Places/UI/'
+
+    App\Discovery\Application\:
+        resource: '../src/Discovery/Application/'
+
+    App\Discovery\Infrastructure\:
+        resource: '../src/Discovery/Infrastructure/'
+
+    App\Discovery\UI\:
+        resource: '../src/Discovery/UI/'
+
+    App\Administration\Infrastructure\:
+        resource: '../src/Administration/Infrastructure/'
+
+    App\Shared\Application\Clock:
+        alias: App\Shared\Infrastructure\Clock\SystemClock
+        public: true
+
+    App\Shared\Infrastructure\Logging\CorrelationIdProcessor:
+        tags: [monolog.processor]
