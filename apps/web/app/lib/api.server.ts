@@ -1,6 +1,7 @@
 import {
   getCategories,
   getCities,
+  getAmenities,
   getMapPlaces,
   getPlaceBySlug,
   searchPlaces,
@@ -28,6 +29,12 @@ export async function loadCities() {
 export async function loadCategories() {
   const result = await getCategories({ baseUrl });
   if (!result.data) upstreamError(result, "Nie udało się pobrać listy kategorii.");
+  return result.data;
+}
+
+export async function loadAmenities() {
+  const result = await getAmenities({ baseUrl });
+  if (!result.data) upstreamError(result, "Nie udało się pobrać listy udogodnień.");
   return result.data;
 }
 

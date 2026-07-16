@@ -34,4 +34,10 @@ final class PlaceSearchQueryTest extends TestCase
         $query = PlaceSearchQuery::fromRequest(new Request(['amenities' => ['parking', 'wifi']]));
         self::assertSame(['parking', 'wifi'], $query->amenities);
     }
+
+    public function testSingleAmenityFromGeneratedClientIsNormalizedToAList(): void
+    {
+        $query = PlaceSearchQuery::fromRequest(new Request(['amenities' => 'parking']));
+        self::assertSame(['parking'], $query->amenities);
+    }
 }

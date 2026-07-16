@@ -38,7 +38,9 @@ final readonly class PlaceSearchQuery
         $pageSize = self::integer($request, 'pageSize') ?? 20;
         $q = self::text($request, 'q');
         $sort = self::text($request, 'sort') ?? 'relevance';
-        $amenities = array_values(array_unique(array_filter(array_map('strval', $request->query->all('amenities')))));
+        $queryParameters = $request->query->all();
+        $rawAmenities = $queryParameters['amenities'] ?? [];
+        $amenities = array_values(array_unique(array_filter(array_map('strval', \is_array($rawAmenities) ? $rawAmenities : [$rawAmenities]))));
 
         if (null !== $age && ($age < 0 || $age > 216)) {
             throw new \InvalidArgumentException('ageMonths must be between 0 and 216.');

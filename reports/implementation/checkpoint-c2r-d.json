@@ -1,0 +1,18 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "checkpoint": "C2R-D",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T13:42:31+02:00",
+  "baseSha": "dfbcf19",
+  "mapConcurrency": {"abortController": true, "debounceMs": 250, "monotonicRequestId": true, "staleResponseIgnored": true, "unmountCleanup": true, "previousMarkersUntilSuccess": true, "loading": true, "error": true, "retry": true},
+  "mapFallbacks": ["missing configuration", "missing WebGL", "dynamic import failure", "style/provider error", "API error", "empty GeoJSON"],
+  "mapNetwork": "deterministic local /fixtures/map-style.json; no external CI provider",
+  "playwright": {"version": "1.61.1", "projects": ["chromium-desktop", "chromium-mobile"], "tests": 18, "result": "PASS", "durationSeconds": 6.5, "failureArtifacts": ["screenshot", "video", "trace"]},
+  "browserScenarios": ["SSR homepage before JavaScript", "city", "category", "age", "radius", "amenities AND", "search", "details", "map", "map fallback", "empty results", "API error", "admin login", "admin create/edit", "invalid publish", "valid publish", "public visibility", "unpublish", "mobile list/map", "keyboard navigation", "404"],
+  "accessibility": {"engine": "axe-core in Chromium", "pages": ["homepage", "results", "details", "admin login", "admin edit"], "desktop": "PASS", "mobile": "PASS", "critical": 0, "serious": 0, "contrast": "PASS"},
+  "contrastTokens": {"foreground": "#ffffff", "primaryActionBackground": "#b43b22", "reason": "darker rust token meets WCAG AA for normal bold button text"},
+  "screenshots": ["apps/web/test-results/**/homepage-chromium-desktop.png", "apps/web/test-results/**/homepage-chromium-mobile.png"],
+  "expandedSmoke": ["API live", "API ready", "cities", "places", "details", "map", "homepage", "results", "details SSR", "admin login", "draft absent"],
+  "ciCheckName": "Integration and browser E2E",
+  "gates": {"lint": "PASS", "strictTypecheck": "PASS", "vitest": "PASS (6 tests)", "ssrBuild": "PASS", "productionApiImage": "PASS", "productionWebImage": "PASS", "productionRuntime": "PASS", "desktopE2E": "PASS", "mobileE2E": "PASS", "browserAxe": "PASS", "expandedSmoke": "PASS"}
+}

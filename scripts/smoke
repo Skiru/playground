@@ -5,5 +5,14 @@ api_url=${API_URL:-http://localhost:8080}
 web_url=${WEB_URL:-http://localhost:3000}
 curl --fail --silent "$api_url/api/v1/health/live" >/dev/null
 curl --fail --silent "$api_url/api/v1/health/ready" >/dev/null
+curl --fail --silent "$api_url/api/v1/cities" | grep -q 'warszawa'
+curl --fail --silent "$api_url/api/v1/places?city=warszawa" | grep -q 'demo-1-demo-bawialnia-mokotow'
+curl --fail --silent "$api_url/api/v1/places/demo-1-demo-bawialnia-mokotow" | grep -q 'Demo Bawialnia'
+curl --fail --silent "$api_url/api/v1/map/places?west=21&south=52&east=21.1&north=52.3&zoom=10" | grep -q 'FeatureCollection'
 curl --fail --silent "$web_url/" | grep -q 'FamilyPlaces'
+curl --fail --silent "$web_url/miejsca?city=warszawa" | grep -q 'Znalezione miejsca'
+curl --fail --silent "$web_url/miejsca/demo-1-demo-bawialnia-mokotow" | grep -q 'Demo Bawialnia'
+curl --fail --silent "$api_url/admin/login" | grep -q 'Logowanie administratora'
+draft_status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$api_url/api/v1/places/demo-13-demo-rodzinny-punkt-widokowy")
+test "$draft_status" = '404'
 printf '%s\n' 'Smoke checks passed.'

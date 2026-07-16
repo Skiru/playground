@@ -1,4 +1,4 @@
-name: Integration
+name: Integration and browser E2E
 
 on:
   workflow_dispatch:
@@ -10,35 +10,62 @@ permissions:
   contents: read
 
 concurrency:
-  group: integration-${{ github.workflow }}-${{ github.ref }}
+  group: integration-e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  smoke:
+  integration-and-browser-e2e:
+    name: Integration and browser E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Build development runtimes
-        run: docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml build api web
-      - name: Install mounted workspace dependencies
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - name: Install frozen frontend and Chromium
         run: |
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml run --rm --no-deps api composer install --no-interaction --prefer-dist
-          docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm install --frozen-lockfile && corepack pnpm --filter @family-places/api-client build'
-      - name: Start stack
+          corepack enable
+          corepack prepare pnpm@11.13.1 --activate
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Build test runtime
+        run: docker compose -f compose.yaml -f compose.test.yaml build api
+      - name: Migrate from zero and load deterministic fixtures
         run: |
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml up --wait -d database
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml up -d worker
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml up --wait -d api web
-      - name: Verify PostGIS and HTTP
+          docker compose -f compose.yaml -f compose.test.yaml up --wait -d database
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:database:create --if-not-exists
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
+          docker compose -f compose.yaml -f compose.test.yaml exec -T database psql -U family_places_test -d family_places_test -c 'SELECT PostGIS_Full_Version();'
+      - name: Backend infrastructure and runtime contract tests
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
+      - name: Build final production runtimes
+        run: docker compose -f compose.yaml -f compose.e2e.yaml build api web worker
+      - name: Start final production runtime
         run: |
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml exec -T api php bin/console doctrine:migrations:status
-          docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml exec -T database psql -U family_places -d family_places -c 'SELECT PostGIS_Full_Version();'
-          ./scripts/smoke
-      - name: Service logs
+          docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d database api web
+          docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
+      - name: Playwright desktop, mobile and browser axe
+        env:
+          WEB_BASE_URL: http://127.0.0.1:3000
+          API_BASE_URL_BROWSER: http://127.0.0.1:8080
+        run: pnpm --filter @family-places/web e2e
+      - name: Expanded production smoke
+        run: ./scripts/smoke
+      - name: Upload browser artifacts
         if: always()
-        run: docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml logs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Service logs
+        if: failure()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml logs
       - name: Stop stack
         if: always()
-        run: docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml down --volumes
+        run: docker compose -f compose.yaml -f compose.e2e.yaml down --volumes

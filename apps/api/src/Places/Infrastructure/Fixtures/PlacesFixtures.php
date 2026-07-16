@@ -16,8 +16,9 @@ final class PlacesFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        $this->connection->executeStatement('TRUNCATE external_place_references, special_opening_intervals, special_opening_days, weekly_opening_intervals, place_age_zones, place_amenities, place_categories, places, amenities, categories, cities CASCADE');
+        $this->connection->executeStatement('TRUNCATE external_place_references, special_opening_intervals, special_opening_days, weekly_opening_intervals, place_age_zones, place_amenities, place_categories, places, amenities, categories, cities, users CASCADE');
         $now = '2026-07-16 08:00:00';
+        $this->connection->insert('users', ['id' => self::id(1), 'email' => 'admin@example.test', 'display_name' => 'E2E Administrator', 'password_hash' => '$2y$04$1gdB2/YIo.5sVRE7JpMdR.AL2c9cef8DPnEm/4fDHp/syvn/zOTBK', 'google_subject' => null, 'roles' => json_encode(['ROLE_ADMIN'], \JSON_THROW_ON_ERROR), 'status' => 'ACTIVE', 'created_at' => $now, 'updated_at' => $now, 'last_login_at' => null]);
         $cities = [
             ['Warszawa', 'warszawa', 52.2297, 21.0122],
             ['Kraków', 'krakow', 50.0647, 19.9450],
