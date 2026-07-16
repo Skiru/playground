@@ -1,0 +1,12 @@
+{
+  "repository": "playground",
+  "remote": "https://github.com/Skiru/playground.git",
+  "initial_branch": "main",
+  "implementation_branch": "feat/family-places-platform-v1",
+  "unborn_repository": true,
+  "baseline_commit": "5671a1cc6161c0c1e7a281f0b19654f2cadc66c6",
+  "start_sha": "5671a1cc6161c0c1e7a281f0b19654f2cadc66c6",
+  "start_tree": "ce81dbe932d0038d6e652178205e662ee9726909",
+  "initial_status": "",
+  "timestamp_utc": "2026-07-16T06:27:13Z"
+}
