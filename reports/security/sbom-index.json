@@ -1,0 +1,22 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_FINAL_PRODUCTION_RELEASE_CLOSURE",
+  "indexedAt": "2026-07-16T21:45:00Z",
+  "sbomFormat": "CycloneDX JSON",
+  "index": {
+    "api": {
+      "image": "family-places-api:latest",
+      "imageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+      "sbomPath": "reports/security/sbom-api.json"
+    },
+    "web": {
+      "image": "family-places-web:latest",
+      "imageId": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
+      "sbomPath": "reports/security/sbom-web.json"
+    },
+    "worker": {
+      "image": "family-places-worker:latest",
+      "imageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+      "sbomPath": "reports/security/sbom-api.json"
+    }
+  }
+}
