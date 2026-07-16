@@ -50,7 +50,7 @@ jobs:
           pnpm --filter @family-places/web build
       - name: Generated client drift
         run: |
-          docker tag family-places-api:latest family-places-api:development
+          docker build --target development -t family-places-api:development -f infra/docker/api.Dockerfile .
           ./scripts/api-check
       - name: Reset deterministic data after tests
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
