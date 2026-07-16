@@ -51,6 +51,26 @@ final readonly class PlaceCommandHandler
         });
     }
 
+    public function edit(
+        UpdatePlaceCoreDetails $core,
+        ReplacePlaceCategories $categories,
+        ReplacePlaceAmenities $amenities,
+        ReplacePlaceAgeZones $ageZones,
+        ReplaceWeeklyOpeningHours $weeklyOpeningHours,
+        ReplaceSpecialOpeningDays $specialOpeningDays,
+        ReplaceExternalReferences $externalReferences,
+    ): void {
+        $this->transactions->transactional(function () use ($core, $categories, $amenities, $ageZones, $weeklyOpeningHours, $specialOpeningDays, $externalReferences): void {
+            $this->updateCoreDetails($core);
+            $this->replaceCategories($categories);
+            $this->replaceAmenities($amenities);
+            $this->replaceAgeZones($ageZones);
+            $this->replaceWeeklyOpeningHours($weeklyOpeningHours);
+            $this->replaceSpecialOpeningDays($specialOpeningDays);
+            $this->replaceExternalReferences($externalReferences);
+        });
+    }
+
     public function updateCoreDetails(UpdatePlaceCoreDetails $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {

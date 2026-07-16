@@ -8,7 +8,8 @@
     {% for message in app.flashes('error') %}<p role="alert">{{ message }}</p>{% endfor %}
     <table><thead><tr><th>Nazwa</th><th>Miasto</th><th>Status</th><th>Akcje</th></tr></thead><tbody>
     {% for place in places %}
-        <tr><td>{{ place.name }}</td><td>{{ place.city }}</td><td>{{ place.status.value }}</td><td>
+        <tr><td><a href="{{ path('admin_places_view', {id: place.id}) }}">{{ place.name }}</a></td><td>{{ place.city }}</td><td>{{ place.status.value }}</td><td>
+        <a href="{{ path('admin_places_edit', {id: place.id}) }}">edit</a>
         {% for action in ['submit','publish','unpublish','reverify','close','archive'] %}
             <form method="post" action="{{ path('admin_places_action', {id: place.id, action: action}) }}" style="display:inline"><input type="hidden" name="_token" value="{{ csrf_token('place-' ~ place.id) }}"><input type="hidden" name="version" value="{{ place.version }}"><button type="submit">{{ action }}</button></form>
         {% endfor %}

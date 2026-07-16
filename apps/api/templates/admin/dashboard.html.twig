@@ -3,6 +3,6 @@
 {% block content_title %}FamilyPlaces administration{% endblock %}
 
 {% block main %}
-    <p>Catalogue administration becomes available with the C2 domain model.</p>
+    <p>Catalogue administration uses the authoritative Place aggregate.</p>
+    <nav aria-label="Słowniki"><a href="{{ path('admin_places') }}">Miejsca</a> · <a href="{{ path('admin_dictionary_list', {type: 'cities'}) }}">Miasta</a> · <a href="{{ path('admin_dictionary_list', {type: 'categories'}) }}">Kategorie</a> · <a href="{{ path('admin_dictionary_list', {type: 'amenities'}) }}">Udogodnienia</a></nav>
 {% endblock %}
-<p><a href="{{ path('admin_places') }}">Zarządzaj miejscami</a></p>

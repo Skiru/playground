@@ -60,6 +60,11 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         return $this->city($row);
     }
 
+    public function allCities(): array
+    {
+        return array_map($this->city(...), $this->connection->fetchAllAssociative('SELECT * FROM cities ORDER BY name,id'));
+    }
+
     public function categoryBySlug(string $slug): Category
     {
         $row = $this->connection->fetchAssociative('SELECT * FROM categories WHERE slug=:slug AND enabled=true', ['slug' => $slug]);
@@ -68,6 +73,16 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         }
 
         return $this->category($row);
+    }
+
+    public function allCategories(): array
+    {
+        return array_map($this->category(...), $this->connection->fetchAllAssociative('SELECT * FROM categories ORDER BY display_order,name,id'));
+    }
+
+    public function allAmenities(): array
+    {
+        return array_map($this->amenity(...), $this->connection->fetchAllAssociative('SELECT * FROM amenities ORDER BY display_order,name,id'));
     }
 
     /**
@@ -203,13 +218,13 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
             $this->connection->insert('place_age_zones', ['id' => $zone->id()->toRfc4122(), 'place_id' => $id, 'name' => $zone->name(), 'min_age_months' => $range->minAgeMonths, 'max_age_months' => $range->maxAgeMonths, 'notes' => $zone->notes(), 'source_type' => $zone->sourceType(), 'verified_at' => $zone->verifiedAt()], ['verified_at' => Types::DATETIME_IMMUTABLE]);
         }
         foreach ($place->weeklyOpeningHours() as $interval) {
-            $this->connection->insert('weekly_opening_intervals', ['id' => $interval->id()->toRfc4122(), 'place_id' => $id, 'weekday' => $interval->weekday(), 'sequence' => $interval->sequence(), 'opens_at' => $interval->opensAt()->format('H:i:s'), 'closes_at' => $interval->closesAt()->format('H:i:s'), 'closes_next_day' => $interval->closesNextDay()]);
+            $this->connection->insert('weekly_opening_intervals', ['id' => $interval->id()->toRfc4122(), 'place_id' => $id, 'weekday' => $interval->weekday(), 'sequence' => $interval->sequence(), 'opens_at' => $interval->opensAt()->format('H:i:s'), 'closes_at' => $interval->closesAt()->format('H:i:s'), 'closes_next_day' => (int) $interval->closesNextDay()]);
         }
         foreach ($place->specialOpeningDays() as $day) {
             $dayId = $day->id()->toRfc4122();
-            $this->connection->insert('special_opening_days', ['id' => $dayId, 'place_id' => $id, 'local_date' => $day->localDate()->format('Y-m-d'), 'closed' => $day->closed(), 'note' => $day->note()]);
+            $this->connection->insert('special_opening_days', ['id' => $dayId, 'place_id' => $id, 'local_date' => $day->localDate()->format('Y-m-d'), 'closed' => (int) $day->closed(), 'note' => $day->note()]);
             foreach ($day->intervals() as $interval) {
-                $this->connection->insert('special_opening_intervals', ['id' => $interval->id()->toRfc4122(), 'special_opening_day_id' => $dayId, 'sequence' => $interval->sequence(), 'opens_at' => $interval->opensAt()->format('H:i:s'), 'closes_at' => $interval->closesAt()->format('H:i:s'), 'closes_next_day' => $interval->closesNextDay()]);
+                $this->connection->insert('special_opening_intervals', ['id' => $interval->id()->toRfc4122(), 'special_opening_day_id' => $dayId, 'sequence' => $interval->sequence(), 'opens_at' => $interval->opensAt()->format('H:i:s'), 'closes_at' => $interval->closesAt()->format('H:i:s'), 'closes_next_day' => (int) $interval->closesNextDay()]);
             }
         }
         foreach ($place->externalReferences() as $reference) {

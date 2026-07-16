@@ -20,7 +20,16 @@ interface PlaceRepository
 
     public function cityBySlug(string $slug): City;
 
+    /** @return list<City> */
+    public function allCities(): array;
+
     public function categoryBySlug(string $slug): Category;
+
+    /** @return list<Category> */
+    public function allCategories(): array;
+
+    /** @return list<Amenity> */
+    public function allAmenities(): array;
 
     /**
      * @param list<string> $slugs

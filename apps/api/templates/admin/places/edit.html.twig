@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+{% block title %}Edytuj {{ place.name }} | FamilyPlaces Admin{% endblock %}
+{% block stylesheets %}<style>form{display:grid;gap:.8rem;max-width:70rem}fieldset{display:grid;gap:.5rem}label{display:grid;gap:.2rem}textarea{min-height:6rem}.coordinates{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.point-preview{position:relative;height:12rem;border:1px solid #777;background:linear-gradient(#eef,#efe)}.point-preview::after{content:'●';position:absolute;left:calc(var(--x,50)*1%);top:calc(var(--y,50)*1%);transform:translate(-50%,-50%);color:#b00;font-size:2rem}@media(max-width:600px){.coordinates{grid-template-columns:1fr}}</style>{% endblock %}
+{% block body %}
+<main><nav><a href="{{ path('admin_places_view', {id: place.id}) }}">Anuluj</a></nav><h1>Edytuj {{ place.name }}</h1>
+{% for message in app.flashes('error') %}<p role="alert">{{ message }}</p>{% endfor %}
+<form method="post">
+<input type="hidden" name="_token" value="{{ csrf_token('edit-place-' ~ place.id) }}"><input type="hidden" name="version" value="{{ place.version }}">
+<fieldset><legend>Dane podstawowe</legend>
+<label>Nazwa <input name="name" value="{{ place.name }}" required maxlength="180"></label><label>Slug <input name="slug" value="{{ place.slug }}" pattern="[a-z0-9-]+" required maxlength="160"></label>
+<label>Krótki opis <textarea name="shortDescription" required maxlength="300">{{ place.shortDescription }}</textarea></label><label>Opis <textarea name="description" required>{{ place.description }}</textarea></label>
+<label>Adres 1 <input name="addressLine1" value="{{ place.addressLine1 }}" required></label><label>Adres 2 <input name="addressLine2" value="{{ place.addressLine2 }}"></label><label>Kod pocztowy <input name="postalCode" value="{{ place.postalCode }}" required></label>
+<label>Miasto <select name="city">{% for city in cities %}<option value="{{ city.slug }}"{% if city.id == place.city.id %} selected{% endif %}>{{ city.name }}{% if not city.enabled %} (disabled){% endif %}</option>{% endfor %}</select></label>
+<label>Kod kraju <input name="countryCode" value="{{ place.countryCode }}" pattern="[A-Z]{2}" required></label><label>Timezone <input name="timezone" value="{{ place.timezone }}" required></label>
+<div class="coordinates"><label>Latitude <input id="latitude" name="latitude" type="number" min="-90" max="90" step="any" value="{{ place.coordinates.latitude }}" required></label><label>Longitude <input id="longitude" name="longitude" type="number" min="-180" max="180" step="any" value="{{ place.coordinates.longitude }}" required></label></div>
+<div id="point-preview" class="point-preview" role="img" aria-label="Podgląd punktu: latitude {{ place.coordinates.latitude }}, longitude {{ place.coordinates.longitude }}" style="--x:{{ (place.coordinates.longitude + 180) / 3.6 }};--y:{{ (90 - place.coordinates.latitude) / 1.8 }}"></div>
+<label><input type="checkbox" name="indoor" value="1"{% if place.indoor %} checked{% endif %}> Wewnątrz</label><label><input type="checkbox" name="outdoor" value="1"{% if place.outdoor %} checked{% endif %}> Na zewnątrz</label><label><input type="checkbox" name="freeEntry" value="1"{% if place.freeEntry %} checked{% endif %}> Bezpłatne</label>
+<label>Opis ceny <input name="priceDescription" value="{{ place.priceDescription }}"></label><label>Strona WWW <input name="websiteUrl" type="url" value="{{ place.websiteUrl }}"></label><label>Telefon <input name="phone" type="tel" value="{{ place.phone }}"></label>
+<label>Status weryfikacji <select name="verificationStatus">{% for status in ['unverified','admin_verified','owner_declared','community_confirmed'] %}<option{% if place.verificationStatus.value == status %} selected{% endif %}>{{ status }}</option>{% endfor %}</select></label>
+</fieldset>
+<fieldset><legend>Klasyfikacja</legend><label>Kategoria główna <select name="primaryCategory">{% for category in categories %}<option value="{{ category.slug }}"{% if category.id == place.primaryCategory.id %} selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
+<label>Kategorie (slugi oddzielone przecinkiem) <input name="categories" value="{% for category in place.categories %}{{ not loop.first ? ',' }}{{ category.slug }}{% endfor %}" required></label>
+<label>Amenities (slugi oddzielone przecinkiem) <input name="amenities" value="{% for amenity in place.amenities %}{{ not loop.first ? ',' }}{{ amenity.slug }}{% endfor %}"></label></fieldset>
+<fieldset><legend>Kolekcje</legend>
+<label>Strefy wieku, linia: nazwa|min|max|notatka<textarea name="ageZones">{% for zone in place.ageZones %}{{ zone.name }}|{{ zone.ageRange.minAgeMonths }}|{{ zone.ageRange.maxAgeMonths }}|{{ zone.notes }}{{ not loop.last ? "\n" }}{% endfor %}</textarea></label>
+<label>Godziny tygodniowe, linia: dzień|sequence|od|do|następny dzień 0/1<textarea name="weeklyOpeningHours">{% for interval in place.weeklyOpeningHours %}{{ interval.weekday }}|{{ interval.sequence }}|{{ interval.opensAt|date('H:i') }}|{{ interval.closesAt|date('H:i') }}|{{ interval.closesNextDay ? 1 : 0 }}{{ not loop.last ? "\n" }}{% endfor %}</textarea></label>
+<label>Dni specjalne, linia: data|zamknięte 0/1|notatka|sequence,od,do,+1;sequence,od,do,+1<textarea name="specialOpeningDays">{% for day in place.specialOpeningDays %}{{ day.localDate|date('Y-m-d') }}|{{ day.closed ? 1 : 0 }}|{{ day.note }}|{% for interval in day.intervals %}{{ not loop.first ? ';' }}{{ interval.sequence }},{{ interval.opensAt|date('H:i') }},{{ interval.closesAt|date('H:i') }},{{ interval.closesNextDay ? 1 : 0 }}{% endfor %}{{ not loop.last ? "\n" }}{% endfor %}</textarea></label>
+<label>Referencje, linia: provider|externalId|URL<textarea name="externalReferences">{% for reference in place.externalReferences %}{{ reference.provider }}|{{ reference.externalId }}|{{ reference.sourceUrl }}{{ not loop.last ? "\n" }}{% endfor %}</textarea></label>
+</fieldset><button type="submit">Zapisz cały agregat</button></form></main>
+{% endblock %}

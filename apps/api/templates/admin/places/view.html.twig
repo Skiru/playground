@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ place.name }} | FamilyPlaces Admin{% endblock %}
+{% block body %}
+<main>
+    <nav><a href="{{ path('admin_places') }}">Miejsca</a> · <a href="{{ path('admin_places_edit', {id: place.id}) }}">Edytuj</a></nav>
+    <h1>{{ place.name }}</h1>
+    <section aria-label="Workflow">{% for action in ['submit','publish','unpublish','reverify','close','archive'] %}<form method="post" action="{{ path('admin_places_action', {id: place.id, action: action}) }}" style="display:inline"><input type="hidden" name="_token" value="{{ csrf_token('place-' ~ place.id) }}"><input type="hidden" name="version" value="{{ place.version }}"><button>{{ action }}</button></form>{% endfor %}</section>
+    <dl>
+        <dt>Status</dt><dd>{{ place.status.value }}</dd><dt>Wersja</dt><dd>{{ place.version }}</dd>
+        <dt>Slug</dt><dd>{{ place.slug }}</dd><dt>Miasto</dt><dd>{{ place.city.name }}</dd>
+        <dt>Adres</dt><dd>{{ place.addressLine1 }} {{ place.addressLine2 }}; {{ place.postalCode }}</dd>
+        <dt>Współrzędne</dt><dd>{{ place.coordinates.latitude }}, {{ place.coordinates.longitude }}</dd>
+        <dt>Timezone</dt><dd>{{ place.timezone }}</dd><dt>Weryfikacja</dt><dd>{{ place.verificationStatus.value }}</dd>
+    </dl>
+    <h2>Opis</h2><p>{{ place.shortDescription }}</p><p>{{ place.description }}</p>
+    <h2>Kategorie</h2><ul>{% for category in place.categories %}<li>{{ category.name }}{% if category.id == place.primaryCategory.id %} (primary){% endif %}</li>{% endfor %}</ul>
+    <h2>Udogodnienia</h2><ul>{% for amenity in place.amenities %}<li>{{ amenity.name }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
+    <h2>Strefy wieku</h2><ul>{% for zone in place.ageZones %}<li>{{ zone.name }}: {{ zone.ageRange.minAgeMonths }}–{{ zone.ageRange.maxAgeMonths ?? 'bez limitu' }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
+    <h2>Godziny tygodniowe</h2><ul>{% for interval in place.weeklyOpeningHours %}<li>{{ interval.weekday }}. {{ interval.opensAt|date('H:i') }}–{{ interval.closesAt|date('H:i') }}{% if interval.closesNextDay %} (+1){% endif %}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
+    <h2>Dni specjalne</h2><ul>{% for day in place.specialOpeningDays %}<li>{{ day.localDate|date('Y-m-d') }}: {{ day.closed ? 'zamknięte' : 'otwarte' }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
+    <h2>Referencje zewnętrzne</h2><ul>{% for reference in place.externalReferences %}<li>{{ reference.provider }}: {{ reference.externalId }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
+</main>
+{% endblock %}
