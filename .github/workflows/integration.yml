@@ -41,13 +41,15 @@ jobs:
           docker compose -f compose.yaml -f compose.test.yaml exec -T database psql -U family_places_test -d family_places_test -c 'SELECT PostGIS_Full_Version();'
       - name: Backend infrastructure and runtime contract tests
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
-      - name: Frontend quality, SSR and generated client drift
+      - name: Frontend quality and SSR
         run: |
           pnpm --filter @family-places/api-client build
           pnpm --filter @family-places/web lint
           pnpm --filter @family-places/web typecheck
           pnpm --filter @family-places/web test
           pnpm --filter @family-places/web build
+      - name: Generated client drift
+        run: |
           docker tag family-places-api:latest family-places-api:development
           ./scripts/api-check
       - name: Reset deterministic data after tests
