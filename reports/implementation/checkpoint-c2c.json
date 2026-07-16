@@ -1,0 +1,63 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_MONOREPO_V1_C1R_C2",
+  "checkpoint": "C2C",
+  "status": "PASS",
+  "inputSha": "e2ebdd3cf85b83b11029b74ce5d3e2755e45c0a7",
+  "branch": "feat/family-places-platform-v1",
+  "completedAt": "2026-07-16T11:28:35+02:00",
+  "implemented": [
+    "useful SSR home page with city, age and text discovery controls",
+    "URL-driven SSR catalogue results with published place cards, preserved filters and pagination",
+    "crawlable SSR place details with address, space, pricing and amenity facts",
+    "lazy client-only MapLibre enhancement with server-rendered textual fallback",
+    "same-origin map resource route backed by the generated OpenAPI client",
+    "responsive editorial layout for desktop and mobile",
+    "localized route error states"
+  ],
+  "architecture": {
+    "dataLoading": "React Router server loaders call packages/api-client through a server-only adapter",
+    "searchState": "filters and pagination are encoded in URLs",
+    "browserApiTraffic": "same-origin /resources/map-places route",
+    "mapProgressiveEnhancement": "MapLibre is dynamically imported after hydration; textual place links are present in SSR HTML",
+    "handwrittenApiTypes": false
+  },
+  "results": {
+    "typecheck": "PASS: React Router type generation and TypeScript",
+    "eslint": "PASS",
+    "vitest": "PASS: 3 files, 4 tests",
+    "accessibility": "PASS: axe structural and semantic rules; color contrast excluded only because jsdom has no canvas implementation",
+    "apiClientBuild": "PASS",
+    "ssrBuild": "PASS",
+    "productionImageBuild": "PASS",
+    "productionSsrRuntime": "PASS: home, filtered results, details and map resource",
+    "nonWarsawResults": "PASS: Krakow filter renders through dynamic result-derived map bounds",
+    "desktopBrowser": "PASS: two-column results and sticky map at 1280px",
+    "mobileBrowser": "PASS: single-column controls, results and map at 390px",
+    "textualMapFallback": "PASS: crawlable links rendered independently of map style availability",
+    "gitDiffCheck": "PASS"
+  },
+  "findingsClosed": [
+    "map markers are tracked and removed before refresh and during unmount",
+    "initial map bounds and center derive from the first filtered result rather than a Warsaw-only constant",
+    "test cleanup prevents duplicate landmarks between accessibility cases",
+    "pagination links preserve the active URL filter state",
+    "invalid optional map-provider configuration leaves the SSR textual fallback usable"
+  ],
+  "knownLimitations": [
+    "MapLibre is intentionally a large lazy chunk; it is not part of initial SSR execution",
+    "automated jsdom accessibility checks cannot evaluate computed color contrast",
+    "the configured test map style URL is intentionally non-resolving and produces expected browser network errors when interactive map loading is exercised",
+    "C3 authentication and community features remain outside this checkpoint"
+  ],
+  "artifacts": [
+    "apps/web/app/lib/api.server.ts",
+    "apps/web/app/components/MapExplorer.tsx",
+    "apps/web/app/routes/home.tsx",
+    "apps/web/app/routes/places.tsx",
+    "apps/web/app/routes/place-detail.tsx",
+    "apps/web/app/routes/map-places-resource.ts",
+    "reports/implementation/checkpoint-c2c.json"
+  ],
+  "selfReferentialSha": false,
+  "nextAction": "Commit and push C2C, verify the remote SHA, then run C2D review and certification without implementing C3."
+}
