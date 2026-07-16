@@ -14,6 +14,10 @@
     "DBAL exception details are logged internally and replaced with a neutral administrator-facing message",
     "map markers are tracked and removed during refresh and unmount",
     "filtered result coordinates determine initial bounded map queries instead of a Warsaw-only constant",
+    "clean-checkout frontend gates build the generated API client before consuming its dist types",
+    "PostgreSQL health checks use TCP and cannot mark the temporary init-server ready",
+    "worker startup is separated from Compose health waiting and migrations run before SSR web health",
+    "security scanning uses a pinned gitleaks CLI and deterministic lockfile audits without repository feature dependencies",
     "checkpoint ledger and risk register now reflect exact C1R-C2 evidence",
     "deployment inputs, operations and residual risks are recorded in the C2 handoff"
   ],
@@ -31,6 +35,9 @@
     "apiClientBuild": "PASS",
     "ssrProductionBuild": "PASS",
     "productionRuntime": "PASS",
+    "productionContainerGateFromZero": "PASS after TCP readiness and worker wait corrections",
+    "cleanCheckoutFrontendWorkflow": "PASS after API client build ordering correction",
+    "securityAudits": "PASS: Composer, pnpm and committed-history gitleaks",
     "desktopMobileBrowserReview": "PASS",
     "gitDiffCheck": "PASS"
   },

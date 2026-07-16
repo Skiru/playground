@@ -3,6 +3,7 @@ set -eu
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 fixture="$repo_dir/apps/api/src/Places/Domain/DeptracForbiddenDependencyProbe.php"
+api_image=${API_IMAGE:-family-places-api:development}
 mkdir -p "$(dirname -- "$fixture")"
 trap 'rm -f "$fixture"' EXIT HUP INT TERM
 
@@ -15,7 +16,7 @@ final class DeptracForbiddenDependencyProbe
 }
 PHP
 
-if docker run --rm -v "$repo_dir/apps/api:/app" -w /app family-places-api:development vendor/bin/deptrac analyse >/dev/null 2>&1; then
+if docker run --rm -v "$repo_dir/apps/api:/app" -w /app "$api_image" vendor/bin/deptrac analyse >/dev/null 2>&1; then
     printf '%s\n' 'Deptrac failed to detect a forbidden Domain to Infrastructure dependency.' >&2
     exit 1
 fi

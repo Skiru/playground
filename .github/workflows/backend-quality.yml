@@ -32,8 +32,8 @@ jobs:
         run: |
           docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/php-cs-fixer check --diff
           docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/console cache:warmup --env=test
-          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/phpstan analyse --no-progress
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/phpstan analyse --no-progress --memory-limit=512M
           docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/deptrac analyse
-          ./scripts/verify-deptrac-boundary
+          API_IMAGE=family-places-api-ci ./scripts/verify-deptrac-boundary
       - name: Backend tests
         run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/phpunit
