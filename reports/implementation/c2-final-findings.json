@@ -1,0 +1,63 @@
+[
+  {
+    "id": "C2F-P1-001",
+    "severity": "P1",
+    "category": "frontend",
+    "evidence": [
+      "Hardcoded color hex and CSS values in apps/web/app/styles/global.css and React components",
+      "Direct coupling of branding elements with structural styling"
+    ],
+    "risk": "Branding change or rebranding requires rewriting React components and views, causing maintenance overhead and styling inconsistencies.",
+    "requiredFix": "Introduce semantic CSS variables and design tokens in theme structure, replacing all raw values in views and styles.",
+    "regressionTest": "A visual regression test and static lint check to detect hardcoded color strings.",
+    "status": "OPEN"
+  },
+  {
+    "id": "C2F-P1-002",
+    "severity": "P1",
+    "category": "frontend",
+    "evidence": [
+      "User-facing literal strings embedded directly in JSX/TSX routes and components inside apps/web/app/"
+    ],
+    "risk": "Unable to perform translation, internationalization, or catalog-wide updates of user-facing copy without rewriting components.",
+    "requiredFix": "Implement a typed content catalog with TS strict validation and migrate all user-facing copy to it.",
+    "regressionTest": "Lint script checking for raw string literals in user-facing elements.",
+    "status": "OPEN"
+  },
+  {
+    "id": "C2F-P1-003",
+    "severity": "P1",
+    "category": "frontend",
+    "evidence": [
+      "Hardcoded asset filenames such as 'hero.webp' or placeholder paths referenced directly by views"
+    ],
+    "risk": "Branding asset substitution requires modifying individual view codes or files, risking broken links and cache drift.",
+    "requiredFix": "Introduce a semantic brand asset manifest mapping semantic slots to concrete files, validated at build time.",
+    "regressionTest": "Brand asset validation test confirming that the manifest parses and resolves properly.",
+    "status": "OPEN"
+  },
+  {
+    "id": "C2F-P1-004",
+    "severity": "P1",
+    "category": "ci",
+    "evidence": [
+      "GitHub Actions workflows in .github/workflows/ do not pin external actions by full 40-character SHA digest, and GITHUB_TOKEN has broad write/default permissions."
+    ],
+    "risk": "Supply chain compromise via mutable tags or tag hijacking, and token exploitation by compromised actions or PR workflows.",
+    "requiredFix": "Audit all actions, pin to full 40-character commit SHA with version comments, and set minimum GITHUB_TOKEN permissions.",
+    "regressionTest": "Actionlint or statical SHA pin audit script.",
+    "status": "OPEN"
+  },
+  {
+    "id": "C2F-P1-005",
+    "severity": "P1",
+    "category": "operations",
+    "evidence": [
+      "Lack of a formal automated backup, encryption, and restore process with verified restore drill validation"
+    ],
+    "risk": "Data loss or corruption with no verified path to recovery in a production-like disaster scenario.",
+    "requiredFix": "Create robust sh/fish-compatible backup/restore scripts, implement custom encrypted output support, and verify with an automated restore drill.",
+    "regressionTest": "A restore-drill testing check during the build/test pipeline.",
+    "status": "OPEN"
+  }
+]
