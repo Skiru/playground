@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+BACKUP_DIR="${BACKUP_DIR:-/tmp/family-places-backups}"
+mkdir -p "$BACKUP_DIR"
+
+timestamp=$(date -u +"%Y%m%dT%H%M%SZ")
+backup_name="backup-$timestamp"
+raw_dump="$BACKUP_DIR/$backup_name.dump"
+checksum_file="$BACKUP_DIR/$backup_name.sha256"
+metadata_file="$BACKUP_DIR/$backup_name-metadata.json"
+
+echo "Running backup..."
+
+# Dump DB using pg_dump Custom format
+docker compose -f compose.yaml -f compose.test.yaml exec -T database pg_dump -Fc -U family_places_test -d family_places_test > "$raw_dump"
+
+# Szyfrowanie przez konfigurację, bez klucza w repo
+# If BACKUP_PASSPHRASE is set, encrypt the file
+final_file="$raw_dump"
+encrypted=false
+
+if [ -n "${BACKUP_PASSPHRASE:-}" ]; then
+  echo "Encrypting backup..."
+  openssl enc -aes-256-cbc -salt -pbkdf2 -pass "pass:$BACKUP_PASSPHRASE" -in "$raw_dump" -out "$raw_dump.enc"
+  rm "$raw_dump"
+  final_file="$raw_dump.enc"
+  encrypted=true
+fi
+
+# Calculate checksum
+checksum_file="$final_file.sha256"
+metadata_file="$final_file-metadata.json"
+
+sha256sum "$final_file" > "$checksum_file"
+checksum=$(cat "$checksum_file" | awk '{print $1}')
+
+# Write metadata manifest
+cat <<EOF > "$metadata_file"
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_FINAL_PRODUCTION_RELEASE_CLOSURE",
+  "backupName": "$backup_name",
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "encrypted": $encrypted,
+  "checksumSha256": "$checksum",
+  "sourceSchemaVersion": "Version20260716152400"
+}
+EOF
+
+echo "✓ Backup succeeded: $final_file"
+echo "Checksum: $checksum"
+echo "Metadata saved to: $metadata_file"

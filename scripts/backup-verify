@@ -1,0 +1,43 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 <backup-file-path>"
+  exit 1
+fi
+
+backup_file="$1"
+echo "Verifying backup integrity for $backup_file..."
+
+# 1. Check file existence
+if [ ! -f "$backup_file" ]; then
+  echo "Error: Backup file does not exist!"
+  exit 1
+fi
+
+# 2. Check checksum
+checksum_file="$backup_file.sha256"
+if [ -f "$checksum_file" ]; then
+  echo "Verifying SHA256 checksum..."
+  if ! sha256sum -c "$checksum_file"; then
+    echo "Error: Checksum verification failed! File is corrupted."
+    exit 1
+  fi
+  echo "✓ SHA256 checksum verified successfully."
+else
+  echo "Error: Checksum file not found!"
+  exit 1
+fi
+
+# 3. Check metadata existence
+metadata_file="$backup_file-metadata.json"
+if [ -f "$metadata_file" ]; then
+  echo "✓ Metadata file verified."
+else
+  echo "Warning: Metadata file is missing."
+fi
+
+echo "✓ Backup verification PASSED."

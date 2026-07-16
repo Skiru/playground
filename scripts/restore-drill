@@ -1,0 +1,92 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+export BACKUP_PASSPHRASE="drill-secure-passphrase"
+export BACKUP_DIR="/tmp/family-places-drill"
+rm -rf "$BACKUP_DIR"
+
+echo "=== STARTING RESTORE DRILL ==="
+
+# 1. Seed data
+echo "Step 1: Loading fixtures into the database..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
+
+# Get initial places count
+initial_count=$(docker compose -f compose.yaml -f compose.test.yaml run --rm api php -r 'require "vendor/autoload.php"; $kernel = new App\Kernel("test", false); $kernel->boot(); $conn = $kernel->getContainer()->get("doctrine.dbal.default_connection"); echo $conn->fetchOne("SELECT COUNT(*) FROM places");')
+echo "Initial seeded places count: $initial_count"
+
+# 2. Run backup
+echo "Step 2: Performing encrypted backup..."
+./scripts/backup
+
+# Find the backup file we just created
+backup_file=$(find "$BACKUP_DIR" -name "*.enc" | head -n 1)
+echo "Backup file created: $backup_file"
+
+# 3. Verify backup and try to verify corrupted backup to test rejection
+echo "Step 2.5: Verifying backup file..."
+./scripts/backup-verify "$backup_file"
+
+echo "Step 2.6: Testing corrupt backup rejection..."
+corrupted_file="$BACKUP_DIR/corrupted-backup.enc"
+cp "$backup_file" "$corrupted_file"
+# Append random bytes to corrupt the data
+echo "corrupt" >> "$corrupted_file"
+# Create a valid-format checksum file but with a wrong checksum value
+sed -e 's/^[0-9a-f]/0/' -e "s|$(basename "$backup_file")|$(basename "$corrupted_file")|g" "$backup_file.sha256" > "$corrupted_file.sha256"
+
+if ./scripts/backup-verify "$corrupted_file" >/dev/null 2>&1; then
+  echo "Error: Restore drill failed to reject corrupted checksum!"
+  exit 1
+else
+  echo "✓ Successfully rejected corrupted backup checksum."
+fi
+
+# 4. Destroy test database data by clearing schema
+echo "Step 3: Destroying database data..."
+docker compose -f compose.yaml -f compose.test.yaml exec -T database psql -U family_places_test -d family_places_test -c "
+  DROP SCHEMA public CASCADE;
+  CREATE SCHEMA public;
+" >/dev/null
+
+# Confirm empty database
+empty_count=$(docker compose -f compose.yaml -f compose.test.yaml run --rm api php -r 'require "vendor/autoload.php"; $kernel = new App\Kernel("test", false); $kernel->boot(); $conn = $kernel->getContainer()->get("doctrine.dbal.default_connection"); echo $conn->fetchOne("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '"'public'"'");')
+echo "Tables count after database destruction: $empty_count"
+if [ "$empty_count" -gt 0 ]; then
+  echo "Error: Database was not successfully destroyed!"
+  exit 1
+fi
+
+# 5. Restore from backup
+echo "Step 4: Restoring from backup..."
+./scripts/restore "$backup_file"
+
+# 6. Verify migration status
+echo "Step 5: Verifying migrations status..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:status --no-interaction
+
+# 7. Validate schema
+echo "Step 6: Running database schema validation..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:schema:validate
+
+# 8. Check entity count and integrity
+echo "Step 7: Checking places count and database integrity after restore..."
+restored_count=$(docker compose -f compose.yaml -f compose.test.yaml run --rm api php -r 'require "vendor/autoload.php"; $kernel = new App\Kernel("test", false); $kernel->boot(); $conn = $kernel->getContainer()->get("doctrine.dbal.default_connection"); echo $conn->fetchOne("SELECT COUNT(*) FROM places");')
+echo "Restored places count: $restored_count"
+if [ "$restored_count" != "$initial_count" ]; then
+  echo "Error: Count mismatch! Initial: $initial_count, Restored: $restored_count"
+  exit 1
+fi
+echo "✓ Count and integrity verified."
+
+# 9. Verify PostGIS integration and queries
+echo "Step 8: Verifying PostGIS queries..."
+docker compose -f compose.yaml -f compose.test.yaml exec -T database psql -U family_places_test -d family_places_test -c 'SELECT PostGIS_Full_Version();' >/dev/null
+echo "✓ PostGIS query successfully executed."
+
+echo "=== RESTORE DRILL COMPLETED WITH 100% SUCCESS ==="
+EOF
