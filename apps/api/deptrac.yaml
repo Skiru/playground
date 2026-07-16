@@ -1,0 +1,31 @@
+deptrac:
+    paths:
+        - ./src
+    exclude_files:
+        - '#.*Kernel\.php#'
+    layers:
+        - name: Domain
+          collectors:
+              - type: classLike
+                value: App\\.*\\Domain\\.*
+        - name: Application
+          collectors:
+              - type: classLike
+                value: App\\.*\\Application\\.*
+        - name: Infrastructure
+          collectors:
+              - type: classLike
+                value: App\\.*\\Infrastructure\\.*
+        - name: UI
+          collectors:
+              - type: classLike
+                value: App\\.*\\UI\\.*
+    ruleset:
+        Domain: []
+        Application:
+            - Domain
+        Infrastructure:
+            - Domain
+            - Application
+        UI:
+            - Application

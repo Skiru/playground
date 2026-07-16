@@ -2,8 +2,8 @@
 
 | Checkpoint | Authorized scope | Entry condition | Exit evidence |
 | --- | --- | --- | --- |
-| C0 | architecture and contracts | initialized repository | gates pass; commit pending |
-| C1 | production walking skeleton | C0 PASS | healthy stack, quality gates, report, commit |
+| C0 | architecture and contracts | initialized repository | PASS at `ccfaeb2c0c6c1566d421e31fe1d10362b0d12333`, pushed |
+| C1 | production walking skeleton | C0 PASS | gates pass; report and commit pending |
 | C2 | public geospatial vertical slice | C1 PASS | functional/E2E/security gates, handoff, commit |
 | C3-C8 | forbidden in this run | separate authorization | not started |
 

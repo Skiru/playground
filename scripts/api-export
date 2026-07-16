@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+docker run --rm -u "$(id -u):$(id -g)" -v "$repo_dir:/workspace" -w /workspace/apps/api composer:2 php bin/console api:openapi:export --output=/workspace/packages/api-client/openapi/openapi.json

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$repo_dir:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/web test'

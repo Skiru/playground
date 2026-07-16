@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+api_url=${API_URL:-http://localhost:8080}
+web_url=${WEB_URL:-http://localhost:3000}
+curl --fail --silent "$api_url/api/v1/health/live" >/dev/null
+curl --fail --silent "$api_url/api/v1/health/ready" >/dev/null
+curl --fail --silent "$web_url/" | grep -q 'FamilyPlaces'
+printf '%s\n' 'Smoke checks passed.'

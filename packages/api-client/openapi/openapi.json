@@ -1,0 +1,63 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FamilyPlaces API",
+        "description": "Versioned public contract for the FamilyPlaces catalogue.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": ""
+        }
+    ],
+    "paths": {
+        "/api/v1/health/live": {
+            "get": {
+                "operationId": "getHealthLive",
+                "tags": [
+                    "Health"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The API process is alive."
+                    }
+                },
+                "summary": "Liveness probe",
+                "description": "Checks process availability without contacting dependencies.",
+                "security": []
+            }
+        },
+        "/api/v1/health/ready": {
+            "get": {
+                "operationId": "getHealthReady",
+                "tags": [
+                    "Health"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The API and required database are ready."
+                    },
+                    "503": {
+                        "description": "The required database dependency is unavailable."
+                    }
+                },
+                "summary": "Readiness probe",
+                "description": "Checks the required PostgreSQL dependency; optional Redis is excluded.",
+                "security": []
+            }
+        }
+    },
+    "components": {
+        "schemas": {},
+        "responses": {},
+        "parameters": {},
+        "examples": {},
+        "requestBodies": {},
+        "headers": {},
+        "securitySchemes": {}
+    },
+    "security": [],
+    "tags": [],
+    "webhooks": {}
+}

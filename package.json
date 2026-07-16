@@ -1,0 +1,20 @@
+{
+  "name": "family-places",
+  "private": true,
+  "packageManager": "pnpm@11.13.1",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "11.x"
+  },
+  "scripts": {
+    "dev": "./scripts/dev",
+    "check": "./scripts/check",
+    "test": "./scripts/test",
+    "smoke": "./scripts/smoke",
+    "fixtures": "./scripts/fixtures",
+    "api:export": "./scripts/api-export",
+    "api:generate": "./scripts/api-generate",
+    "api:check": "./scripts/api-check",
+    "e2e": "pnpm --filter @family-places/web e2e"
+  }
+}

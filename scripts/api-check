@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+./scripts/api-generate
+git diff --exit-code -- packages/api-client

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+if [ "${1:-}" != "--with-data-loss" ] || [ "$#" -ne 1 ]; then
+    printf '%s\n' 'Refusing to delete development data. Re-run with --with-data-loss.' >&2
+    exit 2
+fi
+
+docker compose -f compose.yaml -f compose.dev.yaml --profile dev down --volumes

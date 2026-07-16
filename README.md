@@ -19,3 +19,20 @@ evidence is stored under `reports/implementation/`; see the
 [risk register](reports/implementation/risk-register.md).
 
 No license has been selected by the repository owner.
+
+## Local Start
+
+The Docker-based path does not depend on host PHP or Node versions:
+
+```fish
+cp .env.example .env; ./scripts/bootstrap; ./scripts/dev
+```
+
+The web SSR server is available at `http://localhost:3000`, API at
+`http://localhost:8080`, and Mailpit at `http://localhost:8025` in the dev
+profile. Use `./scripts/stop` to stop services. Data is preserved unless
+`./scripts/reset-dev --with-data-loss` is invoked explicitly.
+
+Quality commands for a Node 24/pnpm 11 host are `pnpm check`, `pnpm test`,
+`pnpm api:generate`, and `pnpm e2e`. Their repository scripts use containers
+for the PHP 8.5 toolchain.

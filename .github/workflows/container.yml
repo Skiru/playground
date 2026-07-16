@@ -1,0 +1,24 @@
+name: Containers
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Validate production topology
+        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml config --quiet
+      - name: Build immutable candidates
+        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml build api worker web
+      - name: Publication policy
+        run: printf '%s\n' 'PR images are never published; main and tags are prepared for a later GHCR release workflow.'

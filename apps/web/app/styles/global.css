@@ -1,0 +1,22 @@
+:root {
+  color: #17231d;
+  background: #f3f0e7;
+  font-family: Georgia, "Times New Roman", serif;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+.shell { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; }
+.masthead { display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 0; border-bottom: 1px solid #a8ad9f; }
+.brand { font-weight: 700; text-decoration: none; font-size: 1.4rem; }
+.status, .eyebrow { font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
+.hero { padding: clamp(4rem, 10vw, 9rem) 0; max-width: 850px; }
+.hero h1 { margin: .5rem 0 1.5rem; font-size: clamp(3rem, 8vw, 6.8rem); line-height: .92; font-weight: 500; }
+.lede { max-width: 680px; font-family: system-ui, sans-serif; font-size: 1.15rem; line-height: 1.6; }
+
+@media (max-width: 600px) {
+  .status { display: none; }
+  .hero { padding-top: 4rem; }
+}

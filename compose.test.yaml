@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      target: development
+    environment:
+      APP_ENV: test
+  worker:
+    build:
+      target: development
+    environment:
+      APP_ENV: test
+  web:
+    build:
+      target: build
+    environment:
+      NODE_ENV: test
+  database:
+    volumes:
+      - database-test-data:/var/lib/postgresql
+
+volumes:
+  database-test-data:
