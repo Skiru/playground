@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Administration\Infrastructure\Http;
 
 use App\Places\Application\ManagePlace;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,7 +17,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 final class PlaceAdminController extends AbstractController
 {
-    public function __construct(private readonly ManagePlace $places)
+    public function __construct(private readonly ManagePlace $places, private readonly LoggerInterface $logger)
     {
     }
 
@@ -42,8 +43,11 @@ final class PlaceAdminController extends AbstractController
                 $this->addFlash('success', 'Draft place created.');
 
                 return $this->redirectToRoute('admin_places');
-            } catch (\InvalidArgumentException|\Doctrine\DBAL\Exception $exception) {
+            } catch (\InvalidArgumentException $exception) {
                 $this->addFlash('error', $exception->getMessage());
+            } catch (\Doctrine\DBAL\Exception $exception) {
+                $this->logger->error('Place draft creation failed.', ['exception' => $exception]);
+                $this->addFlash('error', 'Place could not be created. Try again.');
             }
         }
 

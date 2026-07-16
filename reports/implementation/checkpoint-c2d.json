@@ -1,0 +1,56 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_MONOREPO_V1_C1R_C2",
+  "checkpoint": "C2D",
+  "status": "PASS",
+  "inputSha": "c596932fa741514d58c1b47eca24b139a39aa24b",
+  "branch": "feat/family-places-platform-v1",
+  "completedAt": "2026-07-16T11:34:04+02:00",
+  "reviews": {
+    "functional": "PASS: no P0/P1",
+    "architecture": "PASS: no P0/P1",
+    "securityOperations": "PASS after remediation: no P0/P1"
+  },
+  "remediations": [
+    "DBAL exception details are logged internally and replaced with a neutral administrator-facing message",
+    "map markers are tracked and removed during refresh and unmount",
+    "filtered result coordinates determine initial bounded map queries instead of a Warsaw-only constant",
+    "checkpoint ledger and risk register now reflect exact C1R-C2 evidence",
+    "deployment inputs, operations and residual risks are recorded in the C2 handoff"
+  ],
+  "results": {
+    "phpunit": "PASS: 23 tests, 48 assertions",
+    "phpstan": "PASS",
+    "deptrac": "PASS: 0 violations, 0 skipped violations",
+    "phpCsFixer": "PASS",
+    "symfonyContainer": "PASS",
+    "symfonyYaml": "PASS",
+    "doctrineSchemaValidation": "PASS",
+    "frontendTypecheck": "PASS",
+    "frontendLint": "PASS",
+    "frontendTests": "PASS: 3 files, 4 tests",
+    "apiClientBuild": "PASS",
+    "ssrProductionBuild": "PASS",
+    "productionRuntime": "PASS",
+    "desktopMobileBrowserReview": "PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "openFindings": {
+    "p0": [],
+    "p1": [],
+    "p2": [
+      "opening-hours SQL remains intentionally localized but complex; retain focused runtime coverage",
+      "monitor geography plans and lazy MapLibre chunk size as production volume grows"
+    ],
+    "p3": [
+      "browser-level color contrast remains a release check because jsdom cannot compute it"
+    ]
+  },
+  "artifacts": [
+    "reports/implementation/c2-handoff.md",
+    "reports/implementation/checkpoint-ledger.md",
+    "reports/implementation/risk-register.md",
+    "reports/implementation/checkpoint-c2d.json"
+  ],
+  "selfReferentialSha": false,
+  "nextAction": "Commit and push C2D, require all GitHub Actions workflows to pass on that SHA, then issue final C2 certification without starting C3."
+}
