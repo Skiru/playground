@@ -24,6 +24,7 @@ RUN pnpm --filter @family-places/api-client build \
 
 FROM node:24-bookworm-slim AS production
 ENV NODE_ENV=production PORT=3000
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 COPY --from=build --chown=node:node /prod/web/ ./
 USER node

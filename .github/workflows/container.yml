@@ -36,6 +36,7 @@ jobs:
           docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml up --wait -d api web
           docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T api php -r '$loader = require "vendor/autoload.php"; if (!$loader->isClassMapAuthoritative() || !class_exists(App\Kernel::class)) { exit(1); }'
           docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T api sh -c '! command -v composer'
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T web sh -c '! command -v npm && ! command -v npx'
           docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T web sh -c 'test ! -d node_modules/vitest && test ! -d node_modules/eslint && test ! -d node_modules/typescript && test ! -d node_modules/@playwright'
           docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T api curl --fail --silent http://localhost/api/v1/health/live
           docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
