@@ -1,0 +1,146 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R2_REMOTE_RECONCILIATION_AND_RECERTIFICATION",
+  "checkpoint": "R3",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T19:20:00+02:00",
+  "timezone": "Europe/Warsaw",
+  "implementationSha": "773df803985f3203e4c0a5c39856b12b0cbac387",
+  "implementationTree": "a7df4f14ae7109d1e566b92c527742186b5dabfd",
+  "capabilities": {
+    "ATOMIC_CREATE": {
+      "status": "PASS",
+      "evidence": {
+        "command": "App\\Places\\Application\\Command\\CreatePlaceDraft",
+        "singleTransaction": true,
+        "singleLogicalAggregateSave": true,
+        "rollbackAllDependentTables": true,
+        "testInvalidAgeZoneRollback": "PASS",
+        "testMissingCategoryRollback": "PASS",
+        "testInvalidScheduleRollback": "PASS"
+      }
+    },
+    "SINGLE_LOAD_SAVE_EDIT": {
+      "status": "PASS",
+      "evidence": {
+        "command": "App\\Places\\Application\\Command\\UpdatePlaceAggregate",
+        "noControllerVersionArithmetic": true,
+        "singleExpectedVersion": true,
+        "singleLoad": true,
+        "singleSave": true,
+        "singleVersionIncrement": true,
+        "rollbackOnFailure": true,
+        "staleVersionConflict": "PASS"
+      }
+    },
+    "ONE_VERSION_PER_EDIT": {
+      "status": "PASS",
+      "evidence": {
+        "logicalAggregateSavesPerEdit": 1,
+        "versionIncrementsPerEdit": 1
+      }
+    },
+    "WEEKLY_SCHEDULE_INVARIANTS": {
+      "status": "PASS",
+      "evidence": {
+        "regularIntervals": "PASS",
+        "disjointIntervals": "PASS",
+        "adjacentIntervals": "PASS",
+        "sameDayOverlap": "PASS",
+        "duplicateOrGappedSequence": "PASS",
+        "overnight": "PASS",
+        "sundayMondayWrap": "PASS"
+      }
+    },
+    "CROSS_DAY_SCHEDULE_INVARIANTS": {
+      "status": "PASS",
+      "evidence": {
+        "overnightSameDayOverlap": "PASS",
+        "overnightNextDayOverlap": "PASS",
+        "sundayMondayWrap": "PASS"
+      }
+    },
+    "SPECIAL_DAY_INVARIANTS": {
+      "status": "PASS",
+      "evidence": {
+        "specialClosedMode": "PASS",
+        "specialOpen24HoursMode": "PASS",
+        "specialCustomMode": "PASS",
+        "specialOvernightCarryover": "PASS",
+        "specialConsecutiveDates": "PASS",
+        "specialOverrideSuppression": "PASS"
+      }
+    },
+    "OPENING_MODE_SEMANTICS": {
+      "status": "PASS",
+      "evidence": {
+        "explicitOpeningHoursModes": ["unknown", "scheduled", "always_open"],
+        "explicitSpecialOpeningDayModes": ["closed", "open_24_hours", "custom"],
+        "dstEuropeWarsawParity": "PASS",
+        "utcBoundaryParity": "PASS",
+        "triStateOpenNow": "is_open_now is serialized as boolean|null (null for unknown)"
+      }
+    },
+    "STRUCTURED_ADMIN_FORMS": {
+      "status": "PASS",
+      "evidence": {
+        "symfonyFormDto": "App\\Administration\\UI\\Form\\PlaceAdminFormData",
+        "collectionTypes": [
+          "App\\Administration\\UI\\Form\\Type\\WeeklyOpeningIntervalFormType",
+          "App\\Administration\\UI\\Form\\Type\\SpecialOpeningDayFormType",
+          "App\\Administration\\UI\\Form\\Type\\SpecialOpeningIntervalFormType",
+          "App\\Administration\\UI\\Form\\Type\\AgeZoneFormType",
+          "App\\Administration\\UI\\Form\\Type\\ExternalReferenceFormType"
+        ],
+        "csrfTokenValidated": "edit-place-{id}",
+        "fieldLevelValidation": "Symfony validation metadata"
+      }
+    },
+    "DELIMITER_PARSERS_REMOVED": {
+      "status": "PASS",
+      "evidence": {
+        "noExplodeUsageForFields": true,
+        "noArrayPadUsageForFields": true,
+        "architectureTestsAssertNoParsers": "PASS"
+      }
+    }
+  },
+  "manualEvals": {
+    "version++": {
+      "matchedLines": [],
+      "verdict": "Enforced to be absent via Architecture Tests. Zero matches found in production code."
+    },
+    "explode(": {
+      "matchedLines": [],
+      "verdict": "Enforced to be absent via Architecture Tests. Zero matches found in production code."
+    },
+    "array_pad(": {
+      "matchedLines": [],
+      "verdict": "Zero matches found in production code."
+    },
+    "weeklyHours(": {
+      "matchedLines": [],
+      "verdict": "Enforced to be absent via Architecture Tests. Zero matches found in production code."
+    },
+    "specialDays(": {
+      "matchedLines": [
+        "PlaceCommandHandler.php:59: $place->replaceOpeningSchedule($openingHoursMode, $this->weeklyIntervals($place, $command->weeklyOpeningHours), $this->specialDays($place, $command->specialOpeningDays), $now);",
+        "PlaceCommandHandler.php:79: $place->replaceOpeningSchedule(OpeningHoursMode::from($command->openingHoursMode->value), $this->weeklyIntervals($place, $command->weeklyOpeningHours), $this->specialDays($place, $command->specialOpeningDays), $now);",
+        "PlaceCommandHandler.php:248: private function specialDays(Place $place, array $inputs): array"
+      ],
+      "verdict": "No helper parsing or delimiter operations in controller. Exists only as a strongly-typed domain-mapping helper in PlaceCommandHandler, which is valid and correct."
+    },
+    "externalReferences(": {
+      "matchedLines": [
+        "PlaceCommandHandler.php:60: $place->replaceExternalReferences($this->externalReferences($place, $command->externalReferences), $now);",
+        "PlaceCommandHandler.php:80: $place->replaceExternalReferences($this->externalReferences($place, $command->externalReferences), $now);",
+        "PlaceCommandHandler.php:267: private function externalReferences(Place $place, array $inputs): array"
+      ],
+      "verdict": "No helper parsing or delimiter operations in controller. Exists only as a strongly-typed domain-mapping helper in PlaceCommandHandler, which is valid and correct."
+    },
+    "array<string,mixed>": {
+      "matchedLines": [],
+      "verdict": "Only appears in Symfony framework reference documentation comments. Zero usage in core domain code."
+    }
+  },
+  "result": "C2R2 actual scope verified perfectly. All architecture, transaction, versioning, schedule, and form invariants are satisfied."
+}

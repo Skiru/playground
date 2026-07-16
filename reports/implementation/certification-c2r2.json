@@ -1,0 +1,41 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R2_REMOTE_RECONCILIATION_AND_RECERTIFICATION",
+  "certification": "C2R2",
+  "status": "READY_FOR_C3",
+  "certifiedImplementationSha": "773df803985f3203e4c0a5c39856b12b0cbac387",
+  "certifiedImplementationTree": "a7df4f14ae7109d1e566b92c527742186b5dabfd",
+  "branch": "feat/family-places-platform-v1",
+  "pullRequest": "https://github.com/Skiru/playground/pull/1",
+  "completedAt": "2026-07-16T19:42:00+02:00",
+  "timezone": "Europe/Warsaw",
+  "checkpointChain": {
+    "C2R2-A": "f4c958ef274d758f3fb4043b3b246a482d77d700",
+    "C2R2-B": "bf9fd2d3989c44566373b5cf125fe732454a4b1d",
+    "C2R2-C": "4f7a6f8fb9df908c62b48e35cf71e3dbdf957fae",
+    "C2R2-D": "773df803985f3203e4c0a5c39856b12b0cbac387"
+  },
+  "evidence": {
+    "ATOMIC_CREATE": "PASS",
+    "SINGLE_LOAD_SAVE_EDIT": "PASS",
+    "ONE_VERSION_PER_EDIT": "PASS",
+    "WEEKLY_SCHEDULE_INVARIANTS": "PASS",
+    "CROSS_DAY_SCHEDULE_INVARIANTS": "PASS",
+    "SPECIAL_DAY_INVARIANTS": "PASS",
+    "OPENING_MODE_SEMANTICS": "PASS",
+    "STRUCTURED_ADMIN_FORMS": "PASS",
+    "DELIMITER_PARSERS_REMOVED": "PASS"
+  },
+  "remoteChecks": {
+    "expected": 6,
+    "successful": 6,
+    "failed": 0,
+    "pending": 0,
+    "headSha": "773df803985f3203e4c0a5c39856b12b0cbac387"
+  },
+  "review": {"openP0": 0, "openP1": 0},
+  "scopeExclusionsVerified": ["C3 implementation", "Google login", "public registration", "favorites", "reviews", "forum", "uploads"],
+  "mergeStatus": "not performed",
+  "selfReferentialSha": false,
+  "supersedes": "reports/implementation/certification-c2r.json",
+  "nextAction": "C3 may begin only under separate authorization using reports/handoffs/prompt-c3.md."
+}
