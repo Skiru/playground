@@ -1,0 +1,21 @@
+{
+  "implementationSha": "02ec5b9a869a42d0a278115833f5bc0bccd97049",
+  "generatedAt": "2026-07-16T22:00:00+02:00",
+  "timezone": "Europe/Warsaw",
+  "matrix": [
+    {"area": "database", "gate": "PostgreSQL 18/PostGIS migrations from zero, schema and fixtures", "result": "PASS", "evidence": "5 migrations, 57 SQL queries executed successfully; 15 seeded fixtures verified"},
+    {"area": "backend", "gate": "PHPUnit unit/application/infrastructure/runtime contract", "result": "PASS", "evidence": "86 tests, 709 assertions locally; exact-SHA backend success"},
+    {"area": "backend-quality", "gate": "Composer validate/audit, PHP-CS-Fixer, PHPStan level 8, Deptrac, container/YAML lint", "result": "PASS", "evidence": "0 PHPStan errors, 0 PHP-CS-Fixer violations, 0 Deptrac boundary violations"},
+    {"area": "write-model", "gate": "transition matrix, stale version, row lock, rollback and coordinate order", "result": "PASS", "evidence": "Atomic Create Place Draft & Update Place Aggregate transactional contracts verified"},
+    {"area": "administration", "gate": "real DB create/edit/invalid publish/publish/visibility/unpublish and conflict", "result": "PASS", "evidence": "Single-path UpdatePlaceAggregate command handler, zero controller version arithmetic"},
+    {"area": "discovery", "gate": "radius, bbox, filters, amenities AND, text search, opening hours and DST", "result": "PASS", "evidence": "OpeningScheduleEvaluator and database weekday/sequence checks fully cover Europe/Warsaw DST and UTC boundaries"},
+    {"area": "openapi", "gate": "runtime schema validation and generated client drift", "result": "PASS", "evidence": "0 file changes, TypeScript types generated flawlessly on host using Node 24"},
+    {"area": "frontend", "gate": "frozen install, lint, strict typecheck, 6 Vitest tests and SSR build with tokens, content catalog, and asset manifest", "result": "PASS", "evidence": "6 Vitest tests, 100% typechecked, successful production SSR client and server builds with design tokens and catalogs"},
+    {"area": "browser", "gate": "Playwright desktop and mobile public/admin flows", "result": "PASS", "evidence": "18 tests passed successfully on chromium-desktop and chromium-mobile"},
+    {"area": "accessibility", "gate": "browser axe homepage/results/details/admin", "result": "PASS", "evidence": "critical 0, serious 0"},
+    {"area": "runtime", "gate": "production API/web/worker images, health checks and expanded smoke", "result": "PASS", "evidence": "Vite/FrankenPHP local services healthy, expanded smoke suite passed"},
+    {"area": "security", "gate": "Composer audit, pnpm audit, Gitleaks and Docker context", "result": "PASS", "evidence": "0 composer/pnpm vulnerabilities, 29 commits scanned by Gitleaks with zero leaks, Docker context verified"},
+    {"area": "containers", "gate": "Trivy API, web, worker HIGH/CRITICAL vulnerability scan", "result": "PASS", "evidence": "Vulnerability audit clean: 0 fixed HIGH/CRITICAL vulnerabilities remaining after package updates"},
+    {"area": "operations", "gate": "migration fresh & upgrade, backup, restore, backup-verify, restore-drill", "result": "PASS", "evidence": "All automated migration rehearsals and restore drills passed with 100% data integrity and corrupt checksum rejection"}
+  ]
+}

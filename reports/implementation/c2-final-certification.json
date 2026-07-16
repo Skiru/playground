@@ -1,0 +1,88 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_FINAL_PRODUCTION_RELEASE_CLOSURE",
+  "status": "PASS",
+  "decision": "READY_TO_MERGE_C2",
+  "inputSha": "045bc810e3c5debe9ec73f57a5f412c3ff796667",
+  "applicationBaselineSha": "773df803985f3203e4c0a5c39856b12b0cbac387",
+  "implementationSha": "a3e89c423191dcd855cc2b626e5e959147456928",
+  "implementationTree": "758b3ea05a1a539c34dce5d5bb78ae1734476415",
+  "checkedPrHeadSha": "a3e89c423191dcd855cc2b626e5e959147456928",
+  "branch": "feat/family-places-platform-v1",
+  "pr": 1,
+  "gates": {
+    "architectureAndCustomization": "PASS",
+    "immutableRelease": "PASS",
+    "operability": "PASS",
+    "adversarialReview": "PASS",
+    "remoteChecks": "PASS",
+    "repositoryGovernance": "OPERATOR_ACTION_REQUIRED"
+  },
+  "artifacts": {
+    "api": {
+      "imageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+      "digest": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+      "archiveSha256": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+      "sbom": "reports/security/sbom-api.json",
+      "trivy": "reports/security/trivy-api.json"
+    },
+    "web": {
+      "imageId": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
+      "digest": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
+      "archiveSha256": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
+      "sbom": "reports/security/sbom-web.json",
+      "trivy": "reports/security/trivy-web.json"
+    }
+  },
+  "tests": {
+    "phpunitCount": 86,
+    "phpunitAssertions": 709,
+    "vitestCount": 6,
+    "playwrightCount": 18
+  },
+  "security": {
+    "critical": 0,
+    "high": 0,
+    "secrets": 0
+  },
+  "backupRestore": {
+    "backupScript": "scripts/backup",
+    "restoreScript": "scripts/restore",
+    "drillPassed": true
+  },
+  "deploymentRollback": {
+    "rehearsalPassed": true
+  },
+  "remoteRuns": [
+    {
+      "name": "frontend",
+      "workflow": "frontend-quality.yml",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "backend",
+      "workflow": "backend-quality.yml",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "dependency-review",
+      "workflow": "security.yml",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "p0Open": 0,
+  "p1Open": 0,
+  "p2Open": 0,
+  "knownLimitations": [
+    "Unpatched Debian OS vulnerabilities (185 in api, 21 in web-slim) are accepted upstream issues with no available patches."
+  ],
+  "operatorActionsRequired": [
+    "Operator must manually check that branch protections and required status checks are active on origin/main before merge."
+  ],
+  "cleanWorktree": true,
+  "remoteVerified": true,
+  "mergePerformed": false,
+  "c3Started": false
+}

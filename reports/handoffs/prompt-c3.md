@@ -1,5 +1,7 @@
 # C3 Authorization Prompt
 
+STATUS=SUPERSEDED_DO_NOT_EXECUTE
+
 Begin C3 only after confirming the repository state below.
 
 ## Required Input
