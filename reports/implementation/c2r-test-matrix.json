@@ -1,0 +1,21 @@
+{
+  "implementationSha": "c88a1704e66309db2984396885cb43468da60044",
+  "generatedAt": "2026-07-16T14:37:39+02:00",
+  "timezone": "Europe/Warsaw",
+  "matrix": [
+    {"area": "database", "gate": "PostgreSQL 18/PostGIS migrations from zero, schema and fixtures", "result": "PASS"},
+    {"area": "backend", "gate": "PHPUnit unit/application/infrastructure/runtime contract", "result": "PASS", "evidence": "68 tests, 556 assertions locally; exact-SHA backend remote success"},
+    {"area": "backend-quality", "gate": "Composer validate/audit, PHP-CS-Fixer, PHPStan level 8, Deptrac, container/YAML lint", "result": "PASS"},
+    {"area": "write-model", "gate": "transition matrix, stale version, row lock, rollback and coordinate order", "result": "PASS"},
+    {"area": "administration", "gate": "real DB create/edit/invalid publish/publish/visibility/unpublish and conflict", "result": "PASS"},
+    {"area": "discovery", "gate": "radius, bbox, filters, amenities AND, text search, opening hours and DST", "result": "PASS"},
+    {"area": "openapi", "gate": "runtime schema validation and generated client drift", "result": "PASS"},
+    {"area": "frontend", "gate": "frozen install, lint, strict typecheck, 6 Vitest tests and SSR build", "result": "PASS"},
+    {"area": "browser", "gate": "Playwright desktop and mobile public/admin flows", "result": "PASS", "evidence": "18 tests"},
+    {"area": "accessibility", "gate": "browser axe homepage/results/details/admin", "result": "PASS", "evidence": "critical 0, serious 0"},
+    {"area": "runtime", "gate": "production API/web/worker images, health checks and expanded smoke", "result": "PASS"},
+    {"area": "security", "gate": "Composer audit, pnpm audit, Gitleaks and Docker context", "result": "PASS"},
+    {"area": "containers", "gate": "Trivy API and web HIGH/CRITICAL fixed-vulnerability scan", "result": "PASS", "evidence": "HIGH 0, CRITICAL 0"},
+    {"area": "remote", "gate": "all GitHub checks on exact implementation SHA", "result": "PASS", "evidence": "6/6 success"}
+  ]
+}

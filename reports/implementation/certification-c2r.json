@@ -1,0 +1,44 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "certification": "C2R",
+  "status": "READY_FOR_C3",
+  "certifiedImplementationSha": "c88a1704e66309db2984396885cb43468da60044",
+  "certifiedImplementationTree": "8d2927eadf3da188e47b0e57acf236b0abcc452f",
+  "branch": "feat/family-places-platform-v1",
+  "pullRequest": "https://github.com/Skiru/playground/pull/1",
+  "completedAt": "2026-07-16T14:37:39+02:00",
+  "timezone": "Europe/Warsaw",
+  "checkpointChain": {
+    "C2R-A": "80e3db8c56030e67cf5ba627accaaf56f675191e",
+    "C2R-B": "a1cf1870031c6691ed9a8e1674a7e9e45dbfa343",
+    "C2R-C": "dfbcf19cadc1f3811e8b51e2b5cdc203c727d7de",
+    "C2R-D": "be3a7c03aa9008f4bd67d5df10ed846445ed8b69",
+    "C2R-E": "c88a1704e66309db2984396885cb43468da60044"
+  },
+  "evidence": {
+    "singleAggregateWritePath": "PASS",
+    "atomicPublicationAndConcurrency": "PASS",
+    "completeAdministrationWorkflow": "PASS",
+    "postgisDiscoveryAndOpeningHours": "PASS",
+    "strictOpenApiRuntimeContract": "PASS",
+    "generatedClientDrift": "PASS",
+    "ssrAndMapProgressiveEnhancement": "PASS",
+    "desktopMobileAndAccessibility": "PASS",
+    "productionRuntimeAndSmoke": "PASS",
+    "dependencySecretAndContainerSecurity": "PASS",
+    "exactShaRemoteChecks": "PASS"
+  },
+  "remoteChecks": {
+    "expected": 6,
+    "successful": 6,
+    "failed": 0,
+    "pending": 0,
+    "headSha": "c88a1704e66309db2984396885cb43468da60044"
+  },
+  "review": {"openP0": 0, "openP1": 0},
+  "scopeExclusionsVerified": ["C3 implementation", "Google login", "public registration", "favorites", "reviews", "forum", "uploads"],
+  "mergeStatus": "not performed",
+  "selfReferentialSha": false,
+  "supersedes": "reports/implementation/certification-c2.json",
+  "nextAction": "C3 may begin only under separate authorization using reports/handoffs/prompt-c3.md."
+}
