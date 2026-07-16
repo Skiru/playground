@@ -68,14 +68,15 @@ final class PlaceAdminRealDatabaseWorkflowTest extends WebTestCase
         self::assertSame(2, (int) $connection->fetchOne('SELECT COUNT(*) FROM place_age_zones WHERE place_id=:id', ['id' => $id]));
         self::assertSame(3, (int) $connection->fetchOne('SELECT COUNT(*) FROM weekly_opening_intervals WHERE place_id=:id', ['id' => $id]));
         self::assertSame(2, (int) $connection->fetchOne('SELECT COUNT(*) FROM external_place_references WHERE place_id=:id', ['id' => $id]));
+        self::assertSame(2, (int) $connection->fetchOne('SELECT version FROM places WHERE id=:id', ['id' => $id]));
 
-        $this->workflowAction($client, $id, 'submit', 8);
-        $this->workflowAction($client, $id, 'publish', 9);
+        $this->workflowAction($client, $id, 'submit', 2);
+        $this->workflowAction($client, $id, 'publish', 3);
         self::assertSame('published', $connection->fetchOne('SELECT status FROM places WHERE id=:id', ['id' => $id]));
         $client->request('GET', '/api/v1/places/c2r-admin-workflow');
         self::assertResponseIsSuccessful();
 
-        $this->workflowAction($client, $id, 'unpublish', 10);
+        $this->workflowAction($client, $id, 'unpublish', 4);
         $client->request('GET', '/api/v1/places/c2r-admin-workflow');
         self::assertResponseStatusCodeSame(404);
     }

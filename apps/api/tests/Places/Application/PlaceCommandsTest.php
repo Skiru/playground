@@ -10,6 +10,7 @@ use App\Places\Application\Command\CreatePlaceDraft;
 use App\Places\Application\Command\ExternalReferenceInput;
 use App\Places\Application\Command\MarkPlaceNeedsReverification;
 use App\Places\Application\Command\MarkPlaceTemporarilyClosed;
+use App\Places\Application\Command\OpeningHoursModeInput;
 use App\Places\Application\Command\PublishPlace;
 use App\Places\Application\Command\ReplaceExternalReferences;
 use App\Places\Application\Command\ReplacePlaceAgeZones;
@@ -20,6 +21,7 @@ use App\Places\Application\Command\ReplaceWeeklyOpeningHours;
 use App\Places\Application\Command\SpecialOpeningDayInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
+use App\Places\Application\Command\UpdatePlaceAggregate;
 use App\Places\Application\Command\UpdatePlaceCoreDetails;
 use App\Places\Application\Command\VerificationStatusInput;
 use App\Places\Application\Command\WeeklyOpeningIntervalInput;
@@ -27,7 +29,6 @@ use App\Places\Application\PlaceCommandHandler;
 use App\Places\Application\PlaceRepository;
 use App\Places\Domain\Category;
 use App\Places\Domain\City;
-use App\Places\Domain\OpeningHoursMode;
 use App\Places\Domain\Place;
 use App\Places\Domain\ValueObject\Coordinates;
 use App\Shared\Application\Clock;
@@ -40,6 +41,7 @@ final class PlaceCommandsTest extends TestCase
     {
         $commands = [
             new CreatePlaceDraft('Place', 'place', 'Short', 'Description', 'Street 1', '00-001', 'warszawa', 'PL', 52.2, 21.0, 'Europe/Warsaw', 'parks', true, false, false),
+            new UpdatePlaceAggregate('id', 1, 'Place', 'place', 'Short', 'Description', 'Street 1', '00-001', 'warszawa', 'PL', 52.2, 21.0, 'Europe/Warsaw', true, false, false, VerificationStatusInput::UNVERIFIED, ['parks'], 'parks', [], [], OpeningHoursModeInput::UNKNOWN, [], [], []),
             new UpdatePlaceCoreDetails('id', 1, 'Place', 'place', 'Short', 'Description', 'Street 1', '00-001', 'warszawa', 'PL', 52.2, 21.0, 'Europe/Warsaw', true, false, false, VerificationStatusInput::UNVERIFIED),
             new ReplacePlaceCategories('id', 1, ['parks'], 'parks'),
             new ReplacePlaceAmenities('id', 1, ['parking']),
@@ -55,7 +57,7 @@ final class PlaceCommandsTest extends TestCase
             new ArchivePlace('id', 1),
         ];
 
-        self::assertCount(14, $commands);
+        self::assertCount(15, $commands);
     }
 
     public function testMutationCommandsRejectInvalidVersions(): void
@@ -107,10 +109,34 @@ final class PlaceCommandsTest extends TestCase
             false,
             categorySlugs: ['parks', 'museums'],
             ageZones: [new AgeZoneInput('Children', 12, 72)],
-            openingHoursMode: OpeningHoursMode::SCHEDULED,
+            openingHoursMode: OpeningHoursModeInput::SCHEDULED,
             weeklyOpeningHours: [new WeeklyOpeningIntervalInput(1, 1, '09:00', '18:00', false)],
             specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', true, null, [])],
             externalReferences: [new ExternalReferenceInput('osm', '123')],
         ));
+    }
+
+    public function testCompleteEditLoadsAndSavesTheAggregateExactlyOnce(): void
+    {
+        $now = new \DateTimeImmutable('2026-07-16T10:00:00Z');
+        $city = new City('Warszawa', 'warszawa', 'PL', new Coordinates(52.2, 21.0), 12, 15, 'Europe/Warsaw', true, $now);
+        $primary = new Category('Parks', 'parks', null, 'parks', true, 1);
+        $place = new Place(new \App\Places\Domain\ValueObject\PlaceName('Before'), new \App\Places\Domain\ValueObject\PlaceSlug('before'), 'Short', 'Description', 'Street 1', '00-001', $city, 'PL', new Coordinates(52.2, 21.0), 'Europe/Warsaw', $primary, true, false, false, $now);
+        $places = $this->createMock(PlaceRepository::class);
+        $places->expects(self::once())->method('get')->with($place->id()->toRfc4122())->willReturn($place);
+        $places->expects(self::once())->method('cityBySlug')->with('warszawa')->willReturn($city);
+        $places->expects(self::once())->method('categoriesBySlugs')->with(['parks'])->willReturn([$primary]);
+        $places->expects(self::once())->method('amenitiesBySlugs')->with([])->willReturn([]);
+        $places->expects(self::once())->method('save')->with($place, 1);
+        $transactions = $this->createMock(TransactionManager::class);
+        $transactions->expects(self::once())->method('transactional')->willReturnCallback(static fn (callable $operation): mixed => $operation());
+        $clock = $this->createStub(Clock::class);
+        $clock->method('now')->willReturn($now);
+        $handler = new PlaceCommandHandler($places, $transactions, $clock);
+
+        $handler->update(new UpdatePlaceAggregate($place->id()->toRfc4122(), 1, 'After', 'after', 'Short', 'Description', 'Street 2', '00-002', 'warszawa', 'PL', 52.3, 21.1, 'Europe/Warsaw', true, false, false, VerificationStatusInput::UNVERIFIED, ['parks'], 'parks', [], [new AgeZoneInput('Children', 12, 72)], OpeningHoursModeInput::UNKNOWN, [], [], []));
+
+        self::assertSame('After', $place->name());
+        self::assertSame(1, $place->version());
     }
 }

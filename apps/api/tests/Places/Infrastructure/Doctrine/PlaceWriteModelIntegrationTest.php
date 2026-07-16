@@ -8,14 +8,16 @@ use App\Places\Application\Command\AgeZoneInput;
 use App\Places\Application\Command\ArchivePlace;
 use App\Places\Application\Command\CreatePlaceDraft;
 use App\Places\Application\Command\ExternalReferenceInput;
+use App\Places\Application\Command\OpeningHoursModeInput;
 use App\Places\Application\Command\PublishPlace;
 use App\Places\Application\Command\ReplacePlaceAgeZones;
 use App\Places\Application\Command\SpecialOpeningDayInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
+use App\Places\Application\Command\UpdatePlaceAggregate;
+use App\Places\Application\Command\VerificationStatusInput;
 use App\Places\Application\Command\WeeklyOpeningIntervalInput;
 use App\Places\Application\ConcurrentPlaceModification;
 use App\Places\Application\PlaceCommandHandler;
-use App\Places\Domain\OpeningHoursMode;
 use App\Places\Infrastructure\Doctrine\PlaceRepository;
 use App\Shared\Infrastructure\Doctrine\DbalTransactionManager;
 use App\Tests\Shared\Application\FrozenClock;
@@ -119,6 +121,31 @@ final class PlaceWriteModelIntegrationTest extends KernelTestCase
         }
     }
 
+    public function testFailureInLastEditedCollectionRollsBackCoreAndEveryEarlierCollection(): void
+    {
+        self::bootKernel();
+        $connection = self::getContainer()->get(Connection::class);
+        self::assertInstanceOf(Connection::class, $connection);
+        $handler = $this->handler($connection);
+        $ownerSlug = 'c2r2-update-reference-owner';
+        $editedSlug = 'c2r2-update-rollback';
+        $connection->executeStatement('DELETE FROM places WHERE slug IN (:owner,:edited)', ['owner' => $ownerSlug, 'edited' => $editedSlug]);
+        $handler->create($this->completeDraft($ownerSlug, references: [new ExternalReferenceInput('update-rollback', 'shared-id')]));
+        $editedId = $handler->create($this->completeDraft($editedSlug));
+
+        try {
+            $handler->update(new UpdatePlaceAggregate($editedId, 1, 'Must roll back', $editedSlug, 'Changed short', 'Changed description', 'Changed 2', '00-002', 'warszawa', 'PL', 52.3, 21.1, 'Europe/Warsaw', true, true, true, VerificationStatusInput::UNVERIFIED, ['bawialnie'], 'bawialnie', [], [new AgeZoneInput('Changed zone', 0, 12)], OpeningHoursModeInput::UNKNOWN, [], [], [new ExternalReferenceInput('update-rollback', 'shared-id')]));
+            self::fail('The last collection persistence failure must be propagated.');
+        } catch (\Doctrine\DBAL\Exception\UniqueConstraintViolationException) {
+            $row = $connection->fetchAssociative('SELECT name,version FROM places WHERE id=:id', ['id' => $editedId]);
+            self::assertIsArray($row);
+            self::assertSame('Atomic draft', $row['name']);
+            self::assertSame(1, (int) $row['version']);
+            self::assertSame(2, (int) $connection->fetchOne('SELECT COUNT(*) FROM place_age_zones WHERE place_id=:id', ['id' => $editedId]));
+            self::assertSame(2, (int) $connection->fetchOne('SELECT COUNT(*) FROM place_amenities WHERE place_id=:id', ['id' => $editedId]));
+        }
+    }
+
     public function testTransactionManagerRollsBackTheWholeOperation(): void
     {
         self::bootKernel();
@@ -173,7 +200,7 @@ final class PlaceWriteModelIntegrationTest extends KernelTestCase
             categorySlugs: $categorySlugs ?? ['bawialnie', 'parki'],
             amenitySlugs: ['parking', 'wifi'],
             ageZones: $ageZones ?? [new AgeZoneInput('Toddlers', 12, 36), new AgeZoneInput('Children', 37, 96)],
-            openingHoursMode: OpeningHoursMode::SCHEDULED,
+            openingHoursMode: OpeningHoursModeInput::SCHEDULED,
             weeklyOpeningHours: $weekly ?? [new WeeklyOpeningIntervalInput(1, 1, '09:00', '18:00', false)],
             specialOpeningDays: [new SpecialOpeningDayInput('2026-12-24', true, 'Closed', [])],
             externalReferences: $references ?? [new ExternalReferenceInput('atomic-test', $slug)],

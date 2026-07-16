@@ -10,18 +10,13 @@ use App\Places\Application\Command\CreatePlaceDraft;
 use App\Places\Application\Command\ExternalReferenceInput;
 use App\Places\Application\Command\MarkPlaceNeedsReverification;
 use App\Places\Application\Command\MarkPlaceTemporarilyClosed;
+use App\Places\Application\Command\OpeningHoursModeInput;
 use App\Places\Application\Command\PublishPlace;
-use App\Places\Application\Command\ReplaceExternalReferences;
-use App\Places\Application\Command\ReplacePlaceAgeZones;
-use App\Places\Application\Command\ReplacePlaceAmenities;
-use App\Places\Application\Command\ReplacePlaceCategories;
-use App\Places\Application\Command\ReplaceSpecialOpeningDays;
-use App\Places\Application\Command\ReplaceWeeklyOpeningHours;
 use App\Places\Application\Command\SpecialOpeningDayInput;
 use App\Places\Application\Command\SpecialOpeningIntervalInput;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
-use App\Places\Application\Command\UpdatePlaceCoreDetails;
+use App\Places\Application\Command\UpdatePlaceAggregate;
 use App\Places\Application\Command\VerificationStatusInput;
 use App\Places\Application\Command\WeeklyOpeningIntervalInput;
 use App\Places\Application\ConcurrentPlaceModification;
@@ -99,30 +94,53 @@ final class PlaceAdminController extends AbstractController
     #[Route('/{id}/edit', name: 'admin_places_edit', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET', 'POST'])]
     public function edit(string $id, Request $request): Response
     {
-        $place = $this->places->get($id);
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('edit-place-'.$id, $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
             }
             try {
-                $version = $request->request->getInt('version');
-                $core = new UpdatePlaceCoreDetails($id, $version++, $request->request->getString('name'), $request->request->getString('slug'), $request->request->getString('shortDescription'), $request->request->getString('description'), $request->request->getString('addressLine1'), $request->request->getString('postalCode'), $request->request->getString('city'), $request->request->getString('countryCode'), (float) $request->request->getString('latitude'), (float) $request->request->getString('longitude'), $request->request->getString('timezone'), $request->request->getBoolean('indoor'), $request->request->getBoolean('outdoor'), $request->request->getBoolean('freeEntry'), VerificationStatusInput::from($request->request->getString('verificationStatus')), self::nullable($request->request->getString('addressLine2')), self::nullable($request->request->getString('priceDescription')), self::nullable($request->request->getString('websiteUrl')), self::nullable($request->request->getString('phone')));
                 $categorySlugs = self::csv($request->request->getString('categories'));
-                $categories = new ReplacePlaceCategories($id, $version++, $categorySlugs, $request->request->getString('primaryCategory'));
-                $amenities = new ReplacePlaceAmenities($id, $version++, self::csv($request->request->getString('amenities')));
-                $ageZones = new ReplacePlaceAgeZones($id, $version++, self::ageZones($request->request->getString('ageZones')));
-                $weekly = new ReplaceWeeklyOpeningHours($id, $version++, self::weeklyHours($request->request->getString('weeklyOpeningHours')));
-                $special = new ReplaceSpecialOpeningDays($id, $version++, self::specialDays($request->request->getString('specialOpeningDays')));
-                $references = new ReplaceExternalReferences($id, $version, self::externalReferences($request->request->getString('externalReferences')));
-                $this->commands->edit($core, $categories, $amenities, $ageZones, $weekly, $special, $references);
+                $weekly = self::weeklyHours($request->request->getString('weeklyOpeningHours'));
+                $this->commands->update(new UpdatePlaceAggregate(
+                    placeId: $id,
+                    expectedVersion: $request->request->getInt('version'),
+                    name: $request->request->getString('name'),
+                    slug: $request->request->getString('slug'),
+                    shortDescription: $request->request->getString('shortDescription'),
+                    description: $request->request->getString('description'),
+                    addressLine1: $request->request->getString('addressLine1'),
+                    postalCode: $request->request->getString('postalCode'),
+                    citySlug: $request->request->getString('city'),
+                    countryCode: $request->request->getString('countryCode'),
+                    latitude: (float) $request->request->getString('latitude'),
+                    longitude: (float) $request->request->getString('longitude'),
+                    timezone: $request->request->getString('timezone'),
+                    indoor: $request->request->getBoolean('indoor'),
+                    outdoor: $request->request->getBoolean('outdoor'),
+                    freeEntry: $request->request->getBoolean('freeEntry'),
+                    verificationStatus: VerificationStatusInput::from($request->request->getString('verificationStatus')),
+                    categorySlugs: $categorySlugs,
+                    primaryCategorySlug: $request->request->getString('primaryCategory'),
+                    amenitySlugs: self::csv($request->request->getString('amenities')),
+                    ageZones: self::ageZones($request->request->getString('ageZones')),
+                    openingHoursMode: [] === $weekly ? OpeningHoursModeInput::UNKNOWN : OpeningHoursModeInput::SCHEDULED,
+                    weeklyOpeningHours: $weekly,
+                    specialOpeningDays: self::specialDays($request->request->getString('specialOpeningDays')),
+                    externalReferences: self::externalReferences($request->request->getString('externalReferences')),
+                    addressLine2: self::nullable($request->request->getString('addressLine2')),
+                    priceDescription: self::nullable($request->request->getString('priceDescription')),
+                    websiteUrl: self::nullable($request->request->getString('websiteUrl')),
+                    phone: self::nullable($request->request->getString('phone')),
+                ));
                 $this->addFlash('success', 'Place aggregate updated.');
 
                 return $this->redirectToRoute('admin_places_view', ['id' => $id]);
             } catch (ConcurrentPlaceModification|\DomainException|\InvalidArgumentException $exception) {
                 $this->addFlash('error', $exception->getMessage());
-                $place = $this->places->get($id);
             }
         }
+
+        $place = $this->places->get($id);
 
         return $this->render('admin/places/edit.html.twig', ['place' => $place, 'cities' => $this->places->allCities(), 'categories' => $this->places->allCategories(), 'amenities' => $this->places->allAmenities()]);
     }

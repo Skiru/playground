@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Places\Application\Command;
 
-final readonly class CreatePlaceDraft
+final readonly class UpdatePlaceAggregate
 {
     public function __construct(
+        public string $placeId,
+        public int $expectedVersion,
         public string $name,
         public string $slug,
         public string $shortDescription,
@@ -18,30 +20,31 @@ final readonly class CreatePlaceDraft
         public float $latitude,
         public float $longitude,
         public string $timezone,
-        public string $categorySlug,
         public bool $indoor,
         public bool $outdoor,
         public bool $freeEntry,
+        public VerificationStatusInput $verificationStatus,
+        /** @var list<string> */
+        public array $categorySlugs,
+        public string $primaryCategorySlug,
+        /** @var list<string> */
+        public array $amenitySlugs,
+        /** @var list<AgeZoneInput> */
+        public array $ageZones,
+        public OpeningHoursModeInput $openingHoursMode,
+        /** @var list<WeeklyOpeningIntervalInput> */
+        public array $weeklyOpeningHours,
+        /** @var list<SpecialOpeningDayInput> */
+        public array $specialOpeningDays,
+        /** @var list<ExternalReferenceInput> */
+        public array $externalReferences,
         public ?string $addressLine2 = null,
         public ?string $priceDescription = null,
         public ?string $websiteUrl = null,
         public ?string $phone = null,
-        /** @var list<string> */
-        public array $categorySlugs = [],
-        /** @var list<string> */
-        public array $amenitySlugs = [],
-        /** @var list<AgeZoneInput> */
-        public array $ageZones = [],
-        public OpeningHoursModeInput $openingHoursMode = OpeningHoursModeInput::UNKNOWN,
-        /** @var list<WeeklyOpeningIntervalInput> */
-        public array $weeklyOpeningHours = [],
-        /** @var list<SpecialOpeningDayInput> */
-        public array $specialOpeningDays = [],
-        /** @var list<ExternalReferenceInput> */
-        public array $externalReferences = [],
     ) {
-        if ('' === trim($name) || '' === trim($slug) || '' === trim($citySlug) || '' === trim($categorySlug)) {
-            throw new \InvalidArgumentException('Name, slug, city, and category are required.');
+        if ($expectedVersion < 1) {
+            throw new \InvalidArgumentException('Expected version must be positive.');
         }
     }
 }

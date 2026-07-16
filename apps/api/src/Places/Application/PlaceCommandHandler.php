@@ -17,8 +17,10 @@ use App\Places\Application\Command\ReplaceSpecialOpeningDays;
 use App\Places\Application\Command\ReplaceWeeklyOpeningHours;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
+use App\Places\Application\Command\UpdatePlaceAggregate;
 use App\Places\Application\Command\UpdatePlaceCoreDetails;
 use App\Places\Domain\ExternalPlaceReference;
+use App\Places\Domain\OpeningHoursMode;
 use App\Places\Domain\Place;
 use App\Places\Domain\PlaceAgeZone;
 use App\Places\Domain\PlaceStatus;
@@ -48,11 +50,12 @@ final readonly class PlaceCommandHandler
             $categories = $this->places->categoriesBySlugs($categorySlugs);
             $primaryCategory = $this->primaryCategory($categories, $command->categorySlug);
             $amenities = $this->places->amenitiesBySlugs($command->amenitySlugs);
-            $place = new Place(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->postalCode, $city, $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $primaryCategory, $command->indoor, $command->outdoor, $command->freeEntry, $now, $command->addressLine2, $command->priceDescription, $command->websiteUrl, $command->phone, $command->openingHoursMode);
+            $openingHoursMode = OpeningHoursMode::from($command->openingHoursMode->value);
+            $place = new Place(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->postalCode, $city, $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $primaryCategory, $command->indoor, $command->outdoor, $command->freeEntry, $now, $command->addressLine2, $command->priceDescription, $command->websiteUrl, $command->phone, $openingHoursMode);
             $place->replaceCategories($categories, $primaryCategory, $now);
             $place->replaceAmenities($amenities, $now);
             $place->replaceAgeZones($this->ageZones($place, $command->ageZones), $now);
-            $place->replaceOpeningSchedule($command->openingHoursMode, $this->weeklyIntervals($place, $command->weeklyOpeningHours), $this->specialDays($place, $command->specialOpeningDays), $now);
+            $place->replaceOpeningSchedule($openingHoursMode, $this->weeklyIntervals($place, $command->weeklyOpeningHours), $this->specialDays($place, $command->specialOpeningDays), $now);
             $place->replaceExternalReferences($this->externalReferences($place, $command->externalReferences), $now);
             $this->places->add($place);
 
@@ -60,23 +63,21 @@ final readonly class PlaceCommandHandler
         });
     }
 
-    public function edit(
-        UpdatePlaceCoreDetails $core,
-        ReplacePlaceCategories $categories,
-        ReplacePlaceAmenities $amenities,
-        ReplacePlaceAgeZones $ageZones,
-        ReplaceWeeklyOpeningHours $weeklyOpeningHours,
-        ReplaceSpecialOpeningDays $specialOpeningDays,
-        ReplaceExternalReferences $externalReferences,
-    ): void {
-        $this->transactions->transactional(function () use ($core, $categories, $amenities, $ageZones, $weeklyOpeningHours, $specialOpeningDays, $externalReferences): void {
-            $this->updateCoreDetails($core);
-            $this->replaceCategories($categories);
-            $this->replaceAmenities($amenities);
-            $this->replaceAgeZones($ageZones);
-            $this->replaceWeeklyOpeningHours($weeklyOpeningHours);
-            $this->replaceSpecialOpeningDays($specialOpeningDays);
-            $this->replaceExternalReferences($externalReferences);
+    public function update(UpdatePlaceAggregate $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $this->assertVersion($place, $command->expectedVersion);
+            $now = $this->clock->now();
+            $categories = $this->places->categoriesBySlugs($command->categorySlugs);
+            $primaryCategory = $this->primaryCategory($categories, $command->primaryCategorySlug);
+            $place->updateCoreDetails(new PlaceName($command->name), new PlaceSlug($command->slug), $command->shortDescription, $command->description, $command->addressLine1, $command->addressLine2, $command->postalCode, $this->places->cityBySlug($command->citySlug), $command->countryCode, new Coordinates($command->latitude, $command->longitude), $command->timezone, $command->indoor, $command->outdoor, $command->freeEntry, $command->priceDescription, $command->websiteUrl, $command->phone, VerificationStatus::from($command->verificationStatus->value), $now);
+            $place->replaceCategories($categories, $primaryCategory, $now);
+            $place->replaceAmenities($this->places->amenitiesBySlugs($command->amenitySlugs), $now);
+            $place->replaceAgeZones($this->ageZones($place, $command->ageZones), $now);
+            $place->replaceOpeningSchedule(OpeningHoursMode::from($command->openingHoursMode->value), $this->weeklyIntervals($place, $command->weeklyOpeningHours), $this->specialDays($place, $command->specialOpeningDays), $now);
+            $place->replaceExternalReferences($this->externalReferences($place, $command->externalReferences), $now);
+            $this->places->save($place, $command->expectedVersion);
         });
     }
 
@@ -87,6 +88,7 @@ final readonly class PlaceCommandHandler
         });
     }
 
+    /** Granular integration use case; the administration form uses update(). */
     public function replaceCategories(ReplacePlaceCategories $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
@@ -94,11 +96,13 @@ final readonly class PlaceCommandHandler
         });
     }
 
+    /** Granular integration use case; the administration form uses update(). */
     public function replaceAmenities(ReplacePlaceAmenities $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, fn (Place $place) => $place->replaceAmenities($this->places->amenitiesBySlugs($command->amenitySlugs), $this->clock->now()));
     }
 
+    /** Granular integration use case; the administration form uses update(). */
     public function replaceAgeZones(ReplacePlaceAgeZones $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
@@ -107,6 +111,7 @@ final readonly class PlaceCommandHandler
         });
     }
 
+    /** Granular integration use case; the administration form uses update(). */
     public function replaceWeeklyOpeningHours(ReplaceWeeklyOpeningHours $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
@@ -115,6 +120,7 @@ final readonly class PlaceCommandHandler
         });
     }
 
+    /** Granular integration use case; the administration form uses update(). */
     public function replaceSpecialOpeningDays(ReplaceSpecialOpeningDays $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
@@ -130,6 +136,7 @@ final readonly class PlaceCommandHandler
         });
     }
 
+    /** Granular integration use case; the administration form uses update(). */
     public function replaceExternalReferences(ReplaceExternalReferences $command): void
     {
         $this->mutate($command->placeId, $command->expectedVersion, function (Place $place) use ($command): void {
