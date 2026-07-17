@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal, Map as MapIcon, List, X, Compass, ArrowRight
 import { MapExplorer } from "../components/MapExplorer"
 import { AppShell } from "../components/layout/AppShell"
 import { PageContainer } from "../components/layout/PageContainer"
+import { FavoriteButton } from "~/components/places/FavoriteButton"
 import { loadAmenities, loadCategories, loadCities, loadMapPlaces, loadPlaces } from "../lib/api.server"
 import { content } from "../content"
 import { brand } from "../brand/default-brand"
@@ -150,11 +151,14 @@ export function PlacesView({
                         {content.places.placeMetaSeparator}
                         {place.indoor ? content.places.indoor : content.places.outdoor}
                       </p>
-                      <h2 className="font-serif text-xl font-bold tracking-tight mb-2 group-hover:text-primary transition-colors">
-                        <Link to={`/miejsca/${place.slug}`}>
-                          {place.name}
-                        </Link>
-                      </h2>
+                      <div className="flex items-start justify-between gap-4">
+                        <h2 className="font-serif text-xl font-bold tracking-tight mb-2 group-hover:text-primary transition-colors">
+                          <Link to={`/miejsca/${place.slug}`}>
+                            {place.name}
+                          </Link>
+                        </h2>
+                        <FavoriteButton placeId={place.id} />
+                      </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-4">
                         {place.short_description}
                       </p>

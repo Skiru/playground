@@ -29,6 +29,18 @@ services:
     App\Identity\UI\:
         resource: '../src/Identity/UI/'
 
+    App\Personalization\Domain\:
+        resource: '../src/Personalization/Domain/'
+
+    App\Personalization\Application\:
+        resource: '../src/Personalization/Application/'
+
+    App\Personalization\Infrastructure\:
+        resource: '../src/Personalization/Infrastructure/'
+
+    App\Personalization\UI\:
+        resource: '../src/Personalization/UI/'
+
     App\Places\Application\:
         resource: '../src/Places/Application/'
 
@@ -65,6 +77,10 @@ services:
     App\Identity\Application\UserRepository: '@App\Identity\Infrastructure\Doctrine\UserRepository'
     App\Identity\Application\ExternalIdentityRepository: '@App\Identity\Infrastructure\Doctrine\ExternalIdentityRepository'
     App\Identity\Application\Google\GoogleIdentityVerifier: '@App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier'
+
+    App\Personalization\Application\FavoriteRepository: '@App\Personalization\Infrastructure\Doctrine\FavoriteRepository'
+    App\Personalization\Application\VisitRepository: '@App\Personalization\Infrastructure\Doctrine\VisitRepository'
+    App\Personalization\Domain\PublishedPlaceLookup: '@App\Personalization\Infrastructure\PublishedPlaceDbalLookup'
 
     App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier:
         arguments:

@@ -9,3 +9,11 @@
 
 controllers:
     resource: routing.controllers
+
+identity_routes:
+    resource: '../src/Identity/UI/Http/'
+    type: attribute
+
+personalization_routes:
+    resource: '../src/Personalization/UI/Http/'
+    type: attribute

@@ -4,7 +4,7 @@ doctrine:
         server_version: '18'
         profiling_collect_backtrace: '%kernel.debug%'
         # Places is intentionally DBAL-managed; ORM schema validation owns Identity only.
-        schema_filter: '~^(users|external_identities|doctrine_migration_versions)$~'
+        schema_filter: '~^(users|external_identities|favorites|visits|doctrine_migration_versions)$~'
         types:
             geography:
                 class: Jsor\Doctrine\PostGIS\Types\GeographyType
@@ -20,6 +20,11 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Identity/Infrastructure/Doctrine/Mapping'
                 prefix: App\Identity\Domain
                 alias: Identity
+            Personalization:
+                type: xml
+                dir: '%kernel.project_dir%/src/Personalization/Infrastructure/Doctrine/Mapping'
+                prefix: App\Personalization\Domain
+                alias: Personalization
 
 when@test:
     doctrine:

@@ -4,6 +4,8 @@ import { MapPin, Baby, ShieldCheck, Compass, Check, ArrowLeft, ExternalLink, Nav
 
 import { AppShell } from "../components/layout/AppShell"
 import { PageContainer } from "../components/layout/PageContainer"
+import { FavoriteButton } from "~/components/places/FavoriteButton"
+import { VisitButton } from "~/components/places/VisitButton"
 import { loadPlace } from "../lib/api.server"
 import { content } from "../content"
 import { brand } from "../brand/default-brand"
@@ -95,6 +97,8 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          <VisitButton placeId={place.id} />
+          <FavoriteButton placeId={place.id} />
           <Button size="sm" variant="outline" className="font-semibold text-xs gap-1.5" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + " " + place.address_line1 + " " + place.city_name)}`, "_blank")}>
             <Navigation className="size-3.5" />
             Nawiguj
