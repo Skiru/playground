@@ -1,0 +1,64 @@
+{
+  "p0_findings": [],
+  "p1_findings": [],
+  "p2_findings": [],
+  "p3_findings": [],
+  "closed_findings": [
+    {
+      "id": "ROOT_LOADER_MISSING_GOOGLE_CONFIG",
+      "resolution": "Implemented robust root loader in root.tsx supplying typed google config."
+    },
+    {
+      "id": "GOOGLE_UI_DISABLED",
+      "resolution": "Centralized under unified LoginDialog rendering official Google Sign-In button."
+    },
+    {
+      "id": "DEV_BYPASS_DUMMY_TOKEN",
+      "resolution": "Implemented dedicated, secure backend POST /api/v1/dev-auth/login route guarded against prod environment."
+    },
+    {
+      "id": "MISSING_LOGIN_RATE_LIMITER",
+      "resolution": "Added google_login rate limiter under framework.yaml and enforced in GoogleCredentialAuthenticator."
+    },
+    {
+      "id": "EXCEPTION_LEAKAGE",
+      "resolution": "Handled failure mapping in GoogleCredentialAuthenticator and redacting all internal raw exception messages."
+    },
+    {
+      "id": "NON_ATOMIC_IDENTITY_FLOW",
+      "resolution": "Refactored AuthenticateWithGoogle to use TransactionManager and Clock atomically."
+    },
+    {
+      "id": "FAVORITE_RACE",
+      "resolution": "Implemented unique violation handling in AddFavorite usecase and Dbal upsert."
+    },
+    {
+      "id": "VISIT_PATCH_SEMANTICS",
+      "resolution": "Implemented precise PATCH semantics in UpdateVisit usecase distinguishing omitted, null, and new values."
+    },
+    {
+      "id": "LOOSE_DATE_VALIDATION",
+      "resolution": "Implemented strict date validation Y-m-d format and preventing future date visits."
+    },
+    {
+      "id": "PRIVATE_LISTS_CACHE_CONTROL",
+      "resolution": "Enforced Cache-Control: private, no-store and Vary: Cookie headers on all personalization endpoints."
+    },
+    {
+      "id": "N_PLUS_ONE_PLACE_STATE",
+      "resolution": "Implemented batch favorite place checks eliminating N+1 DB query issues."
+    },
+    {
+      "id": "ACCOUNT_PAGE_N_PLUS_ONE_FETC_PER_PLACE",
+      "resolution": "Modified listFavorites and listVisits endpoints to return batched place details."
+    },
+    {
+      "id": "MISSING_OPENAPI_COVERAGE",
+      "resolution": "Described all authentication and personalization endpoints in HealthOpenApiFactory.php, successfully exporting and generating types."
+    },
+    {
+      "id": "MISSING_C3_PLAYWRIGHT",
+      "resolution": "Wrote complete Playwright E2E integration test suite covering the entire user journey."
+    }
+  ]
+}
