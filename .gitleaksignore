@@ -45,4 +45,4 @@ scripts/verify-gitleaks:private-key:25
 # Rule ID: generic-api-key
 # Justification: False positive triggered by 40-character Git commit hash references in the final certification report.
 reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:24
-reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:34
+reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:32
