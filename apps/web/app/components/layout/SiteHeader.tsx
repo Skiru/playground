@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/components/ui/sheet"
-import { UserAreaPlaceholder } from "./UserAreaPlaceholder"
+import { UserArea } from "./UserArea"
 
 export function SiteHeader() {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -70,12 +70,12 @@ export function SiteHeader() {
         {/* Right Actions */}
         <div className="flex items-center gap-4">
           <div className="hidden md:block">
-            <UserAreaPlaceholder />
+            <UserArea />
           </div>
 
           {/* Mobile Menu Trigger */}
           <div className="md:hidden flex items-center gap-2">
-            <UserAreaPlaceholder />
+            <UserArea />
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button

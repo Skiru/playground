@@ -16,8 +16,15 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
 import { AlertCircle } from "lucide-react"
 import { content } from "~/content"
+import { fetchSession } from "./lib/api-session.server"
+import { SessionProvider } from "./lib/session-context"
 
 export const links: Route.LinksFunction = () => []
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const { data } = await fetchSession(request.headers)
+  return { initialSession: data }
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,8 +45,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function App() {
-  return <Outlet />
+export default function App({ loaderData }: Route.ComponentProps) {
+  return (
+    <SessionProvider initialSession={loaderData.initialSession}>
+      <Outlet />
+    </SessionProvider>
+  )
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

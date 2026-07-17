@@ -63,6 +63,13 @@ services:
         tags: [monolog.processor]
 
     App\Identity\Application\UserRepository: '@App\Identity\Infrastructure\Doctrine\UserRepository'
+    App\Identity\Application\ExternalIdentityRepository: '@App\Identity\Infrastructure\Doctrine\ExternalIdentityRepository'
+    App\Identity\Application\Google\GoogleIdentityVerifier: '@App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier'
+
+    App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier:
+        arguments:
+            $clientId: '%env(resolve:GOOGLE_CLIENT_ID)%'
+
     App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
 
