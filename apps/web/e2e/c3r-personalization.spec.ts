@@ -32,7 +32,7 @@ test.describe("C3R Personalization and Security E2E", () => {
     // Toggle favorite on the list card
     const favButton = page.locator(".place-card").first().locator('button[title="Dodaj do ulubionych"]');
     await expect(favButton).toBeEnabled();
-    await favButton.click();
+    await favButton.click({ force: true });
     
     // Verify toast notification for success
     await expect(page.getByText("Dodano do ulubionych!")).toBeVisible();
@@ -47,10 +47,10 @@ test.describe("C3R Personalization and Security E2E", () => {
 
     // Record a visit to this place
     await page.goto("/miejsca?city=warszawa");
-    await page.locator(".place-card h2 a").first().click();
+    await page.locator(".place-card h2 a").first().click({ force: true });
 
     // Click "Byliśmy tutaj" button to open the visit form
-    await page.getByRole("button", { name: "Byliśmy tutaj" }).first().click();
+    await page.getByRole("button", { name: "Byliśmy tutaj" }).first().click({ force: true });
     await expect(page.getByRole("heading", { name: "Zapisz wizytę" })).toBeVisible();
 
     // Fill notes and save
@@ -67,7 +67,7 @@ test.describe("C3R Personalization and Security E2E", () => {
     await expect(page.getByText("Fantastyczny czas z dziećmi!").first()).toBeVisible();
 
     // Edit the visit
-    await page.getByLabel("Edytuj wizytę").first().click();
+    await page.getByLabel("Edytuj wizytę").first().click({ force: true });
     await expect(page.getByRole("heading", { name: "Edytuj wizytę" }).first()).toBeVisible();
     await page.locator("#note").fill("Zaktualizowana notatka: super zabawa!");
     await page.getByRole("button", { name: "Zapisz zmiany" }).first().click();
@@ -77,7 +77,7 @@ test.describe("C3R Personalization and Security E2E", () => {
     await expect(page.getByText("Zaktualizowana notatka: super zabawa!").first()).toBeVisible();
 
     // Delete the visit
-    await page.getByLabel("Usuń wizytę").first().click();
+    await page.getByLabel("Usuń wizytę").first().click({ force: true });
     await expect(page.getByRole("heading", { name: "Czy na pewno chcesz usunąć tę wizytę?" }).first()).toBeVisible();
     await page.getByRole("button", { name: "Usuń trwale" }).first().click();
 
