@@ -1,0 +1,67 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+# Verify .gitleaks.toml exists and has extend.useDefault = true
+config_file=".gitleaks.toml"
+if [ ! -f "$config_file" ]; then
+  echo "ERROR: Configuration file $config_file not found."
+  exit 1
+fi
+
+if ! grep -q "useDefault = true" "$config_file"; then
+  echo "ERROR: [extend] useDefault=true is missing from $config_file."
+  exit 1
+fi
+
+echo "--- GITLEAKS CONFIGURATION CHECK PASSED ---"
+
+# Set up temp dir for synthetic secret test
+temp_dir="/var/folders/y6/c0sq10zj4vqdcpz_y3b802c80000gn/T/kilo/gitleaks_temp_gate_$(date +%s)"
+mkdir -p "$temp_dir"
+
+printf -- "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtcn\n-----END OPENSSH PRIVATE KEY-----\n" > "$temp_dir/synthetic_secret.txt"
+
+# Run Gitleaks detect on the temporary directory
+# We map the config file to /repo/.gitleaks.toml inside the container and scan the temp directory
+echo "Running Gitleaks sentinel test on synthetic secret..."
+set +e
+docker run --rm \
+  -v "$temp_dir:/scan" \
+  -v "$repo_dir/$config_file:/repo/.gitleaks.toml" \
+  -w /scan \
+  zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
+  detect --no-git --config=/repo/.gitleaks.toml --redact --verbose
+gitleaks_status=$?
+set -e
+
+# Cleanup synthetic folder immediately
+rm -rf "$temp_dir"
+
+if [ $gitleaks_status -eq 0 ]; then
+  echo "ERROR: Gitleaks sentinel test failed. Synthetic secret was NOT detected or Gitleaks did not exit non-zero."
+  exit 1
+fi
+
+echo "--- GITLEAKS SENTINEL TEST PASSED ---"
+
+# Run full-history scan and require zero unexplained findings
+echo "Running Gitleaks full-history scan on repository..."
+set +e
+docker run --rm \
+  -v "$repo_dir:/repo" \
+  -w /repo \
+  zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
+  git --config=/repo/.gitleaks.toml --redact --verbose
+history_status=$?
+set -e
+
+if [ $history_status -ne 0 ]; then
+  echo "ERROR: Gitleaks full-history scan failed. Unexplained findings found or scan error."
+  exit 1
+fi
+
+echo "--- GITLEAKS FULL-HISTORY SCAN PASSED ---"
+echo "All Gitleaks gates successfully verified!"

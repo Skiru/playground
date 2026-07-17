@@ -1,0 +1,48 @@
+# .gitleaksignore
+# FamilyPlaces Gitleaks Ignore List
+# This file suppresses false-positives triggered by public cryptographic metadata (such as public GPG keys)
+# contained in machine-generated Trivy security scan reports.
+
+# Source File: reports/security/trivy-api.json
+# Rule ID: generic-api-key
+# Justification: Public GPG key fingerprint used to sign PHP distribution packages (embedded in Docker container ENV metadata).
+reports/security/trivy-api.json:generic-api-key:102
+reports/security/trivy-api.json:generic-api-key:428
+
+# Source File: reports/security/trivy-worker.json
+# Rule ID: generic-api-key
+# Justification: Public GPG key fingerprint used to sign PHP distribution packages (embedded in Docker container ENV metadata).
+reports/security/trivy-worker.json:generic-api-key:102
+reports/security/trivy-worker.json:generic-api-key:428
+
+# Source File: compose.prod.yaml
+# Rule ID: generic-api-key
+# Justification: False positive triggered by a 40-character Git commit hash used in the image tag.
+compose.prod.yaml:generic-api-key:3
+
+# Source File: reports/implementation/c2-final-merge-handoff.md
+# Rule ID: generic-api-key
+# Justification: False positive triggered by 40-character Git commit hash references in the runbook documentation.
+reports/implementation/c2-final-merge-handoff.md:generic-api-key:52
+
+# Source File: reports/implementation/c2-final-artifact-manifest.json
+# Rule ID: generic-api-key
+# Justification: False positive triggered by 40-character Git commit hash references in the build-once artifact manifest.
+reports/implementation/c2-final-artifact-manifest.json:generic-api-key:7
+
+# Source File: scripts/verify-artifact-chain
+# Rule ID: generic-api-key
+# Justification: False positive triggered by 40-character Git commit hash references in the verification script.
+scripts/verify-artifact-chain:generic-api-key:10
+scripts/verify-artifact-chain:generic-api-key:39
+
+# Source File: scripts/verify-gitleaks
+# Rule ID: private-key
+# Justification: Synthetic dummy private key used as a sentinel token to test Gitleaks fail-closed behavior.
+scripts/verify-gitleaks:private-key:25
+
+# Source File: reports/implementation/c2-release-evidence-fix-v2-certification.json
+# Rule ID: generic-api-key
+# Justification: False positive triggered by 40-character Git commit hash references in the final certification report.
+reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:24
+reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:34
