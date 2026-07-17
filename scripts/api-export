@@ -3,4 +3,4 @@ set -eu
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_dir"
-docker run --rm -u "$(id -u):$(id -g)" -v "$repo_dir/packages/api-client/openapi:/output" -w /app family-places-api:development php bin/console api:openapi:export --output=/output/openapi.json
+docker run --rm -u "$(id -u):$(id -g)" -v "$repo_dir/apps/api:/app" -v "$repo_dir/packages/api-client/openapi:/output" -w /app family-places-api:development php bin/console api:openapi:export --output=/output/openapi.json

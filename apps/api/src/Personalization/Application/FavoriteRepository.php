@@ -12,6 +12,13 @@ interface FavoriteRepository
     public function findByUserAndPlace(Uuid $userId, Uuid $placeId): ?Favorite;
 
     /**
+     * @param list<Uuid> $placeIds
+     *
+     * @return list<Favorite>
+     */
+    public function findFavoritesByPlaces(Uuid $userId, array $placeIds): array;
+
+    /**
      * @return list<Favorite>
      */
     public function findByUserId(Uuid $userId, int $page = 1, int $pageSize = 20): array;

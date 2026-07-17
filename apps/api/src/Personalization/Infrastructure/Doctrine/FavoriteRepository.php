@@ -29,6 +29,23 @@ final class FavoriteRepository extends ServiceEntityRepository implements Favori
     }
 
     /**
+     * @param list<Uuid> $placeIds
+     *
+     * @return list<Favorite>
+     */
+    public function findFavoritesByPlaces(Uuid $userId, array $placeIds): array
+    {
+        if (empty($placeIds)) {
+            return [];
+        }
+
+        return $this->findBy([
+            'user' => $userId,
+            'placeId' => $placeIds,
+        ]);
+    }
+
+    /**
      * @return list<Favorite>
      */
     public function findByUserId(Uuid $userId, int $page = 1, int $pageSize = 20): array
