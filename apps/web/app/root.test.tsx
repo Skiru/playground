@@ -7,6 +7,13 @@ vi.mock("./lib/api-session.server", () => ({
   fetchSession: vi.fn(),
 }))
 
+async function getLoaderData(result: any) {
+  if (result instanceof Response) {
+    return await result.json()
+  }
+  return result
+}
+
 describe("root loader", () => {
   const originalEnv = process.env
 
@@ -28,7 +35,8 @@ describe("root loader", () => {
       params: {},
     } as any)
 
-    expect(result.publicRuntimeConfig).toEqual({
+    const data = await getLoaderData(result)
+    expect(data.publicRuntimeConfig).toEqual({
       googleIdentityEnabled: false,
       googleClientId: null,
       devAuthEnabled: false,
@@ -58,7 +66,8 @@ describe("root loader", () => {
       params: {},
     } as any)
 
-    expect(result.publicRuntimeConfig).toEqual({
+    const data = await getLoaderData(result)
+    expect(data.publicRuntimeConfig).toEqual({
       googleIdentityEnabled: true,
       googleClientId: "some-client-id",
       devAuthEnabled: true,
@@ -76,7 +85,8 @@ describe("root loader", () => {
       params: {},
     } as any)
 
-    expect(result.publicRuntimeConfig).toEqual({
+    const data = await getLoaderData(result)
+    expect(data.publicRuntimeConfig).toEqual({
       googleIdentityEnabled: true,
       googleClientId: "some-client-id",
       devAuthEnabled: false,

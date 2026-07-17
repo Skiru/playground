@@ -10,6 +10,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
@@ -45,6 +46,24 @@ final class DevAuthController
         /** @var \Symfony\Component\Security\Core\User\UserInterface|null $user */ // @phpstan-ignore varTag.nativeType
         $user = $this->userRepository->findByEmail($emailObj);
 
+        if (null !== $user && method_exists($user, 'status')) {
+            $status = $user->status();
+            $statusStr = $status instanceof \BackedEnum ? $status->value : (string) $status;
+            if ('ACTIVE' !== $statusStr) {
+                return new JsonResponse([
+                    'type' => 'https://familyplaces.example/problems/auth_failed',
+                    'title' => 'Authentication Failed',
+                    'status' => Response::HTTP_FORBIDDEN,
+                    'detail' => 'User account is not active.',
+                    'code' => 'ACCOUNT_INACTIVE',
+                ], Response::HTTP_FORBIDDEN, [
+                    'Content-Type' => 'application/problem+json',
+                    'Cache-Control' => 'private, no-store',
+                    'Vary' => 'Cookie',
+                ]);
+            }
+        }
+
         if (null === $user) {
             /** @var \Symfony\Component\Security\Core\User\UserInterface $user */ // @phpstan-ignore varTag.nativeType
             $user = new $userClass(
@@ -79,7 +98,8 @@ final class DevAuthController
             ],
             'csrfToken' => $csrfToken,
         ]);
-        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('Vary', 'Cookie');
 
         return $response;
     }

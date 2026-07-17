@@ -47,6 +47,10 @@ final class PersonalizationController
             throw new AccessDeniedHttpException('Authentication required.');
         }
 
+        if (\App\Identity\Domain\UserStatus::ACTIVE !== $user->status()) {
+            throw new AccessDeniedHttpException('User account is not active.');
+        }
+
         return $user;
     }
 

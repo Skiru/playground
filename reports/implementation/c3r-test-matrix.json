@@ -10,7 +10,7 @@
   },
   "playwright": {
     "total_tests": 20,
-    "passed": 15,
+    "passed": 20,
     "c3r_personalization": {
       "desktop": "PASS",
       "mobile": "PASS"

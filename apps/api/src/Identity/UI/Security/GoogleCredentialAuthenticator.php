@@ -126,7 +126,8 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
             ],
             'csrfToken' => $csrfToken,
         ]);
-        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('Vary', 'Cookie');
 
         return $response;
     }
@@ -168,7 +169,8 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
 
         $headers = [
             'Content-Type' => 'application/problem+json',
-            'Cache-Control' => 'no-store',
+            'Cache-Control' => 'private, no-store',
+            'Vary' => 'Cookie',
         ];
         if ('AUTH_RATE_LIMITED' === $code) {
             $headers['Retry-After'] = '60';

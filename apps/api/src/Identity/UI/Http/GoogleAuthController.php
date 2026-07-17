@@ -88,7 +88,8 @@ final class GoogleAuthController
             ],
             'csrfToken' => $csrfToken,
         ]);
-        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('Vary', 'Cookie');
 
         return $response;
     }
@@ -104,7 +105,8 @@ final class GoogleAuthController
                 'user' => null,
                 'csrfToken' => null,
             ]);
-            $response->headers->set('Cache-Control', 'no-store');
+            $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->set('Vary', 'Cookie');
 
             return $response;
         }
@@ -133,7 +135,8 @@ final class GoogleAuthController
             ],
             'csrfToken' => $csrfToken,
         ]);
-        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('Vary', 'Cookie');
 
         return $response;
     }
@@ -148,7 +151,8 @@ final class GoogleAuthController
         $this->security->logout(false);
 
         $response = new JsonResponse(null, Response::HTTP_NO_CONTENT);
-        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('Vary', 'Cookie');
 
         return $response;
     }

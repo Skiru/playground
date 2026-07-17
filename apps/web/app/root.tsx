@@ -23,7 +23,7 @@ import { LoginRequiredActionProvider } from "~/features/auth/LoginRequiredAction
 export const links: Route.LinksFunction = () => []
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { data } = await fetchSession(request.headers)
+  const { data, setCookie } = await fetchSession(request.headers)
 
   const googleIdentityEnabled = process.env.GOOGLE_IDENTITY_ENABLED === "true" || process.env.GOOGLE_IDENTITY_ENABLED === "1"
   const googleClientId = process.env.PUBLIC_GOOGLE_CLIENT_ID || null
@@ -42,7 +42,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     devAuthEnabled,
   }
 
-  return { initialSession: data, publicRuntimeConfig }
+  const headers = new Headers()
+  if (setCookie) {
+    headers.set("Set-Cookie", setCookie)
+  }
+
+  return Response.json({ initialSession: data, publicRuntimeConfig }, { headers })
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -64,7 +69,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function App({ loaderData }: Route.ComponentProps) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function App({ loaderData }: any) {
   return (
     <SessionProvider initialSession={loaderData.initialSession}>
       <LoginRequiredActionProvider>

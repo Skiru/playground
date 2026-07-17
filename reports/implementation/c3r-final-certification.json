@@ -1,7 +1,7 @@
 {
   "TASK_ID": "PLAYGROUND_FAMILY_PLACES_C3R_PRODUCT_AND_SECURITY_CLOSURE",
-  "INPUT_SHA": "702e29cd59dbc49dddbaa9aeffa8a662d6c40ada",
-  "INPUT_TREE": "a1b83703e0914e6b8f7ad57bdf134c146b236741",
+  "INPUT_SHA": "75682a7d8657479ece04ea0117534c7b14160667",
+  "INPUT_TREE": "d252a1963ad08bdcf38cf56ab2c61c91e518f4cf",
   "status": "PASS",
   "decision": "READY_FOR_C3_MERGE_REVIEW",
   "checks": {
@@ -38,7 +38,7 @@
   },
   "phpunit_tests_count": 90,
   "vitest_tests_count": 10,
-  "playwright_passed_count": 15,
+  "playwright_passed_count": 20,
   "p0_open_count": 0,
   "p1_open_count": 0,
   "p2_backlog_count": 0,
