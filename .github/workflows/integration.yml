@@ -32,6 +32,8 @@ jobs:
         run: pnpm --filter @family-places/web exec playwright install --with-deps chromium
       - name: Build test runtime
         run: docker compose -f compose.yaml -f compose.test.yaml build api
+      - name: Install backend dependencies on host
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm --entrypoint composer api install --no-interaction --prefer-dist
       - name: Migrate from zero and load deterministic fixtures
         run: |
           docker compose -f compose.yaml -f compose.test.yaml up --wait -d database
