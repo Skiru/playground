@@ -6,13 +6,17 @@
 # Source File: reports/security/trivy-api.json
 # Rule ID: generic-api-key
 # Justification: Public GPG key fingerprint used to sign PHP distribution packages (embedded in Docker container ENV metadata).
+reports/security/trivy-api.json:generic-api-key:94
 reports/security/trivy-api.json:generic-api-key:102
+reports/security/trivy-api.json:generic-api-key:420
 reports/security/trivy-api.json:generic-api-key:428
 
 # Source File: reports/security/trivy-worker.json
 # Rule ID: generic-api-key
 # Justification: Public GPG key fingerprint used to sign PHP distribution packages (embedded in Docker container ENV metadata).
+reports/security/trivy-worker.json:generic-api-key:94
 reports/security/trivy-worker.json:generic-api-key:102
+reports/security/trivy-worker.json:generic-api-key:420
 reports/security/trivy-worker.json:generic-api-key:428
 
 # Source File: compose.prod.yaml
