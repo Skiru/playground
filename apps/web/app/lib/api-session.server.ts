@@ -84,6 +84,42 @@ export async function loginWithGoogle(
   }
 }
 
+export async function loginWithDevAuth(
+  headers: Headers
+): Promise<{ data: unknown; status: number; setCookie: string | null }> {
+  const cookie = headers.get("cookie") || ""
+  const correlationId = headers.get("x-correlation-id") || ""
+
+  const forwardHeaders = new Headers()
+  forwardHeaders.set("content-type", "application/json")
+  if (cookie) forwardHeaders.set("cookie", cookie)
+  if (correlationId) forwardHeaders.set("x-correlation-id", correlationId)
+
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/dev-auth/login`, {
+      method: "POST",
+      headers: forwardHeaders,
+    })
+
+    const setCookie = res.headers.get("set-cookie")
+    const status = res.status
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      return { data: errorData, status, setCookie }
+    }
+
+    const data = await res.json()
+    return { data, status, setCookie }
+  } catch (err: unknown) {
+    return {
+      data: { title: "BFF error", detail: err instanceof Error ? err.message : String(err) },
+      status: 502,
+      setCookie: null,
+    }
+  }
+}
+
 export async function logout(
   csrfToken: string,
   headers: Headers

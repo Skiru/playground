@@ -16,6 +16,7 @@ export interface SessionState {
 interface SessionContextType {
   session: SessionState
   login: (idToken: string) => Promise<{ success: boolean; error?: string; code?: string }>
+  loginDev: () => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -68,6 +69,29 @@ export function SessionProvider({
     }
   }, [])
 
+  const loginDev = React.useCallback(async () => {
+    try {
+      const res = await fetch("/resources/auth/dev-login", {
+        method: "POST",
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setSession({
+          authenticated: true,
+          user: data.user,
+          csrfToken: data.csrfToken,
+        })
+        return { success: true }
+      } else {
+        return { success: false, error: data.detail || "Dev login failed" }
+      }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : "Dev login failed" }
+    }
+  }, [])
+
   const handleLogout = React.useCallback(async () => {
     try {
       await fetch("/resources/auth/logout", {
@@ -84,7 +108,7 @@ export function SessionProvider({
   }, [session.csrfToken])
 
   return (
-    <SessionContext.Provider value={{ session, login, logout: handleLogout, refresh }}>
+    <SessionContext.Provider value={{ session, login, loginDev, logout: handleLogout, refresh }}>
       {children}
     </SessionContext.Provider>
   )

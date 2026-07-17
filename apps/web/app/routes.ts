@@ -7,6 +7,7 @@ export default [
   route("resources/map-places", "routes/map-places-resource.ts"),
   route("resources/session", "routes/resources/session.ts"),
   route("resources/auth/google", "routes/resources/auth-google.ts"),
+  route("resources/auth/dev-login", "routes/resources/auth-dev-login.ts"),
   route("resources/auth/logout", "routes/resources/auth-logout.ts"),
   route("resources/favorites", "routes/resources/favorites.ts"),
   route("resources/visits", "routes/resources/visits.ts"),

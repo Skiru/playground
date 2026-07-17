@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect, Link } from "react-router"
 import { fetchSession } from "../../lib/api-session.server"
+import { hardenedFetch } from "../../lib/hardened-fetch.server"
 import type { Route } from "./+types/visits"
 import { AppShell } from "../../components/layout/AppShell"
 import { PageContainer } from "../../components/layout/PageContainer"
@@ -7,6 +9,7 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { Badge } from "~/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -14,32 +17,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "~/components/ui/dialog"
-import { Compass, Trash2, Edit2, ArrowLeft, Calendar, MessageSquare, AlertCircle } from "lucide-react"
+import { Compass, Trash2, Edit2, ArrowLeft, Calendar, MessageSquare, AlertCircle, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import * as React from "react"
-
-const baseUrl = process.env.API_BASE_URL ?? "http://api"
-
-interface VisitDetail {
-  id: string
-  placeId: string
-  visitedOn: string
-  note: string | null
-  createdAt: string
-  updatedAt: string
-  placeName: string
-  placeSlug: string
-  city: string
-}
-
-interface RawVisitItem {
-  id: string
-  placeId: string
-  visitedOn: string
-  note: string | null
-  createdAt: string
-  updatedAt: string
-}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { data } = await fetchSession(request.headers)
@@ -47,64 +27,32 @@ export async function loader({ request }: Route.LoaderArgs) {
     return redirect("/?loginRequired=true")
   }
 
-  const forwardHeaders = new Headers()
-  const cookie = request.headers.get("cookie") || ""
-  if (cookie) forwardHeaders.set("cookie", cookie)
-
   const url = new URL(request.url)
   const page = url.searchParams.get("page") || "1"
 
-  const visitsRes = await fetch(`${baseUrl}/api/v1/me/visits?page=${page}`, {
-    headers: forwardHeaders,
-  })
+  const visitsRes = await hardenedFetch(request, `/api/v1/me/visits?page=${page}`)
 
   if (!visitsRes.ok) {
-    return { session: data, visitsList: { items: [], pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 1 } }, places: [] }
+    return {
+      session: data,
+      visitsList: { items: [], pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 1 } }
+    }
   }
 
   const visitsList = await visitsRes.json()
 
-  // Fetch place details for each visit
-  const places = await Promise.all(
-    visitsList.items.map(async (visit: RawVisitItem) => {
-      try {
-        const pRes = await fetch(`${baseUrl}/api/v1/places/${visit.placeId}`, {
-          headers: forwardHeaders,
-        })
-        if (pRes.ok) {
-          const place = await pRes.json()
-          return {
-            ...visit,
-            placeName: place.name,
-            placeSlug: place.slug,
-            city: place.city_name,
-          } as VisitDetail
-        }
-      } catch {
-        // Ignored
-      }
-      return {
-        ...visit,
-        placeName: "Nieznane miejsce",
-        placeSlug: "",
-        city: "",
-      } as VisitDetail
-    })
-  )
-
   return {
     session: data,
     visitsList,
-    visits: places,
   }
 }
 
 export default function AccountVisits({ loaderData }: Route.ComponentProps) {
-  const { session, visits: initialVisits } = loaderData
-  const [visits, setVisits] = React.useState<VisitDetail[]>(initialVisits || [])
+  const { session, visitsList } = loaderData
+  const [items, setItems] = React.useState<any[]>(visitsList.items || [])
   
   // Edit state
-  const [editingVisit, setEditingVisit] = React.useState<VisitDetail | null>(null)
+  const [editingVisit, setEditingVisit] = React.useState<any | null>(null)
   const [editDate, setEditDate] = React.useState("")
   const [editNote, setEditNote] = React.useState("")
   const [isEditingOpen, setIsEditingOpen] = React.useState(false)
@@ -113,15 +61,25 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
   const [deletingVisitId, setDeletingVisitId] = React.useState<string | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
 
-  const handleEditClick = (visit: VisitDetail) => {
-    setEditingVisit(visit)
-    setEditDate(visit.visitedOn)
-    setEditNote(visit.note || "")
+  const handleEditClick = (item: any) => {
+    setEditingVisit(item)
+    setEditDate(item.visitedOn)
+    setEditNote(item.note || "")
     setIsEditingOpen(true)
   }
 
   const handleSaveEdit = async () => {
     if (!editingVisit) return
+
+    if (!editDate) {
+      toast.error("Wybierz datę wizyty.")
+      return
+    }
+
+    if (editNote && editNote.length > 1000) {
+      toast.error("Notatka nie może przekraczać 1000 znaków.")
+      return
+    }
 
     try {
       const res = await fetch(`/resources/visits/${editingVisit.id}`, {
@@ -136,11 +94,11 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
       const data = await res.json()
 
       if (res.ok) {
-        setVisits((prev) =>
-          prev.map((v) =>
-            v.id === editingVisit.id
-              ? { ...v, visitedOn: data.visitedOn, note: data.note }
-              : v
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === editingVisit.id
+              ? { ...item, visitedOn: data.visitedOn, note: data.note }
+              : item
           )
         )
         setIsEditingOpen(false)
@@ -170,7 +128,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
       })
 
       if (res.ok) {
-        setVisits((prev) => prev.filter((v) => v.id !== deletingVisitId))
+        setItems((prev) => prev.filter((item) => item.id !== deletingVisitId))
         setIsDeleteOpen(false)
         toast.info("Wizyta została usunięta z historii.")
       } else {
@@ -180,6 +138,8 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
       toast.error("Wystąpił błąd sieci.")
     }
   }
+
+  const pagination = visitsList.pagination || { page: 1, totalPages: 1 }
 
   return (
     <AppShell>
@@ -210,60 +170,106 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
             </Button>
           </div>
 
-          {visits.length > 0 ? (
+          {items.length > 0 ? (
             <div className="flex flex-col gap-4">
-              {visits.map((visit) => (
-                <Card key={visit.id} className="bg-card border shadow-2xs hover:shadow-sm transition-all">
-                  <CardContent className="p-5 flex flex-col gap-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-mono text-3xs text-muted-foreground uppercase tracking-wider">
-                          {visit.city}
-                        </p>
-                        <h2 className="font-serif text-lg font-bold text-foreground hover:text-primary transition-colors">
-                          {visit.placeSlug ? (
-                            <Link to={`/miejsca/${visit.placeSlug}`}>{visit.placeName}</Link>
-                          ) : (
-                            visit.placeName
+              {items.map((item) => {
+                const place = item.place || {}
+                const isPublished = place.published !== false
+
+                return (
+                  <Card key={item.id} className={`bg-card border shadow-2xs hover:shadow-sm transition-all ${!isPublished ? "opacity-95 border-amber-200/60 bg-amber-50/10" : ""}`}>
+                    <CardContent className="p-5 flex flex-col gap-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-mono text-3xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                            {place.city || "Brak danych"}
+                            {!isPublished && (
+                              <span className="text-amber-600 font-bold uppercase flex items-center gap-0.5">
+                                <ShieldAlert className="size-3" />
+                                Niedostępne
+                              </span>
+                            )}
+                          </p>
+                          <h2 className="font-serif text-lg font-bold text-foreground hover:text-primary transition-colors">
+                            {isPublished && place.slug ? (
+                              <Link to={`/miejsca/${place.slug}`}>{place.name || "Bez nazwy"}</Link>
+                            ) : (
+                              <span className="text-muted-foreground line-through">
+                                {place.name || "Bez nazwy"}
+                              </span>
+                            )}
+                          </h2>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 size-8 rounded-full"
+                            onClick={() => handleEditClick(item)}
+                            aria-label="Edytuj wizytę"
+                          >
+                            <Edit2 className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8 rounded-full"
+                            onClick={() => handleDeleteClick(item.id)}
+                            aria-label="Usuń wizytę"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                          <Calendar className="size-3.5 text-primary" />
+                          <span>Data wizyty: {item.visitedOn}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {place.category && (
+                            <Badge variant="secondary" className="text-3xs py-0 px-2 rounded-full">
+                              {place.category}
+                            </Badge>
                           )}
-                        </h2>
+                          {place.ageSummary && (
+                            <Badge variant="outline" className="text-3xs py-0 px-2 rounded-full font-mono">
+                              {place.ageSummary}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 size-8 rounded-full"
-                          onClick={() => handleEditClick(visit)}
-                          aria-label="Edytuj wizytę"
-                        >
-                          <Edit2 className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8 rounded-full"
-                          onClick={() => handleDeleteClick(visit.id)}
-                          aria-label="Usuń wizytę"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-                      <Calendar className="size-3.5 text-primary" />
-                      <span>Data wizyty: {visit.visitedOn}</span>
-                    </div>
+                      {item.note && (
+                        <div className="bg-muted/40 rounded-lg p-3 border text-xs text-muted-foreground flex gap-2">
+                          <MessageSquare className="size-4 text-primary flex-shrink-0 mt-0.5" />
+                          <p className="leading-relaxed italic whitespace-pre-line">{item.note}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
 
-                    {visit.note && (
-                      <div className="bg-muted/40 rounded-lg p-3 border text-xs text-muted-foreground flex gap-2">
-                        <MessageSquare className="size-4 text-primary flex-shrink-0 mt-0.5" />
-                        <p className="leading-relaxed italic whitespace-pre-line">{visit.note}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+              {/* Simple Pagination Footer */}
+              {pagination.totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                  {pagination.page > 1 && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/konto/odwiedzone?page=${pagination.page - 1}`}>Poprzednia</Link>
+                    </Button>
+                  )}
+                  <span className="text-xs text-muted-foreground font-mono">
+                    Strona {pagination.page} z {pagination.totalPages}
+                  </span>
+                  {pagination.page < pagination.totalPages && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/konto/odwiedzone?page=${pagination.page + 1}`}>Następna</Link>
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <Card className="border-dashed p-12 text-center bg-muted/20">
@@ -301,11 +307,15 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
                 type="date"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="note" className="text-xs font-bold text-muted-foreground uppercase font-mono">
-                Prywatna notatka
+              <Label htmlFor="note" className="text-xs font-bold text-muted-foreground uppercase font-mono flex items-center justify-between">
+                <span>Prywatna notatka</span>
+                <span className="text-3xs text-muted-foreground normal-case font-normal">
+                  Maksymalnie 1000 znaków
+                </span>
               </Label>
               <textarea
                 id="note"

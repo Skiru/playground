@@ -1,4 +1,4 @@
-import { loginWithGoogle } from "../../lib/api-session.server"
+import { hardenedFetch } from "../../lib/hardened-fetch.server"
 import type { Route } from "./+types/auth-google"
 
 export async function action({ request }: Route.ActionArgs) {
@@ -13,13 +13,8 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ detail: "Missing credential" }, { status: 400 })
   }
 
-  const { data, status, setCookie } = await loginWithGoogle(credential, request.headers)
-
-  const headers = new Headers()
-  headers.set("Cache-Control", "no-store")
-  if (setCookie) {
-    headers.set("Set-Cookie", setCookie)
-  }
-
-  return Response.json(data, { status, headers })
+  return hardenedFetch(request, "/api/v1/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
+  })
 }

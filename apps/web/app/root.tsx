@@ -18,12 +18,31 @@ import { AlertCircle } from "lucide-react"
 import { content } from "~/content"
 import { fetchSession } from "./lib/api-session.server"
 import { SessionProvider } from "./lib/session-context"
+import { LoginRequiredActionProvider } from "~/features/auth/LoginRequiredActionContext"
 
 export const links: Route.LinksFunction = () => []
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { data } = await fetchSession(request.headers)
-  return { initialSession: data }
+
+  const googleIdentityEnabled = process.env.GOOGLE_IDENTITY_ENABLED === "true" || process.env.GOOGLE_IDENTITY_ENABLED === "1"
+  const googleClientId = process.env.PUBLIC_GOOGLE_CLIENT_ID || null
+  const appEnv = process.env.APP_ENV || "dev"
+  const isProd = appEnv === "prod" || appEnv === "production"
+
+  const devAuthEnabled = !isProd && (process.env.DEV_AUTH_ENABLED === "true" || process.env.DEV_AUTH_ENABLED === "1")
+
+  if (googleIdentityEnabled && !googleClientId) {
+    throw new Error("Configuration error: GOOGLE_IDENTITY_ENABLED is true but PUBLIC_GOOGLE_CLIENT_ID is not configured.")
+  }
+
+  const publicRuntimeConfig = {
+    googleIdentityEnabled,
+    googleClientId,
+    devAuthEnabled,
+  }
+
+  return { initialSession: data, publicRuntimeConfig }
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -48,7 +67,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <SessionProvider initialSession={loaderData.initialSession}>
-      <Outlet />
+      <LoginRequiredActionProvider>
+        <Outlet />
+      </LoginRequiredActionProvider>
     </SessionProvider>
   )
 }
@@ -81,38 +102,42 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <Links />
       </head>
       <body className="antialiased">
-        <AppShell>
-          <div className="flex-1 flex items-center justify-center py-20 px-4">
-            <Card className="max-w-md w-full border-muted/60 shadow-lg bg-card">
-              <CardHeader className="text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
-                  <AlertCircle className="h-6 w-6" />
-                </div>
-                <CardTitle className="font-serif text-3xl font-medium tracking-tight text-foreground">
-                  {status === "404" ? "404" : message}
-                </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground mt-2">
-                  {details}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 pt-0 text-center">
-                {stack && (
-                  <pre className="mt-4 max-h-40 overflow-y-auto text-left rounded-md bg-muted p-4 font-mono text-3xs text-muted-foreground leading-normal border">
-                    <code>{stack}</code>
-                  </pre>
-                )}
-              </CardContent>
-              <CardFooter className="flex flex-col gap-2 p-6 pt-0">
-                <Button className="w-full font-bold bg-primary hover:bg-primary/95 text-white" onClick={() => window.location.reload()}>
-                  Spróbuj ponownie
-                </Button>
-                <Button variant="outline" className="w-full font-bold" asChild>
-                  <a href="/">Wróć do strony głównej</a>
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </AppShell>
+        <SessionProvider initialSession={{ authenticated: false, user: null, csrfToken: null }}>
+          <LoginRequiredActionProvider>
+            <AppShell>
+              <div className="flex-1 flex items-center justify-center py-20 px-4">
+                <Card className="max-w-md w-full border-muted/60 shadow-lg bg-card">
+                  <CardHeader className="text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <CardTitle className="font-serif text-3xl font-medium tracking-tight text-foreground">
+                      {status === "404" ? "404" : message}
+                    </CardTitle>
+                    <CardDescription className="text-sm text-muted-foreground mt-2">
+                      {details}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0 text-center">
+                    {stack && (
+                      <pre className="mt-4 max-h-40 overflow-y-auto text-left rounded-md bg-muted p-4 font-mono text-3xs text-muted-foreground leading-normal border">
+                        <code>{stack}</code>
+                      </pre>
+                    )}
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2 p-6 pt-0">
+                    <Button className="w-full font-bold bg-primary hover:bg-primary/95 text-white" onClick={() => window.location.reload()}>
+                      Spróbuj ponownie
+                    </Button>
+                    <Button variant="outline" className="w-full font-bold" asChild>
+                      <a href="/">Wróć do strony głównej</a>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
+            </AppShell>
+          </LoginRequiredActionProvider>
+        </SessionProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
