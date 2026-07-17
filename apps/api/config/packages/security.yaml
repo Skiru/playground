@@ -13,6 +13,8 @@ security:
         main:
             lazy: true
             provider: admin_users
+            custom_authenticators:
+                - App\Identity\UI\Security\GoogleCredentialAuthenticator
             form_login:
                 login_path: admin_login
                 check_path: admin_login

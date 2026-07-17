@@ -14,14 +14,15 @@ final class GoogleApiClientIdentityVerifier implements GoogleIdentityVerifier
 
     public function __construct(string $clientId)
     {
-        if ('' === trim($clientId)) {
-            throw new \InvalidArgumentException('Google client ID cannot be empty.');
-        }
         $this->clientId = $clientId;
     }
 
     public function verify(string $idToken): VerifiedGoogleIdentity
     {
+        if ('' === trim($this->clientId)) {
+            throw new \InvalidArgumentException('Google client ID cannot be empty.');
+        }
+
         if ('' === trim($idToken)) {
             throw new \InvalidArgumentException('Google ID token cannot be empty.');
         }

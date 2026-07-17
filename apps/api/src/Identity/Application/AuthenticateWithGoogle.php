@@ -11,6 +11,9 @@ use App\Identity\Domain\ExternalIdentityProvider;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserStatus;
 use App\Identity\Domain\ValueObject\EmailAddress;
+use App\Shared\Application\Clock;
+use App\Shared\Application\TransactionManager;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 final class AuthenticateWithGoogle
 {
@@ -18,50 +21,74 @@ final class AuthenticateWithGoogle
         private readonly GoogleIdentityVerifier $verifier,
         private readonly ExternalIdentityRepository $externalIdentityRepository,
         private readonly UserRepository $userRepository,
+        private readonly TransactionManager $transactionManager,
+        private readonly Clock $clock,
     ) {
     }
 
     public function authenticate(string $idToken): User
     {
-        // 1. Verify Google identity
+        // 1. Verify Google identity outside transaction to minimize lock times
         $verifiedIdentity = $this->verifier->verify($idToken);
-        $now = new \DateTimeImmutable();
 
-        // 2. Find ExternalIdentity by GOOGLE + subject
+        try {
+            return $this->transactionManager->transactional(function () use ($verifiedIdentity) {
+                return $this->doAuthenticate($verifiedIdentity);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Concurrent first login race happened. Let's read the identity in a fresh connection/query.
+            $identity = $this->externalIdentityRepository->findByProviderAndSubject(
+                ExternalIdentityProvider::GOOGLE,
+                $verifiedIdentity->subject
+            );
+
+            if (null !== $identity) {
+                $user = $identity->getUser();
+                if (UserStatus::ACTIVE !== $user->status()) {
+                    throw new \RuntimeException('User account is not active.');
+                }
+
+                return $user;
+            }
+
+            throw $e;
+        }
+    }
+
+    private function doAuthenticate(\App\Identity\Domain\Google\VerifiedGoogleIdentity $verifiedIdentity): User
+    {
+        $now = $this->clock->now();
+
+        // Find ExternalIdentity by GOOGLE + subject
         $identity = $this->externalIdentityRepository->findByProviderAndSubject(
             ExternalIdentityProvider::GOOGLE,
             $verifiedIdentity->subject
         );
 
         if (null !== $identity) {
-            // 3. User already exists with this google identity
-            // Retrieve User
             $user = $identity->getUser();
             if (UserStatus::ACTIVE !== $user->status()) {
                 throw new \RuntimeException('User account is not active.');
             }
 
-            // Update usage stats
             $identity->recordUse($now);
             $user->recordLogin($now);
 
-            // Persist
             $this->externalIdentityRepository->save($identity);
             $this->userRepository->save($user);
 
             return $user;
         }
 
-        // 4. Identity does not exist, check if email is used
+        // Email check
         $emailAddress = new EmailAddress($verifiedIdentity->email);
         $existingUser = $this->userRepository->findByEmail($emailAddress);
 
         if (null !== $existingUser) {
-            // 5. Email is already used, block automatic linking to prevent email-takeover
             throw new AccountLinkRequiredException('An account with this email address already exists. Manual linking is required.');
         }
 
-        // 6. No existing identity and no email collision: Create a new User
+        // Create a new User
         $newUser = new User(
             email: $emailAddress,
             displayName: $verifiedIdentity->displayName,
@@ -78,7 +105,6 @@ final class AuthenticateWithGoogle
             now: $now
         );
 
-        // Persist
         $this->userRepository->save($newUser);
         $this->externalIdentityRepository->save($newIdentity);
 

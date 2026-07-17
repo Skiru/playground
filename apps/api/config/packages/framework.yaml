@@ -3,7 +3,13 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        name: FAMILYPLACESSESSID
+        cookie_httponly: true
+        cookie_samesite: lax
+        cookie_secure: auto
+        cookie_path: /
+        gc_maxlifetime: 86400
 
     rate_limiter:
         place_search:
@@ -14,6 +20,10 @@ framework:
             policy: token_bucket
             limit: 30
             rate: { interval: '1 minute', amount: 30 }
+        google_login:
+            policy: token_bucket
+            limit: 5
+            rate: { interval: '1 minute', amount: 5 }
 
     #esi: true
     #fragments: true
