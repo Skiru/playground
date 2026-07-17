@@ -18,7 +18,7 @@ final class Favorite
         User $user,
         Uuid $placeId,
         \DateTimeImmutable $now,
-        ?Uuid $id = null
+        ?Uuid $id = null,
     ) {
         $this->id = $id ?? Uuid::v7();
         $this->user = $user;

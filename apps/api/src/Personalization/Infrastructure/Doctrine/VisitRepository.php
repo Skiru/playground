@@ -46,6 +46,11 @@ final class VisitRepository extends ServiceEntityRepository implements VisitRepo
         return $this->count(['user' => $userId]);
     }
 
+    /**
+     * @param list<Uuid> $placeIds
+     *
+     * @return array<string, string>
+     */
     public function findLastVisitedOnByPlaces(Uuid $userId, array $placeIds): array
     {
         if (empty($placeIds)) {
@@ -53,11 +58,11 @@ final class VisitRepository extends ServiceEntityRepository implements VisitRepo
         }
 
         $conn = $this->getEntityManager()->getConnection();
-        
-        $placeStringIds = array_map(static fn(Uuid $id) => $id->toString(), $placeIds);
-        
+
+        $placeStringIds = array_map(static fn (Uuid $id) => $id->toString(), $placeIds);
+
         $sql = 'SELECT place_id, MAX(visited_on) as last_visited FROM visits WHERE user_id = :user_id AND place_id IN (:place_ids) GROUP BY place_id';
-        
+
         // Let's use Connection::PARAM_STR_ARRAY or bind with string[] type
         $rows = $conn->fetchAllAssociative($sql, [
             'user_id' => $userId->toString(),

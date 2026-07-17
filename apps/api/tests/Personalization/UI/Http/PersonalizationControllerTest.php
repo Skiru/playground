@@ -9,8 +9,6 @@ use App\Identity\Domain\ValueObject\EmailAddress;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
-use Symfony\Component\Uid\Uuid;
 
 final class PersonalizationControllerTest extends WebTestCase
 {
@@ -21,6 +19,7 @@ final class PersonalizationControllerTest extends WebTestCase
         $user = new User(new EmailAddress($email), $name, new \DateTimeImmutable());
         $this->em->persist($user);
         $this->em->flush();
+
         return $user;
     }
 
@@ -30,7 +29,7 @@ final class PersonalizationControllerTest extends WebTestCase
         $container = self::getContainer();
         $this->em = $container->get('doctrine.orm.entity_manager');
 
-        $userEmail = sprintf('test-personalization-%d@example.com', random_int(10000, 99999));
+        $userEmail = \sprintf('test-personalization-%d@example.com', random_int(10000, 99999));
         $user = $this->createUser($userEmail, 'Test Pers');
         $client->loginUser($user);
 
@@ -47,7 +46,7 @@ final class PersonalizationControllerTest extends WebTestCase
         $csrfHeaders = ['HTTP_X-CSRF-Token' => $csrfToken];
 
         // 1. Add place to favorites
-        $client->request('PUT', sprintf('/api/v1/places/%s/favorite', $placeId), [], [], $csrfHeaders);
+        $client->request('PUT', \sprintf('/api/v1/places/%s/favorite', $placeId), [], [], $csrfHeaders);
         self::assertResponseIsSuccessful();
         $data = json_decode($client->getResponse()->getContent(), true);
         self::assertSame($placeId, $data['placeId']);
@@ -60,13 +59,13 @@ final class PersonalizationControllerTest extends WebTestCase
         self::assertSame($placeId, $list['items'][0]['placeId']);
 
         // 3. Batch state check
-        $client->request('GET', '/api/v1/me/place-state?placeIds[]=' . $placeId);
+        $client->request('GET', '/api/v1/me/place-state?placeIds[]='.$placeId);
         self::assertResponseIsSuccessful();
         $state = json_decode($client->getResponse()->getContent(), true);
         self::assertTrue($state[$placeId]['favorite']);
 
         // 4. Create a visit record
-        $client->request('POST', sprintf('/api/v1/places/%s/visits', $placeId), [], [], $csrfHeaders, json_encode([
+        $client->request('POST', \sprintf('/api/v1/places/%s/visits', $placeId), [], [], $csrfHeaders, json_encode([
             'visitedOn' => '2026-07-17',
             'note' => 'Wspaniałe kawiarniane lody!',
         ]));
@@ -75,7 +74,7 @@ final class PersonalizationControllerTest extends WebTestCase
         $visitId = $visitData['id'];
 
         // 5. Update visit record
-        $client->request('PATCH', sprintf('/api/v1/me/visits/%s', $visitId), [], [], $csrfHeaders, json_encode([
+        $client->request('PATCH', \sprintf('/api/v1/me/visits/%s', $visitId), [], [], $csrfHeaders, json_encode([
             'note' => 'Edytowana notatka',
         ]));
         self::assertResponseIsSuccessful();
@@ -83,11 +82,11 @@ final class PersonalizationControllerTest extends WebTestCase
         self::assertSame('Edytowana notatka', $updatedData['note']);
 
         // 6. Isolation/BOLA test: another user cannot access/edit/delete this visit
-        $otherEmail = sprintf('other-%d@example.com', random_int(10000, 99999));
+        $otherEmail = \sprintf('other-%d@example.com', random_int(10000, 99999));
         $otherUser = $this->createUser($otherEmail, 'Other User');
         $client->loginUser($otherUser);
 
-        $client->request('PATCH', sprintf('/api/v1/me/visits/%s', $visitId), [], [], $csrfHeaders, json_encode([
+        $client->request('PATCH', \sprintf('/api/v1/me/visits/%s', $visitId), [], [], $csrfHeaders, json_encode([
             'note' => 'Próba przejęcia!',
         ]));
         self::assertSame(Response::HTTP_NOT_FOUND, $client->getResponse()->getStatusCode());
@@ -96,11 +95,11 @@ final class PersonalizationControllerTest extends WebTestCase
         $client->loginUser($user);
 
         // 7. Delete visit record
-        $client->request('DELETE', sprintf('/api/v1/me/visits/%s', $visitId), [], [], $csrfHeaders);
+        $client->request('DELETE', \sprintf('/api/v1/me/visits/%s', $visitId), [], [], $csrfHeaders);
         self::assertSame(Response::HTTP_NO_CONTENT, $client->getResponse()->getStatusCode());
 
         // 8. Delete favorite
-        $client->request('DELETE', sprintf('/api/v1/places/%s/favorite', $placeId), [], [], $csrfHeaders);
+        $client->request('DELETE', \sprintf('/api/v1/places/%s/favorite', $placeId), [], [], $csrfHeaders);
         self::assertSame(Response::HTTP_NO_CONTENT, $client->getResponse()->getStatusCode());
     }
 }

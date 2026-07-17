@@ -23,7 +23,7 @@ final class Visit
         \DateTimeImmutable $visitedOn,
         ?string $note,
         \DateTimeImmutable $now,
-        ?Uuid $id = null
+        ?Uuid $id = null,
     ) {
         $this->validate($visitedOn, $note, $now);
 

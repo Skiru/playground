@@ -1,0 +1,34 @@
+{
+  "test_suites": [
+    {
+      "name": "PHPUnit Backend Suite",
+      "total_tests": 90,
+      "passed": 90,
+      "failed": 0,
+      "assertions": 733,
+      "status": "PASS"
+    },
+    {
+      "name": "Vitest Frontend Suite",
+      "total_tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "Deptrac Architecture",
+      "status": "PASS",
+      "violations": 0
+    },
+    {
+      "name": "PHPStan Static Analysis",
+      "status": "PASS",
+      "errors": 0
+    },
+    {
+      "name": "ESLint and Typecheck",
+      "status": "PASS",
+      "errors": 0
+    }
+  ]
+}

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Personalization\UI\Http;
 
-use App\Identity\Infrastructure\Security\CsrfValidator;
+use App\Identity\UI\Security\CsrfValidator;
 use App\Personalization\Application\FavoriteRepository;
 use App\Personalization\Application\VisitRepository;
 use App\Personalization\Domain\Favorite;
@@ -17,7 +17,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class PersonalizationController
@@ -28,16 +27,16 @@ final class PersonalizationController
         private readonly PublishedPlaceLookup $placeLookup,
         private readonly Security $security,
         private readonly CsrfValidator $csrfValidator,
-        private readonly CsrfTokenManagerInterface $csrfTokenManager,
     ) {
     }
 
-    private function getAuthenticatedUser()
+    private function getAuthenticatedUser(): \App\Identity\Domain\User
     {
         $user = $this->security->getUser();
-        if (null === $user) {
+        if (!$user instanceof \App\Identity\Domain\User) {
             throw new AccessDeniedHttpException('Authentication required.');
         }
+
         return $user;
     }
 
@@ -304,7 +303,7 @@ final class PersonalizationController
             return new JsonResponse([]);
         }
 
-        if (count($placeIdsRaw) > 50) {
+        if (\count($placeIdsRaw) > 50) {
             throw new BadRequestHttpException('Exceeded maximum of 50 place IDs.');
         }
 

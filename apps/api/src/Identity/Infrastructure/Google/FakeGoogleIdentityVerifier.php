@@ -17,7 +17,7 @@ final class FakeGoogleIdentityVerifier implements GoogleIdentityVerifier
 
         // Support a format like fake_google_token_{sub}_{email}_{displayName}
         $parts = explode('_', $idToken);
-        
+
         $subject = $parts[3] ?? 'fake-google-subject-123';
         $email = $parts[4] ?? 'user@example.com';
         $displayName = $parts[5] ?? 'Test Google User';

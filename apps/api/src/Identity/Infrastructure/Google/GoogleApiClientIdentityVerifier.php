@@ -28,14 +28,14 @@ final class GoogleApiClientIdentityVerifier implements GoogleIdentityVerifier
 
         // We instantiate Google Client with our Client ID
         $client = new Client(['client_id' => $this->clientId]);
-        
+
         try {
             $payload = $client->verifyIdToken($idToken);
         } catch (\Throwable $e) {
-            throw new \InvalidArgumentException('Google token verification failed: ' . $e->getMessage(), 0, $e);
+            throw new \InvalidArgumentException('Google token verification failed: '.$e->getMessage(), 0, $e);
         }
 
-        if (false === $payload || null === $payload) {
+        if (false === $payload) {
             throw new \InvalidArgumentException('Invalid Google ID token.');
         }
 

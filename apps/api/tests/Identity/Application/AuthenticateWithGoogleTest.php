@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Identity\Application;
 
 use App\Identity\Application\AuthenticateWithGoogle;
+use App\Identity\Application\Exception\AccountLinkRequiredException;
 use App\Identity\Application\ExternalIdentityRepository;
 use App\Identity\Application\Google\GoogleIdentityVerifier;
 use App\Identity\Application\UserRepository;
-use App\Identity\Domain\Exception\AccountLinkRequiredException;
 use App\Identity\Domain\ExternalIdentity;
 use App\Identity\Domain\ExternalIdentityProvider;
 use App\Identity\Domain\Google\VerifiedGoogleIdentity;

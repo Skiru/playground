@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Application;
 
+use App\Identity\Application\Exception\AccountLinkRequiredException;
 use App\Identity\Application\Google\GoogleIdentityVerifier;
-use App\Identity\Domain\Exception\AccountLinkRequiredException;
 use App\Identity\Domain\ExternalIdentity;
 use App\Identity\Domain\ExternalIdentityProvider;
 use App\Identity\Domain\User;
@@ -37,7 +37,7 @@ final class AuthenticateWithGoogle
             // 3. User already exists with this google identity
             // Retrieve User
             $user = $identity->getUser();
-            if ($user->status() !== UserStatus::ACTIVE) {
+            if (UserStatus::ACTIVE !== $user->status()) {
                 throw new \RuntimeException('User account is not active.');
             }
 

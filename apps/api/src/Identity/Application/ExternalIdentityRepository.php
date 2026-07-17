@@ -10,5 +10,6 @@ use App\Identity\Domain\ExternalIdentityProvider;
 interface ExternalIdentityRepository
 {
     public function findByProviderAndSubject(ExternalIdentityProvider $provider, string $subject): ?ExternalIdentity;
+
     public function save(ExternalIdentity $identity): void;
 }

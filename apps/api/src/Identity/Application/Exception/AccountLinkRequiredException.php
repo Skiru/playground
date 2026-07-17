@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Identity\Domain\Exception;
+namespace App\Identity\Application\Exception;
 
 final class AccountLinkRequiredException extends \RuntimeException
 {

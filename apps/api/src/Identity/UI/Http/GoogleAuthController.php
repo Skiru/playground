@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Identity\UI\Http;
 
 use App\Identity\Application\AuthenticateWithGoogle;
-use App\Identity\Domain\Exception\AccountLinkRequiredException;
-use App\Identity\Infrastructure\Security\CsrfValidator;
+use App\Identity\Application\Exception\AccountLinkRequiredException;
+use App\Identity\UI\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,7 +34,7 @@ final class GoogleAuthController
 
         // Limit request body size
         $content = $request->getContent();
-        if (strlen($content) > 8192) {
+        if (\strlen($content) > 8192) {
             return new JsonResponse([
                 'title' => 'Payload Too Large',
                 'status' => Response::HTTP_REQUEST_ENTITY_TOO_LARGE,
@@ -49,7 +49,7 @@ final class GoogleAuthController
             throw new BadRequestHttpException('Missing Google credential.');
         }
 
-        if (strlen($credential) > 4096) {
+        if (\strlen($credential) > 4096) {
             throw new BadRequestHttpException('Google credential exceeds size limits.');
         }
 
@@ -105,6 +105,7 @@ final class GoogleAuthController
                 'csrfToken' => null,
             ]);
             $response->headers->set('Cache-Control', 'no-store');
+
             return $response;
         }
 
@@ -164,6 +165,7 @@ final class GoogleAuthController
             }
         }
         $initials = mb_substr($initials, 0, 2);
+
         return '' === $initials ? 'U' : $initials;
     }
 }
