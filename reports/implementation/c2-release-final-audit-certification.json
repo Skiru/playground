@@ -1,0 +1,71 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_FINAL_AUDIT",
+  "status": "PASS",
+  "decision": "READY_TO_MERGE_C2",
+  "checkedPrHeadSha": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
+  "applicationBaselineSha": "5436570f8cb847256a31dd72ac596a4744cb150a",
+  "certificationParentSha": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
+  "branch": "feat/family-places-platform-v1",
+  "pr": 1,
+  "gates": {
+    "effectiveGitleaksConfig": "PASS",
+    "syntheticSecretDetection": "PASS",
+    "realHistoryScan": "PASS",
+    "buildOnceChain": "PASS",
+    "runtimeArchiveIdentity": "PASS",
+    "trivySameArtifact": "PASS",
+    "sbomSameArtifact": "PASS",
+    "mergeHandoffExact": "PASS",
+    "findingsTruthfullyClosed": "PASS",
+    "repositoryGovernance": "OPERATOR_ACTION_REQUIRED"
+  },
+  "artifacts": {
+    "api": {
+      "immutableTag": "family-places-api:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50",
+      "localImageId": "sha256:aee1e1056ca764f825a7e63e69b0c860dfff554cca9c1558ca5fbc2802f877fd",
+      "archive": "artifacts/api-image.tar",
+      "archiveSha256": "934b97bbee479fd8961c0711e73645aab51d9dfa5700b1fdb8738f147f85772f",
+      "trivyReport": "reports/security/trivy-api.json",
+      "sbomReport": "reports/security/sbom-api.json"
+    },
+    "web": {
+      "immutableTag": "family-places-web:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50",
+      "localImageId": "sha256:91dd2bfcd6ebffecea513877a51412fcf63bc54e84b9df68cdfea66fc5c33096",
+      "archive": "artifacts/web-image.tar",
+      "archiveSha256": "29af463eb1907e6ad7558ae9d8cefb1f216fe5a348fc86b3458100dfd40bd8d2",
+      "trivyReport": "reports/security/trivy-web.json",
+      "sbomReport": "reports/security/sbom-web.json"
+    },
+    "worker": {
+      "aliasOf": "api",
+      "localImageId": "sha256:aee1e1056ca764f825a7e63e69b0c860dfff554cca9c1558ca5fbc2802f877fd"
+    }
+  },
+  "security": {
+    "critical": 0,
+    "high": 0,
+    "secrets": 0
+  },
+  "remoteRuns": [
+    {
+      "name": "dependency-review",
+      "workflow": "Security",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "audit",
+      "workflow": "Security",
+      "status": "completed",
+      "conclusion": "success",
+      "note": "Gitleaks scan default-rules enforce successfully verified with zero leaks."
+    }
+  ],
+  "p0Open": 0,
+  "p1Open": 0,
+  "p2Open": 0,
+  "cleanWorktree": true,
+  "remoteVerified": true,
+  "mergePerformed": false,
+  "c3Started": false
+}
