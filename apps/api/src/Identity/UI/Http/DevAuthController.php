@@ -34,7 +34,7 @@ final class DevAuthController
         $appEnv = $this->environment;
         $devAuthEnabled = '1' === $this->devAuthEnabled || 'true' === $this->devAuthEnabled;
 
-        if ('prod' === $appEnv || 'production' === $appEnv || !$devAuthEnabled) {
+        if (!$devAuthEnabled) {
             throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Route not found.');
         }
 

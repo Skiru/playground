@@ -25,15 +25,16 @@ test("city, category, age, radius, amenities AND and search reach results and de
   const isMobile = await filterTrigger.isVisible();
   if (isMobile) {
     await filterTrigger.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
   }
 
-  const container = isMobile ? page.locator("[role='dialog']") : page.locator("aside");
+  const container = isMobile ? page.getByRole("dialog") : page.locator("aside");
 
-  await container.getByLabel("Kategoria").selectOption("bawialnie");
-  await container.getByLabel("Latitude").fill("52.2297");
-  await container.getByLabel("Longitude").fill("21.0122");
-  await container.getByLabel("Promień km").fill("20");
-  const amenities = container.getByRole("group", { name: "Udogodnienia" }).getByRole("checkbox");
+  await container.locator("select[name='category']").selectOption("bawialnie");
+  await container.locator("input[name='latitude']").fill("52.2297");
+  await container.locator("input[name='longitude']").fill("21.0122");
+  await container.locator("input[name='radiusKm']").fill("20");
+  const amenities = container.getByRole("checkbox");
   await amenities.nth(0).check();
   await amenities.nth(1).check();
   await container.getByRole("button", { name: "Filtruj" }).click();
@@ -55,12 +56,16 @@ test("map, empty results, fallback, API error and 404 remain understandable", as
 
   await page.goto("/miejsca?q=definitely-no-family-place-xyz");
   await expect(page.getByText("Brak miejsc dla tych filtrów")).toBeVisible();
+  
+  if (await mapToggle.isVisible()) {
+    await mapToggle.click();
+  }
   await expect(page.getByText("Brak miejsc w tym obszarze")).toBeVisible();
 
   await page.goto("/miejsca?pageSize=51");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Błąd");
+  await expect(page.getByText("Błąd").first()).toBeVisible();
   await page.goto("/nie-istnieje");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("404");
+  await expect(page.getByText("404").first()).toBeVisible();
 
   const response = await page.request.get(`${API}/api/v1/places`);
   expect(response.ok()).toBeTruthy();

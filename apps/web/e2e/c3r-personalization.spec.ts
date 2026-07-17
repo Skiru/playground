@@ -13,21 +13,12 @@ test.describe("C3R Personalization and Security E2E", () => {
     // 3. Click Bypass Login to authenticate deterministically
     await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
 
-    // Open mobile menu if on mobile to make duButton visible
-    const menuTrigger = page.getByRole("button", { name: "Toggle Menu" });
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-    }
-
     // 4. Verify successful login and session menu button in the header (initials DU)
-    const duButton = page.locator("body").getByText("DU").first();
+    const duButton = page.getByRole("button", { name: "DU", exact: true });
     await expect(duButton).toBeVisible();
 
     // 5. Reload page to verify session persistence
     await page.reload();
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-    }
     await expect(duButton).toBeVisible();
 
     // 6. Navigate to place list and details
@@ -94,11 +85,7 @@ test.describe("C3R Personalization and Security E2E", () => {
 
     // 7. Logout and verify unauthenticated state
     await page.goto("/");
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-    } else {
-      await duButton.click();
-    }
+    await duButton.click();
     await page.getByRole("menuitem", { name: "Wyloguj się" }).click();
     
     // Verify logout success toast and original button
