@@ -2,6 +2,7 @@ import type { GetMapPlacesResponse } from "@family-places/api-client";
 import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { content } from "../content";
+import { themeConfig } from "../theme/config";
 
 type Feature = GetMapPlacesResponse["features"][number];
 type RequestState = "idle" | "loading" | "error";
@@ -58,7 +59,7 @@ export function MapExplorer({
         const renderMarkers = (next: Feature[]) => {
           markers.splice(0).forEach((marker) => marker.remove());
           next.forEach((feature) => {
-            markers.push(new maplibregl.Marker({ color: "#d45132" }).setLngLat(feature.geometry.coordinates ?? [0, 0]).addTo(map));
+            markers.push(new maplibregl.Marker({ color: themeConfig.map.markerColor }).setLngLat(feature.geometry.coordinates ?? [0, 0]).addTo(map));
           });
         };
         renderMarkers(initialFeatures);

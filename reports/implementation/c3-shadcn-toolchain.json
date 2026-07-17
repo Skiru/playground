@@ -1,0 +1,9 @@
+{
+  "shadcn_cli_version": "4.13.0",
+  "style": "new-york",
+  "baseColor": "stone",
+  "cssVariables": true,
+  "rsc": false,
+  "tsx": true,
+  "iconLibrary": "lucide"
+}

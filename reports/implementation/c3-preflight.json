@@ -1,0 +1,15 @@
+{
+  "base_sha": "8fc18b716887287fbe6862c04a1d26c95b59725b",
+  "base_tree": "165c28610109dcf532f7f76a24c5f8697f980c26",
+  "branch": "feat/family-places-c3-product-experience",
+  "remote": "git@github.com:Skiru/playground.git",
+  "worktree_status": "clean",
+  "timestamp_utc": "2026-07-17T10:15:00Z",
+  "versions": {
+    "symfony": "v8.1.1",
+    "react_router": "8.2.0",
+    "react": "19.2.7",
+    "vite": "8.1.4",
+    "pnpm": "11.13.1"
+  }
+}

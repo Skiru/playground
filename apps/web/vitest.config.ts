@@ -1,4 +1,5 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vitest/config"
+import path from "path"
 
 export default defineConfig({
   test: {
@@ -6,4 +7,9 @@ export default defineConfig({
     setupFiles: ["./app/test/setup.ts"],
     exclude: ["e2e/**", "node_modules/**"],
   },
-});
+  resolve: {
+    alias: {
+      "~": path.resolve(__dirname, "./app"),
+    },
+  },
+})
