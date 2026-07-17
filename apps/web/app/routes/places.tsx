@@ -384,7 +384,7 @@ export function FilterFields({
       </div>
 
       {/* Amenities fieldset */}
-      <div className="grid gap-3">
+      <div role="group" aria-label="Udogodnienia" className="grid gap-3">
         <Label className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
           {content.places.formAmenitiesHeader}
         </Label>

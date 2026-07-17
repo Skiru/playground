@@ -21,6 +21,11 @@ test("city, category, age, radius, amenities AND and search reach results and de
   await expect(page).toHaveURL(/city=warszawa/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("propozyc");
 
+  const filterTrigger = page.getByRole("button", { name: "Filtruj propozycje" });
+  if (await filterTrigger.isVisible()) {
+    await filterTrigger.click();
+  }
+
   await page.getByLabel("Kategoria").selectOption("bawialnie");
   await page.getByLabel("Latitude").fill("52.2297");
   await page.getByLabel("Longitude").fill("21.0122");

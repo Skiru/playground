@@ -30,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const appEnv = process.env.APP_ENV || "dev"
   const isProd = appEnv === "prod" || appEnv === "production"
 
-  const devAuthEnabled = !isProd && (process.env.DEV_AUTH_ENABLED === "true" || process.env.DEV_AUTH_ENABLED === "1")
+  const devAuthEnabled = (!isProd || process.env.E2E === "true" || process.env.E2E === "1") && (process.env.DEV_AUTH_ENABLED === "true" || process.env.DEV_AUTH_ENABLED === "1")
 
   if (googleIdentityEnabled && !googleClientId) {
     throw new Error("Configuration error: GOOGLE_IDENTITY_ENABLED is true but PUBLIC_GOOGLE_CLIENT_ID is not configured.")
@@ -88,7 +88,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   if (isRouteErrorResponse(error)) {
     status = String(error.status)
-    message = error.status === 404 ? content.errors.error404 : content.errors.generalError
+    message = error.status === 404 ? content.errors.error404 : (error.status === 400 ? "Błąd" : content.errors.generalError)
     details =
       error.status === 404
         ? content.errors.notFoundDetails
