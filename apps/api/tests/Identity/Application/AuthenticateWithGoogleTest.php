@@ -63,7 +63,21 @@ final class AuthenticateWithGoogleTest extends TestCase
             }
         };
 
-        $service = new AuthenticateWithGoogle($verifier, $externalIdentityRepository, $userRepository);
+        $transactionManager = new class implements \App\Shared\Application\TransactionManager {
+            public function transactional(callable $operation): mixed
+            {
+                return $operation();
+            }
+        };
+
+        $clock = new class implements \App\Shared\Application\Clock {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable();
+            }
+        };
+
+        $service = new AuthenticateWithGoogle($verifier, $externalIdentityRepository, $userRepository, $transactionManager, $clock);
         $user = $service->authenticate('fake-google-token');
 
         self::assertSame($user, $userRepository->savedUser);
@@ -126,7 +140,21 @@ final class AuthenticateWithGoogleTest extends TestCase
             }
         };
 
-        $service = new AuthenticateWithGoogle($verifier, $externalIdentityRepository, $userRepository);
+        $transactionManager = new class implements \App\Shared\Application\TransactionManager {
+            public function transactional(callable $operation): mixed
+            {
+                return $operation();
+            }
+        };
+
+        $clock = new class implements \App\Shared\Application\Clock {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable();
+            }
+        };
+
+        $service = new AuthenticateWithGoogle($verifier, $externalIdentityRepository, $userRepository, $transactionManager, $clock);
         $user = $service->authenticate('fake-google-token');
 
         self::assertSame($existingUser, $user);
@@ -180,7 +208,21 @@ final class AuthenticateWithGoogleTest extends TestCase
             }
         };
 
-        $service = new AuthenticateWithGoogle($verifier, $externalIdentityRepository, $userRepository);
+        $transactionManager = new class implements \App\Shared\Application\TransactionManager {
+            public function transactional(callable $operation): mixed
+            {
+                return $operation();
+            }
+        };
+
+        $clock = new class implements \App\Shared\Application\Clock {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable();
+            }
+        };
+
+        $service = new AuthenticateWithGoogle($verifier, $externalIdentityRepository, $userRepository, $transactionManager, $clock);
 
         $this->expectException(AccountLinkRequiredException::class);
         $service->authenticate('fake-google-token');

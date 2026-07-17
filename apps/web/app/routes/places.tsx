@@ -129,7 +129,7 @@ export function PlacesView({
         <ol className="flex flex-col gap-6">
           {places.items.map((place) => (
             <li key={place.id}>
-              <Card className="group overflow-hidden bg-card border hover:border-primary/50 hover:shadow-md transition-all duration-300">
+              <Card className="place-card group overflow-hidden bg-card border hover:border-primary/50 hover:shadow-md transition-all duration-300">
                 <CardContent className="p-6 flex flex-col md:flex-row gap-6">
                   {/* Aspect video thumbnail placeholder */}
                   <div className="relative w-full md:w-48 aspect-video md:aspect-[4/3] rounded-lg overflow-hidden bg-muted flex-shrink-0">

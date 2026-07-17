@@ -3,6 +3,7 @@ import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 import { SessionProvider } from "~/lib/session-context";
+import { LoginRequiredActionProvider } from "~/features/auth/LoginRequiredActionContext";
 import { HomeView } from "./home";
 
 vi.mock("react-router", async (importOriginal) => {
@@ -30,7 +31,9 @@ describe("home route", () => {
     render(
       <MemoryRouter>
         <SessionProvider initialSession={{ authenticated: false, user: null, csrfToken: null }}>
-          <HomeView cities={cities} categories={categories} featuredPlaces={[]} />
+          <LoginRequiredActionProvider>
+            <HomeView cities={cities} categories={categories} featuredPlaces={[]} />
+          </LoginRequiredActionProvider>
         </SessionProvider>
       </MemoryRouter>
     );
@@ -44,7 +47,9 @@ describe("home route", () => {
     const { container } = render(
       <MemoryRouter>
         <SessionProvider initialSession={{ authenticated: false, user: null, csrfToken: null }}>
-          <HomeView cities={cities} categories={categories} featuredPlaces={[]} />
+          <LoginRequiredActionProvider>
+            <HomeView cities={cities} categories={categories} featuredPlaces={[]} />
+          </LoginRequiredActionProvider>
         </SessionProvider>
       </MemoryRouter>
     );

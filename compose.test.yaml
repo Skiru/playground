@@ -8,6 +8,10 @@ services:
       APP_SECRET: deterministic-test-secret
       # Doctrine's test dbname_suffix appends _test to this base name.
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places?serverVersion=18&charset=utf8
+      GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    volumes:
+      - ./apps/api:/app
   worker:
     build:
       target: development
@@ -17,6 +21,8 @@ services:
       APP_SECRET: deterministic-test-secret
       # Doctrine's test dbname_suffix appends _test to this base name.
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places?serverVersion=18&charset=utf8
+    volumes:
+      - ./apps/api:/app
   web:
     build:
       target: build
@@ -25,6 +31,10 @@ services:
       MAP_STYLE_URL: http://map-style.invalid/style.json
       MAP_ATTRIBUTION: Test map provider
       MAP_PROVIDER_NAME: Test map provider
+      GOOGLE_IDENTITY_ENABLED: ${GOOGLE_IDENTITY_ENABLED:-false}
+      PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+      APP_ENV: test
   database:
     environment:
       POSTGRES_DB: family_places_test
