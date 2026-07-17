@@ -22,18 +22,21 @@ test("city, category, age, radius, amenities AND and search reach results and de
   await expect(page.getByRole("heading", { level: 1 })).toContainText("propozyc");
 
   const filterTrigger = page.getByRole("button", { name: "Filtruj propozycje" });
-  if (await filterTrigger.isVisible()) {
+  const isMobile = await filterTrigger.isVisible();
+  if (isMobile) {
     await filterTrigger.click();
   }
 
-  await page.getByLabel("Kategoria").selectOption("bawialnie");
-  await page.getByLabel("Latitude").fill("52.2297");
-  await page.getByLabel("Longitude").fill("21.0122");
-  await page.getByLabel("Promień km").fill("20");
-  const amenities = page.getByRole("group", { name: "Udogodnienia" }).getByRole("checkbox");
+  const container = isMobile ? page.locator("[role='dialog']") : page.locator("aside");
+
+  await container.getByLabel("Kategoria").selectOption("bawialnie");
+  await container.getByLabel("Latitude").fill("52.2297");
+  await container.getByLabel("Longitude").fill("21.0122");
+  await container.getByLabel("Promień km").fill("20");
+  const amenities = container.getByRole("group", { name: "Udogodnienia" }).getByRole("checkbox");
   await amenities.nth(0).check();
   await amenities.nth(1).check();
-  await page.getByRole("button", { name: "Filtruj" }).click();
+  await container.getByRole("button", { name: "Filtruj" }).click();
   await expect(page).toHaveURL(/radiusKm=20/);
   await expect(page.locator(".place-card").first()).toBeVisible();
   await page.locator(".place-card h2 a").first().click();
@@ -43,6 +46,10 @@ test("city, category, age, radius, amenities AND and search reach results and de
 
 test("map, empty results, fallback, API error and 404 remain understandable", async ({ page }) => {
   await page.goto("/miejsca?city=warszawa");
+  const mapToggle = page.getByRole("button", { name: /Mapa/i });
+  if (await mapToggle.isVisible()) {
+    await mapToggle.click();
+  }
   await expect(page.getByRole("region", { name: "Interaktywna mapa" })).toBeVisible();
   await expect(page.locator(".map-fallback a").first()).toBeAttached();
 
