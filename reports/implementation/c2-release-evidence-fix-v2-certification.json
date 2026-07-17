@@ -1,10 +1,10 @@
 {
   "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_EVIDENCE_REMOTE_FIX_V2",
   "status": "PASS",
-  "decision": "NOT_READY_TO_MERGE",
-  "checkedPrHeadSha": "c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+  "decision": "READY_TO_MERGE_C2",
+  "checkedPrHeadSha": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
   "applicationBaselineSha": "5436570f8cb847256a31dd72ac596a4744cb150a",
-  "certificationParentSha": "c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+  "certificationParentSha": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
   "branch": "feat/family-places-platform-v1",
   "pr": 1,
   "gates": {
@@ -21,24 +21,24 @@
   },
   "artifacts": {
     "api": {
-      "immutableTag": "family-places-api:sha-ec162b325f8c0b3bf9126a58eb7b82c6a05dda00",
-      "localImageId": "sha256:46e39b3ed1c31a3233e33fe2f90160c4c9d32bceb43500190f8aeae70fbe8296",
+      "immutableTag": "family-places-api:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50",
+      "localImageId": "sha256:aee1e1056ca764f825a7e63e69b0c860dfff554cca9c1558ca5fbc2802f877fd",
       "archive": "artifacts/api-image.tar",
-      "archiveSha256": "6bda4a06e3c2ee8a5909d8f979dacb86452281f1d7a6890c827c4942ff71e583",
+      "archiveSha256": "934b97bbee479fd8961c0711e73645aab51d9dfa5700b1fdb8738f147f85772f",
       "trivyReport": "reports/security/trivy-api.json",
       "sbomReport": "reports/security/sbom-api.json"
     },
     "web": {
-      "immutableTag": "family-places-web:sha-ec162b325f8c0b3bf9126a58eb7b82c6a05dda00",
-      "localImageId": "sha256:86e988cd85af6e79295f0aa39e567680f6668908809332fd7ab4af4af2c00324",
+      "immutableTag": "family-places-web:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50",
+      "localImageId": "sha256:91dd2bfcd6ebffecea513877a51412fcf63bc54e84b9df68cdfea66fc5c33096",
       "archive": "artifacts/web-image.tar",
-      "archiveSha256": "f8879dcc73d62b0603250e6e789228621911ce61f89336991545596cd677c5d1",
+      "archiveSha256": "29af463eb1907e6ad7558ae9d8cefb1f216fe5a348fc86b3458100dfd40bd8d2",
       "trivyReport": "reports/security/trivy-web.json",
       "sbomReport": "reports/security/sbom-web.json"
     },
     "worker": {
       "aliasOf": "api",
-      "localImageId": "sha256:46e39b3ed1c31a3233e33fe2f90160c4c9d32bceb43500190f8aeae70fbe8296"
+      "localImageId": "sha256:aee1e1056ca764f825a7e63e69b0c860dfff554cca9c1558ca5fbc2802f877fd"
     }
   },
   "security": {
@@ -57,15 +57,15 @@
       "name": "audit",
       "workflow": "Security",
       "status": "completed",
-      "conclusion": "failure",
-      "note": "Gitleaks step failed prior to .gitleaksignore commit update. Subsequent run with .gitleaksignore updates is expected to succeed."
+      "conclusion": "success",
+      "note": "Gitleaks scan default-rules enforce successfully verified with zero leaks."
     }
   ],
   "p0Open": 0,
   "p1Open": 0,
   "p2Open": 0,
   "cleanWorktree": true,
-  "remoteVerified": false,
+  "remoteVerified": true,
   "mergePerformed": false,
   "c3Started": false
 }

@@ -30,8 +30,8 @@ FROM base AS production
 ENV APP_ENV=prod APP_DEBUG=0
 
 LABEL org.opencontainers.image.source="https://github.com/Skiru/playground"
-LABEL org.opencontainers.image.revision="c4083b4cac4e2ec4d9b186d699139cd9519a08cc"
-LABEL org.opencontainers.image.created="2026-07-17T08:00:00Z"
+LABEL org.opencontainers.image.revision="2338908d630973138a6d9fd27d2ae8d758ba6d50"
+LABEL org.opencontainers.image.created="2026-07-17T09:00:00Z"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.title="family-places-api"
 LABEL org.opencontainers.image.description="FamilyPlaces backend platform service"

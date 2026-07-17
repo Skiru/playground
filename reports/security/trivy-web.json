@@ -1,15 +1,14 @@
 {
   "SchemaVersion": 2,
-  "CreatedAt": "2026-07-17T06:57:17.306399604Z",
-  "ArtifactName": "/workspace/artifacts/web-image.tar",
+  "CreatedAt": "2026-07-17T07:42:56.46850866Z",
+  "ArtifactName": "artifacts/web-image.tar",
   "ArtifactType": "container_image",
   "Metadata": {
-    "Size": 360780288,
     "OS": {
       "Family": "debian",
       "Name": "12.15"
     },
-    "ImageID": "sha256:7aace9657273ead3f4ddc20d860eb6b90de6b015fb4dd782316f74790b443afa",
+    "ImageID": "sha256:f0f17dc41e2979565aca27691e6604407446b4bf0fd243e7db5cc48689b06d69",
     "DiffIDs": [
       "sha256:12cdff3b039e28c684ffd2097ff5a66df274a8500966a1431038b05f50bcf096",
       "sha256:6a19106755a5362775536926958bbc12e5976dbae20ecfb1b40c18f54e80d2fe",
@@ -19,11 +18,11 @@
       "sha256:4fac5adc37070404a2111fc021e74b490748606492db6ac386a9d5e55d06ac22",
       "sha256:e7258e100a81a46fefceb43dcc0b1fb5d543e58e498306f73da820501063c8b9",
       "sha256:4e6f90ab9b4fad72467bca17c2cdb81d74e69f38fd2ea4c9989bf8dd8b3b31bc",
-      "sha256:cdf3a64603f91a5aded63e7d901a35795222b0f34c8f1c22db5d57bf08a8834c"
+      "sha256:409244fd15b2fc73f580a48e5c7c3e550206d38d1bc710f69928fdbc33dcf813"
     ],
     "ImageConfig": {
       "architecture": "arm64",
-      "created": "2026-07-17T08:56:33.254078+02:00",
+      "created": "2026-07-17T09:39:47.342245153+02:00",
       "history": [
         {
           "created": "2026-07-13T00:00:00Z",
@@ -88,13 +87,13 @@
         },
         {
           "created": "2026-07-16T21:41:50.464050696+02:00",
-          "created_by": "LABEL org.opencontainers.image.revision=c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+          "created_by": "LABEL org.opencontainers.image.revision=2338908d630973138a6d9fd27d2ae8d758ba6d50",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
         {
           "created": "2026-07-16T21:41:50.464050696+02:00",
-          "created_by": "LABEL org.opencontainers.image.created=2026-07-17T08:00:00Z",
+          "created_by": "LABEL org.opencontainers.image.created=2026-07-17T09:00:00Z",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
@@ -132,24 +131,24 @@
           "comment": "buildkit.dockerfile.v0"
         },
         {
-          "created": "2026-07-17T08:56:33.254078+02:00",
+          "created": "2026-07-17T09:39:47.342245153+02:00",
           "created_by": "COPY --chown=node:node /prod/web/ ./ # buildkit",
           "comment": "buildkit.dockerfile.v0"
         },
         {
-          "created": "2026-07-17T08:56:33.254078+02:00",
+          "created": "2026-07-17T09:39:47.342245153+02:00",
           "created_by": "USER node",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
         {
-          "created": "2026-07-17T08:56:33.254078+02:00",
+          "created": "2026-07-17T09:39:47.342245153+02:00",
           "created_by": "EXPOSE [3000/tcp]",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
         {
-          "created": "2026-07-17T08:56:33.254078+02:00",
+          "created": "2026-07-17T09:39:47.342245153+02:00",
           "created_by": "CMD [\"./node_modules/.bin/react-router-serve\" \"./build/server/index.js\"]",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
@@ -167,7 +166,7 @@
           "sha256:4fac5adc37070404a2111fc021e74b490748606492db6ac386a9d5e55d06ac22",
           "sha256:e7258e100a81a46fefceb43dcc0b1fb5d543e58e498306f73da820501063c8b9",
           "sha256:4e6f90ab9b4fad72467bca17c2cdb81d74e69f38fd2ea4c9989bf8dd8b3b31bc",
-          "sha256:cdf3a64603f91a5aded63e7d901a35795222b0f34c8f1c22db5d57bf08a8834c"
+          "sha256:409244fd15b2fc73f580a48e5c7c3e550206d38d1bc710f69928fdbc33dcf813"
         ]
       },
       "config": {
@@ -186,9 +185,12 @@
           "PORT=3000"
         ],
         "Labels": {
-          "org.opencontainers.image.created": "2026-07-17T08:00:00Z",
+          "com.docker.compose.project": "family-places",
+          "com.docker.compose.service": "web",
+          "com.docker.compose.version": "5.0.1",
+          "org.opencontainers.image.created": "2026-07-17T09:00:00Z",
           "org.opencontainers.image.description": "FamilyPlaces public web SSR catalog service",
-          "org.opencontainers.image.revision": "c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+          "org.opencontainers.image.revision": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
           "org.opencontainers.image.source": "https://github.com/Skiru/playground",
           "org.opencontainers.image.title": "family-places-web",
           "org.opencontainers.image.version": "1.0.0"
@@ -200,58 +202,11 @@
         },
         "ArgsEscaped": true
       }
-    },
-    "Layers": [
-      {
-        "Size": 100229120,
-        "Digest": "sha256:53bb9e501f1803aca595be8d902a62cea6bf4d996ce6f7dfe16c1c97be343e6c",
-        "DiffID": "sha256:12cdff3b039e28c684ffd2097ff5a66df274a8500966a1431038b05f50bcf096"
-      },
-      {
-        "Size": 21504,
-        "Digest": "sha256:68e4074636d4cc8d1a86c94e93f1b348fc57b7e76c5d2e56a2105159328e3b79",
-        "DiffID": "sha256:6a19106755a5362775536926958bbc12e5976dbae20ecfb1b40c18f54e80d2fe"
-      },
-      {
-        "Size": 144830464,
-        "Digest": "sha256:5c528215feb53db02e98a6d95f43621b7f609e88fec908fd682ebf5dc53ca821",
-        "DiffID": "sha256:ab6a83b01265ca42f0e1fe674f9dc4f017323b8f753bfb9be375de4671f0e012"
-      },
-      {
-        "Size": 7214592,
-        "Digest": "sha256:ad381f39995fa25f1bac19f5977f372c4ad116be7fc9bcf8d5b492fd8424f85c",
-        "DiffID": "sha256:5385ee079d676c4c1b0519ef8f3e8d7ea61aa7a53b204fdc2ad4221d44680d33"
-      },
-      {
-        "Size": 3584,
-        "Digest": "sha256:4ba67d92468baa0bb098947ae9a73e9cddcc64be289cadb8dff2e2feaaadde35",
-        "DiffID": "sha256:a56dedbc0c1321c5f490e3f23588487fb4d673a62004fce2b297eccf470988f0"
-      },
-      {
-        "Size": 3584,
-        "Digest": "sha256:c9f87e8e9509a37a9d51745ff43c36b559ca19795f0280b1fcce9894a257f169",
-        "DiffID": "sha256:4fac5adc37070404a2111fc021e74b490748606492db6ac386a9d5e55d06ac22"
-      },
-      {
-        "Size": 5120,
-        "Digest": "sha256:c87ef12f51882ff81cca854eb05e17e77e41abe309183655207c9a9c65d28791",
-        "DiffID": "sha256:e7258e100a81a46fefceb43dcc0b1fb5d543e58e498306f73da820501063c8b9"
-      },
-      {
-        "Size": 1536,
-        "Digest": "sha256:0381baec2a193eaa49362e724bb94ae6b7bc6e1a9641b15ecaf2c5f6295ae321",
-        "DiffID": "sha256:4e6f90ab9b4fad72467bca17c2cdb81d74e69f38fd2ea4c9989bf8dd8b3b31bc"
-      },
-      {
-        "Size": 108470784,
-        "Digest": "sha256:3f2203286dbf538220b1a88601bec7cbfe25d3815e8ebf7338e29509f0bd8dc1",
-        "DiffID": "sha256:cdf3a64603f91a5aded63e7d901a35795222b0f34c8f1c22db5d57bf08a8834c"
-      }
-    ]
+    }
   },
   "Results": [
     {
-      "Target": "/workspace/artifacts/web-image.tar (debian 12.15)",
+      "Target": "artifacts/web-image.tar (debian 12.15)",
       "Class": "os-pkgs",
       "Type": "debian",
       "Vulnerabilities": [

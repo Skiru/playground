@@ -4,9 +4,9 @@
   "decision": "READY_TO_MERGE_C2",
   "inputSha": "045bc810e3c5debe9ec73f57a5f412c3ff796667",
   "applicationBaselineSha": "773df803985f3203e4c0a5c39856b12b0cbac387",
-  "implementationSha": "a3e89c423191dcd855cc2b626e5e959147456928",
-  "implementationTree": "758b3ea05a1a539c34dce5d5bb78ae1734476415",
-  "checkedPrHeadSha": "a3e89c423191dcd855cc2b626e5e959147456928",
+  "implementationSha": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
+  "implementationTree": "b8441623177f083640328f805422cf41f54b2de3",
+  "checkedPrHeadSha": "2338908d630973138a6d9fd27d2ae8d758ba6d50",
   "branch": "feat/family-places-platform-v1",
   "pr": 1,
   "gates": {
@@ -19,16 +19,16 @@
   },
   "artifacts": {
     "api": {
-      "imageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
-      "digest": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
-      "archiveSha256": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+      "imageId": "sha256:aee1e1056ca764f825a7e63e69b0c860dfff554cca9c1558ca5fbc2802f877fd",
+      "digest": "sha256:aee1e1056ca764f825a7e63e69b0c860dfff554cca9c1558ca5fbc2802f877fd",
+      "archiveSha256": "934b97bbee479fd8961c0711e73645aab51d9dfa5700b1fdb8738f147f85772f",
       "sbom": "reports/security/sbom-api.json",
       "trivy": "reports/security/trivy-api.json"
     },
     "web": {
-      "imageId": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
-      "digest": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
-      "archiveSha256": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
+      "imageId": "sha256:91dd2bfcd6ebffecea513877a51412fcf63bc54e84b9df68cdfea66fc5c33096",
+      "digest": "sha256:91dd2bfcd6ebffecea513877a51412fcf63bc54e84b9df68cdfea66fc5c33096",
+      "archiveSha256": "29af463eb1907e6ad7558ae9d8cefb1f216fe5a348fc86b3458100dfd40bd8d2",
       "sbom": "reports/security/sbom-web.json",
       "trivy": "reports/security/trivy-web.json"
     }

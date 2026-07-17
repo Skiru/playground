@@ -1,5 +1,5 @@
 {
-  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_EVIDENCE_REMOTE_FIX_V2",
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_FINAL_AUDIT",
   "queryTimestamp": "2026-07-17T08:20:00+02:00",
   "branchProtection": {
     "url": "https://api.github.com/repos/Skiru/playground/branches/main/protection",
