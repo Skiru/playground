@@ -1,0 +1,39 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_FINAL_PRODUCTION_RELEASE_CLOSURE",
+  "checkpoint": "C2-FINAL-B",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T21:59:00+02:00",
+  "inputHead": "045bc810e3c5debe9ec73f57a5f412c3ff796667",
+  "buildOnce": "PASS",
+  "exactArtifactChain": "PASS",
+  "baseImagePinning": "PASS",
+  "trivyScan": "PASS",
+  "sbom": "PASS",
+  "githubActionsHardening": "PASS",
+  "runtimeHardening": "PASS",
+  "migrationRehearsal": "PASS",
+  "backupRestore": "PASS",
+  "evidence": {
+    "apiImageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+    "webImageId": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
+    "workerImageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
+    "artifactManifestCreated": "reports/implementation/c2-final-artifact-manifest.json",
+    "trivyReportsCreated": [
+      "reports/security/trivy-api.json",
+      "reports/security/trivy-web.json",
+      "reports/security/trivy-worker.json"
+    ],
+    "sbomCreated": [
+      "reports/security/sbom-api.json",
+      "reports/security/sbom-web.json",
+      "reports/security/sbom-index.json"
+    ],
+    "migrationRehearsalPassed": "Both Fresh Install and Upgrade rehearsals completed with 100% database synchronization.",
+    "restoreDrillPassed": "Restore drill successfully verified, including malformed signature/checksum rejection, database destruction, recovery, and PostGIS query validation."
+  },
+  "notes": [
+    "API and Worker images have been proven to share the exact same Image ID artifact.",
+    "Both images were secured with OS package upgrades, leading to 0 fixed HIGH/CRITICAL vulnerabilities.",
+    "The disaster recovery mechanism is fully verified via automated restore drill."
+  ]
+}

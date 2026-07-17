@@ -1,0 +1,39 @@
+deptrac:
+    paths:
+        - ./src
+    exclude_files:
+        - '#.*Kernel\.php#'
+    layers:
+        - { name: SharedDomain, collectors: [{ type: classLike, value: App\\Shared\\Domain\\.* }] }
+        - { name: SharedApplication, collectors: [{ type: classLike, value: App\\Shared\\Application\\.* }] }
+        - { name: SharedInfrastructure, collectors: [{ type: classLike, value: App\\Shared\\Infrastructure\\.* }] }
+        - { name: IdentityDomain, collectors: [{ type: classLike, value: App\\Identity\\Domain\\.* }] }
+        - { name: IdentityApplication, collectors: [{ type: classLike, value: App\\Identity\\Application\\.* }] }
+        - { name: IdentityInfrastructure, collectors: [{ type: classLike, value: App\\Identity\\Infrastructure\\.* }] }
+        - { name: IdentityUI, collectors: [{ type: classLike, value: App\\Identity\\UI\\.* }] }
+        - { name: PlacesDomain, collectors: [{ type: classLike, value: App\\Places\\Domain\\.* }] }
+        - { name: PlacesApplication, collectors: [{ type: classLike, value: App\\Places\\Application\\.* }] }
+        - { name: PlacesInfrastructure, collectors: [{ type: classLike, value: App\\Places\\Infrastructure\\.* }] }
+        - { name: PlacesUI, collectors: [{ type: classLike, value: App\\Places\\UI\\.* }] }
+        - { name: DiscoveryApplication, collectors: [{ type: classLike, value: App\\Discovery\\Application\\.* }] }
+        - { name: DiscoveryInfrastructure, collectors: [{ type: classLike, value: App\\Discovery\\Infrastructure\\.* }] }
+        - { name: DiscoveryUI, collectors: [{ type: classLike, value: App\\Discovery\\UI\\.* }] }
+        - { name: AdministrationInfrastructure, collectors: [{ type: classLike, value: App\\Administration\\Infrastructure\\.* }] }
+        - { name: AdministrationUI, collectors: [{ type: classLike, value: App\\Administration\\UI\\.* }] }
+    ruleset:
+        SharedDomain: []
+        SharedApplication: [SharedDomain]
+        SharedInfrastructure: [SharedDomain, SharedApplication]
+        IdentityDomain: [SharedDomain]
+        IdentityApplication: [SharedDomain, SharedApplication, IdentityDomain]
+        IdentityInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, IdentityDomain, IdentityApplication]
+        IdentityUI: [SharedApplication, IdentityApplication]
+        PlacesDomain: [SharedDomain]
+        PlacesApplication: [SharedDomain, SharedApplication, PlacesDomain]
+        PlacesInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, PlacesDomain, PlacesApplication]
+        PlacesUI: [SharedApplication, PlacesApplication]
+        DiscoveryApplication: [SharedDomain, SharedApplication, PlacesApplication]
+        DiscoveryInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, DiscoveryApplication, PlacesApplication]
+        DiscoveryUI: [SharedApplication, DiscoveryApplication]
+        AdministrationInfrastructure: [SharedApplication, IdentityApplication, PlacesApplication, AdministrationUI]
+        AdministrationUI: [PlacesDomain, PlacesApplication]

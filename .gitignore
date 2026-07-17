@@ -1,8 +1,15 @@
 .DS_Store
 .idea/
 .vscode/
+!.github/
+!.github/**
 .env
 .env.local
+.pnpm-store/
+.deptrac.cache
+!apps/api/.env
+!apps/api/.env.dev
+!apps/api/.env.test
 node_modules/
 vendor/
 var/
@@ -11,3 +18,5 @@ dist/
 coverage/
 playwright-report/
 test-results/
+.playwright-mcp/
+artifacts/

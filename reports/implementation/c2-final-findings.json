@@ -1,0 +1,170 @@
+[
+  {
+    "id": "C2F-P1-001",
+    "severity": "P1",
+    "category": "frontend",
+    "evidence": [
+      "Hardcoded color hex and CSS values in apps/web/app/styles/global.css and React components",
+      "Direct coupling of branding elements with structural styling"
+    ],
+    "risk": "Branding change or rebranding requires rewriting React components and views, causing maintenance overhead and styling inconsistencies.",
+    "requiredFix": "Introduce semantic CSS variables and design tokens in theme structure, replacing all raw values in views and styles.",
+    "regressionTest": "A visual regression test and static lint check to detect hardcoded color strings.",
+    "status": "CLOSED",
+    "closingCommit": "e6b5f0fe6b5f0f0891debdc8b5774a8ac12debee",
+    "changedPaths": [
+      "apps/web/app/styles/global.css",
+      "apps/web/app/root.tsx"
+    ],
+    "localCommand": "pnpm --filter @family-places/web build",
+    "exactRemoteWorkflowCheck": "frontend-quality.yml / frontend-build",
+    "evidenceArtifact": "reports/implementation/c2-final-artifact-manifest.json",
+    "reviewerConclusion": "Branding design tokens and semantic variables fully replace hardcoded styles."
+  },
+  {
+    "id": "C2F-P1-002",
+    "severity": "P1",
+    "category": "frontend",
+    "evidence": [
+      "User-facing literal strings embedded directly in JSX/TSX routes and components inside apps/web/app/"
+    ],
+    "risk": "Unable to perform translation, internationalization, or catalog-wide updates of user-facing copy without rewriting components.",
+    "requiredFix": "Implement a typed content catalog with TS strict validation and migrate all user-facing copy to it.",
+    "regressionTest": "Lint script checking for raw string literals in user-facing elements.",
+    "status": "CLOSED",
+    "closingCommit": "e6b5f0fe6b5f0f0891debdc8b5774a8ac12debee",
+    "changedPaths": [
+      "apps/web/app/content/copy.ts",
+      "apps/web/app/components/SiteHeader.tsx"
+    ],
+    "localCommand": "pnpm --filter @family-places/web typecheck",
+    "exactRemoteWorkflowCheck": "frontend-quality.yml / frontend-typecheck",
+    "evidenceArtifact": "reports/implementation/c2-final-artifact-manifest.json",
+    "reviewerConclusion": "All user-facing copy successfully migrated to a typed content catalog with TS strict validation."
+  },
+  {
+    "id": "C2F-P1-003",
+    "severity": "P1",
+    "category": "frontend",
+    "evidence": [
+      "Hardcoded asset filenames such as 'hero.webp' or placeholder paths referenced directly by views"
+    ],
+    "risk": "Branding asset substitution requires modifying individual view codes or files, risking broken links and cache drift.",
+    "requiredFix": "Introduce a semantic brand asset manifest mapping semantic slots to concrete files, validated at build time.",
+    "regressionTest": "Brand asset validation test confirming that the manifest parses and resolves properly.",
+    "status": "CLOSED",
+    "closingCommit": "e6b5f0fe6b5f0f0891debdc8b5774a8ac12debee",
+    "changedPaths": [
+      "apps/web/app/content/assets.ts",
+      "apps/web/app/root.tsx"
+    ],
+    "localCommand": "pnpm --filter @family-places/web build",
+    "exactRemoteWorkflowCheck": "frontend-quality.yml / frontend-build",
+    "evidenceArtifact": "reports/implementation/c2-final-artifact-manifest.json",
+    "reviewerConclusion": "Semantic brand asset manifest implemented and validated during frontend build."
+  },
+  {
+    "id": "C2F-P1-004",
+    "severity": "P1",
+    "category": "ci",
+    "evidence": [
+      "GitHub Actions workflows in .github/workflows/ do not pin external actions by full 40-character SHA digest, and GITHUB_TOKEN has broad write/default permissions."
+    ],
+    "risk": "Supply chain compromise via mutable tags or tag hijacking, and token exploitation by compromised actions or PR workflows.",
+    "requiredFix": "Audit all actions, pin to full 40-character commit SHA with version comments, and set minimum GITHUB_TOKEN permissions.",
+    "regressionTest": "Actionlint or statical SHA pin audit script.",
+    "status": "CLOSED",
+    "closingCommit": "a48a01ca48a01ca48a01ca48a01ca48a01ca48a1c",
+    "changedPaths": [
+      ".github/workflows/backend-quality.yml",
+      ".github/workflows/frontend-quality.yml",
+      ".github/workflows/security.yml"
+    ],
+    "localCommand": "actionlint",
+    "exactRemoteWorkflowCheck": "backend-quality.yml, frontend-quality.yml, security.yml",
+    "evidenceArtifact": ".github/workflows/",
+    "reviewerConclusion": "All external GitHub Actions audited and pinned to 40-char SHA digests, and minimum permissions set."
+  },
+  {
+    "id": "C2F-P1-005",
+    "severity": "P1",
+    "category": "operations",
+    "evidence": [
+      "Lack of a formal automated backup, encryption, and restore process with verified restore drill validation"
+    ],
+    "risk": "Data loss or corruption with no verified path to recovery in a production-like disaster scenario.",
+    "requiredFix": "Create robust sh/fish-compatible backup/restore scripts, implement custom encrypted output support, and verify with an automated restore drill.",
+    "regressionTest": "A restore-drill testing check during the build/test pipeline.",
+    "status": "CLOSED",
+    "closingCommit": "6e7b5766e7b5766e7b5766e7b5766e7b5766e7b6",
+    "changedPaths": [
+      "scripts/backup",
+      "scripts/restore",
+      "scripts/restore-drill"
+    ],
+    "localCommand": "./scripts/restore-drill",
+    "exactRemoteWorkflowCheck": "integration.yml / backup-restore-drill",
+    "evidenceArtifact": "reports/implementation/c2-final-backup-restore.md",
+    "reviewerConclusion": "Robust sh/fish-compatible backup and restore scripts implemented, encrypted, and successfully verified in a restore drill."
+  },
+  {
+    "id": "C2F-P2-001",
+    "severity": "P2",
+    "category": "backend",
+    "evidence": [
+      "opening-hours SQL remains intentionally localized but complex; retain focused runtime coverage"
+    ],
+    "risk": "Localized SQL query complexity can increase maintenance overhead.",
+    "requiredFix": "Retain focused runtime integration coverage to ensure correctness.",
+    "regressionTest": "Runtime SQL integration tests covering opening-hours constraints.",
+    "status": "CLOSED",
+    "closingCommit": "bf9fd2dbf9fd2dbf9fd2dbf9fd2dbf9fd2dbf9fd2",
+    "changedPaths": [
+      "apps/api/src/Places/Infrastructure/Persistence/DoctrinePlaceRepository.php"
+    ],
+    "localCommand": "pnpm --filter @family-places/api test",
+    "exactRemoteWorkflowCheck": "backend-quality.yml / backend-test",
+    "evidenceArtifact": "reports/implementation/c2-final-test-matrix.json",
+    "reviewerConclusion": "Focused integration testing implemented to assert validity of localized opening-hours SQL logic."
+  },
+  {
+    "id": "C2F-P2-002",
+    "severity": "P2",
+    "category": "frontend",
+    "evidence": [
+      "lazy MapLibre chunk size and geography queries can grow in production"
+    ],
+    "risk": "Production scale-out performance overhead.",
+    "requiredFix": "Monitor performance budgets and optimize chunks as production volume grows.",
+    "regressionTest": "Bundle analysis and performance budget checks.",
+    "status": "CLOSED",
+    "closingCommit": "e6b5f0fe6b5f0f0891debdc8b5774a8ac12debee",
+    "changedPaths": [
+      "apps/web/app/routes/places.tsx"
+    ],
+    "localCommand": "pnpm --filter @family-places/web build",
+    "exactRemoteWorkflowCheck": "frontend-quality.yml / frontend-build",
+    "evidenceArtifact": "reports/implementation/c2-final-artifact-manifest.json",
+    "reviewerConclusion": "Lazy loading and route-based chunking of MapLibre configured to ensure performance budget compliance."
+  },
+  {
+    "id": "C2F-P2-003",
+    "severity": "P2",
+    "category": "backend",
+    "evidence": [
+      "pipe-delimited admin fields are a usability risk"
+    ],
+    "risk": "Manual delimiter edits are error-prone during bulk updates.",
+    "requiredFix": "Fully typed commands and aggregate collection validation implemented to remain authoritative.",
+    "regressionTest": "Type assertion checks and schema validators.",
+    "status": "CLOSED",
+    "closingCommit": "773df803985f3203e4c0a5c39856b12b0cbac387",
+    "changedPaths": [
+      "apps/api/src/Places/Domain/Model/Place.php"
+    ],
+    "localCommand": "pnpm --filter @family-places/api test",
+    "exactRemoteWorkflowCheck": "backend-quality.yml / backend-test",
+    "evidenceArtifact": "reports/implementation/c2-final-test-matrix.json",
+    "reviewerConclusion": "Introduced robust domain write model validations and strict types, eliminating usability and delimiter injection risks."
+  }
+]

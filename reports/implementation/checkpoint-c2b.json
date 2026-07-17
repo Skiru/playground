@@ -1,0 +1,70 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_MONOREPO_V1_C1R_C2",
+  "checkpoint": "C2B",
+  "status": "PASS",
+  "inputSha": "2c21804d7b5ffbe652601ae1ae6d02fcfdd92c83",
+  "branch": "feat/family-places-platform-v1",
+  "completedAt": "2026-07-16T11:05:54+02:00",
+  "implemented": [
+    "published-only public cities, categories, amenities, place search, place details and bounded GeoJSON map endpoints",
+    "parameterized PostGIS discovery queries with age, radius, bounding box, amenity AND, boolean, text and open-now filters",
+    "stable pagination and documented distance, name, verification recency and relevance ordering",
+    "RFC Problem Details responses with correlation IDs and endpoint-specific rate limiting",
+    "authenticated administrator draft creation and submit, publish, unpublish, reverify, close and archive workflow actions",
+    "OpenAPI discovery contract and generated TypeScript client",
+    "documented deterministic place ranking formula"
+  ],
+  "architecture": {
+    "publicReadPort": "Discovery Application PlaceReadModel implemented by parameterized Doctrine DBAL",
+    "adminWritePort": "Places Application AdminPlaceGateway implemented by Doctrine DBAL",
+    "controllerBoundary": "UI controllers depend on Application services and ports only",
+    "domainApiAttributes": false,
+    "browserContract": "generated packages/api-client remains authoritative"
+  },
+  "results": {
+    "publicApiRegression": "PASS: reference data, amenities AND, radius/distance, GeoJSON map and invalid-query Problem Details",
+    "publishedOnly": "PASS: draft details return 404",
+    "sqlInjectionProbe": "PASS: parameterized query returned zero results",
+    "openNow": "PASS: weekly and special opening intervals evaluated in place-local time",
+    "rateLimiting": "PASS: 429 rate_limit_exceeded with Retry-After",
+    "adminRuntimeWorkflow": "PASS: login, create draft, submit, publish and public API visibility",
+    "spatialQueryPlan": "PASS: idx_places_location used for bounded map query on a synthetic 10000-row dataset",
+    "queryCount": "PASS: list projections use bounded aggregate subqueries without per-result application queries",
+    "openApiGeneration": "PASS: repeated generation produced identical SHA-256 diff",
+    "apiClientBuild": "PASS: TypeScript compile on Node 24",
+    "productionImageBuild": "PASS",
+    "productionRuntime": "PASS: health, discovery and admin authentication redirect",
+    "phpunit": "PASS: 23 tests, 48 assertions",
+    "phpstan": "PASS",
+    "deptrac": "PASS: 0 violations, 0 skipped violations",
+    "phpCsFixer": "PASS",
+    "symfonyContainer": "PASS",
+    "symfonyYaml": "PASS",
+    "doctrineSchemaValidation": "PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "findingsClosed": [
+    "admin authentication test now sends the Origin header required by Symfony stateless CSRF, matching browser form submission",
+    "test service replacement remains active after login by disabling kernel reboot in the focused authorization test",
+    "map intersection remains geography-native so PostgreSQL uses idx_places_location instead of a sequential scan",
+    "correlation ID attribute moved to Shared Application so UI does not depend on Shared Infrastructure",
+    "generated client regeneration verified as deterministic under the required Node 24 toolchain"
+  ],
+  "knownLimitations": [
+    "C2B provides the authenticated catalogue workflow through custom Symfony controllers integrated with the EasyAdmin dashboard rather than entity CRUD classes",
+    "same-origin SSR resource routes and catalogue pages belong to C2C and are intentionally not implemented here",
+    "Google login, public registration, favorites, reviews, forum and uploads remain explicitly outside C2"
+  ],
+  "externalConfigurationRequired": [
+    "create production administrators explicitly with app:user:create-admin",
+    "configure production secrets and trusted proxy/origin settings"
+  ],
+  "artifacts": [
+    "docs/architecture/place-ranking-v1.md",
+    "packages/api-client/openapi/openapi.json",
+    "packages/api-client/src",
+    "reports/implementation/checkpoint-c2b.json"
+  ],
+  "selfReferentialSha": false,
+  "nextAction": "Commit and push C2B, verify the remote SHA, then begin C2C without implementing C3."
+}

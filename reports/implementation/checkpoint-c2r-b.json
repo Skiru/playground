@@ -1,0 +1,29 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "checkpoint": "C2R-B",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T13:02:02+02:00",
+  "baseSha": "80e3db8",
+  "adminFullEdit": true,
+  "dictionaryCrud": ["City", "Category", "Amenity"],
+  "dictionaryControls": ["slug uniqueness", "enabled flag", "display order", "CSRF", "ROLE_ADMIN", "foreign-key protected deletion"],
+  "placeCapabilities": ["create", "view", "edit", "workflow", "core details", "coordinates", "categories", "amenities", "age zones", "weekly intervals", "breaks", "overnight intervals", "special days", "special intervals", "external references"],
+  "aggregateEditAtomic": true,
+  "coordinateOrderRegression": true,
+  "realDatabaseWorkflow": {
+    "adminLogin": "PASS",
+    "draftCreation": "PASS",
+    "invalidPublicationRejected": "PASS",
+    "richAggregateEdit": "PASS",
+    "submitAndPublish": "PASS",
+    "publicApiVisibility": "PASS",
+    "unpublishRemovesPublicVisibility": "PASS"
+  },
+  "gates": {
+    "phpCsFixer": "PASS",
+    "phpstanLevel8": "PASS",
+    "twigLint": "PASS",
+    "adminFunctional": "PASS (8 tests, 79 assertions)",
+    "phpunit": "PASS (51 tests, 150 assertions)"
+  }
+}

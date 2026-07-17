@@ -1,0 +1,27 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "reviewedThrough": "c88a1704e66309db2984396885cb43468da60044",
+  "passes": ["Functional", "Architecture", "Security and operations"],
+  "architecture": {"result": "PASS", "p0": 0, "p1": 0},
+  "functional": {
+    "result": "PASS_WITH_REMEDIATION",
+    "acceptedFindings": ["explicit browser-level stale edit regression", "bounded frontend amenities parsing"],
+    "closed": ["stale edit renders a readable conflict and preserves the concurrent value", "single and repeated amenities are normalized safely"],
+    "reclassified": ["pipe-delimited administration fields are a P2 usability risk, not a data-integrity bypass; typed commands and aggregate collection validation remain authoritative", "PostGIS radius test correctly uses an independent projected origin rather than duplicating production SQL"]
+  },
+  "securityOperations": {
+    "result": "PASS_WITH_NOTES",
+    "closed": ["all first-party checkout actions moved to the Node 24-based v5 SHA", "integration workflow now runs frontend gates, client drift, deterministic fixture reset, real Playwright and axe"],
+    "falsePositives": ["React escapes errorMessage text and no dangerouslySetInnerHTML is used", "compose.e2e.yaml contains deterministic non-production test credentials, not deployable secrets", "Playwright URLs are explicitly set by the workflow"]
+  },
+  "finalRangeReview": {
+    "range": "be3a7c0..c88a1704e66309db2984396885cb43468da60044",
+    "result": "PASS",
+    "reviewed": ["adversarial finding remediations", "web runtime tooling removal", "container runtime assertion", "integration workflow bootstrapping", "deterministic OpenAPI runtime build", "non-interactive generated client execution"],
+    "evidence": ["Trivy API/web HIGH 0 CRITICAL 0", "local generated client drift PASS", "local production Playwright 18/18 and smoke PASS", "exact-SHA remote checks 6/6 success"],
+    "newP0": 0,
+    "newP1": 0
+  },
+  "openP0": 0,
+  "openP1": 0
+}

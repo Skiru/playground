@@ -1,0 +1,48 @@
+name: Security
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+      - name: Composer audit
+        run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app composer:2 composer audit --locked
+      - name: pnpm audit
+        run: docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm audit --audit-level high'
+      - name: Gitleaks committed history
+        run: docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 git --config=/repo/.gitleaks.toml --redact --verbose /repo
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+      - name: Review dependency lockfile delta
+        run: git diff --stat "${{ github.event.pull_request.base.sha }}...${{ github.sha }}" -- apps/api/composer.json apps/api/composer.lock package.json pnpm-lock.yaml
+      - name: Validate locked dependencies
+        run: |
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app composer:2 composer validate --strict
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app composer:2 composer audit --locked
+          docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm audit --audit-level high'

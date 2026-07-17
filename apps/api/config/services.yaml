@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    App\Shared\Application\:
+        resource: '../src/Shared/Application/'
+
+    App\Shared\Infrastructure\:
+        resource: '../src/Shared/Infrastructure/'
+
+    App\Identity\Application\:
+        resource: '../src/Identity/Application/'
+
+    App\Identity\Infrastructure\:
+        resource: '../src/Identity/Infrastructure/'
+
+    App\Identity\UI\:
+        resource: '../src/Identity/UI/'
+
+    App\Places\Application\:
+        resource: '../src/Places/Application/'
+
+    App\Places\Infrastructure\:
+        resource: '../src/Places/Infrastructure/'
+
+    App\Places\UI\:
+        resource: '../src/Places/UI/'
+
+    App\Discovery\Application\:
+        resource: '../src/Discovery/Application/'
+
+    App\Discovery\Infrastructure\:
+        resource: '../src/Discovery/Infrastructure/'
+
+    App\Discovery\UI\:
+        resource: '../src/Discovery/UI/'
+
+    App\Administration\Infrastructure\:
+        resource: '../src/Administration/Infrastructure/'
+
+    App\Administration\UI\:
+        resource: '../src/Administration/UI/'
+
+    App\Shared\Application\Clock:
+        alias: App\Shared\Infrastructure\Clock\SystemClock
+        public: true
+
+    App\Shared\Application\TransactionManager: '@App\Shared\Infrastructure\Doctrine\DbalTransactionManager'
+
+    App\Shared\Infrastructure\Logging\CorrelationIdProcessor:
+        tags: [monolog.processor]
+
+    App\Identity\Application\UserRepository: '@App\Identity\Infrastructure\Doctrine\UserRepository'
+    App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
+    App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
+
+    Jsor\Doctrine\PostGIS\Event\ORMSchemaEventListener:
+        tags: [{ name: doctrine.event_listener, event: postGenerateSchemaTable, connection: default }]
+
+    Jsor\Doctrine\PostGIS\Driver\Middleware:
+        tags: [doctrine.middleware]

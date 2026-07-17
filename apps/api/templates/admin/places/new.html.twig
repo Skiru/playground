@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+{% block title %}Nowe miejsce | FamilyPlaces Admin{% endblock %}
+{% block stylesheets %}{% include 'admin/places/_form_styles.html.twig' %}{% endblock %}
+{% block body %}
+<main class="place-form-page">
+    <nav><a href="{{ path('admin_places') }}">Anuluj</a></nav>
+    <h1>Nowe miejsce</h1>
+    {% include 'admin/places/_form.html.twig' with {submitLabel: 'Utwórz cały draft'} %}
+</main>
+{% endblock %}
+{% block javascripts %}{% include 'admin/places/_form_script.html.twig' %}{% endblock %}

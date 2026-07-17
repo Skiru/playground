@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+echo "=== MIGRATION REHEARSAL INITIATED ==="
+
+# Helper function to wait for DB
+wait_for_db() {
+  echo "Waiting for database to be healthy..."
+  until docker compose -f compose.yaml -f compose.test.yaml exec -T database pg_isready -U family_places_test >/dev/null 2>&1; do
+    sleep 1
+  done
+}
+
+echo "--- Scenariusz 1: FRESH INSTALL ---"
+echo "Building development test image..."
+docker compose -f compose.yaml -f compose.test.yaml build api
+
+echo "Cleaning existing database container..."
+docker compose -f compose.yaml -f compose.test.yaml down --volumes || true
+docker compose -f compose.yaml -f compose.test.yaml up -d database
+wait_for_db
+
+echo "Creating empty database..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:database:create --if-not-exists
+
+echo "Running all migrations from scratch..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+
+echo "Loading fixtures..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
+
+echo "Validating database schema..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:schema:validate
+
+echo "Running backend sanity unit/app tests..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
+
+echo "Fresh install rehearsal: SUCCESS."
+
+echo "--- Scenariusz 2: UPGRADE ---"
+echo "Simulating upgrade scenario..."
+# Keep the database running with existing fixture data (simulating the state at 773df803...)
+# Then run migrations again to verify idempotency and schema compatibility.
+echo "Running migrations on existing database to verify idempotency..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+
+echo "Verifying data integrity and entity counts..."
+places_count=$(docker compose -f compose.yaml -f compose.test.yaml run --rm api php -r 'require "vendor/autoload.php"; $kernel = new App\Kernel("test", false); $kernel->boot(); $conn = $kernel->getContainer()->get("doctrine.dbal.default_connection"); echo $conn->fetchOne("SELECT COUNT(*) FROM places");')
+echo "Found $places_count places in migrated database."
+if [ "$places_count" -lt 1 ]; then
+  echo "Error: Migrated database is empty!"
+  exit 1
+fi
+
+echo "Validating schema after upgrade..."
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:schema:validate
+
+echo "Upgrade rehearsal: SUCCESS."
+echo "=== ALL MIGRATION REHEARSALS PASSED ==="

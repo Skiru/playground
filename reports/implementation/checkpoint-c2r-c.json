@@ -1,0 +1,18 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R_PRODUCTION_CLOSURE",
+  "checkpoint": "C2R-C",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T13:20:13+02:00",
+  "baseSha": "a1cf187",
+  "postgresql": "18 + PostGIS 3.6",
+  "frozenClock": true,
+  "explicitReadDtos": ["PlaceListItem", "PlaceDetails", "MapPlaceFeature", "OpeningStatus", "AgeSummary", "PaginationMetadata"],
+  "selectStarPublicApi": false,
+  "resourceLimits": {"pageSize": 50, "maxPage": 5000, "maxOffset": 50000, "amenities": 10, "queryLength": 100, "bboxArea": 25, "mapFeatures": 500, "statementTimeoutMs": 2000},
+  "postgisScenarios": ["radius", "exact radius boundary", "latitude/longitude order", "GiST index", "age minimum", "age maximum", "open-ended age", "amenities AND", "category", "city", "indoor/outdoor/free", "unpublished exclusion", "temporarily closed exclusion", "bbox", "bbox area", "total count", "pagination", "stable sorting", "SQL injection"],
+  "openingHoursScenarios": ["regular interval", "multiple intervals", "day break", "weekly overnight", "special closed", "special open", "special overnight", "previous-day special overnight", "Europe/Warsaw DST spring", "Europe/Warsaw DST autumn first occurrence", "Europe/Warsaw DST autumn second occurrence"],
+  "textSearch": {"fields": ["name", "short_description", "description"], "unaccent": true, "trigram": true, "fullText": true, "parameterized": true},
+  "explainEvidence": {"syntheticRows": 10000, "plan": "Bitmap Heap Scan with BitmapOr", "indexes": ["idx_places_name_unaccent_trgm", "idx_places_search_document"], "executionTimeMs": 19.515},
+  "openApiRuntime": {"collection": "PASS", "details": "PASS", "map": "PASS", "problemDetails": "PASS", "assertions": 328, "undocumentedFieldsRejected": true},
+  "gates": {"migrationsFromZero": "PASS", "fixtures": "PASS", "discoveryInfrastructure": "PASS (15 tests, 280 assertions)", "phpunit": "PASS (66 tests, 547 assertions)", "phpstanLevel8": "PASS", "apiClientBuild": "PASS", "gitDiffCheck": "PASS"}
+}

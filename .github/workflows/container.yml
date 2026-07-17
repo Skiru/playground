@@ -1,0 +1,50 @@
+name: Containers
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: containers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Validate production topology
+        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml config --quiet
+      - name: Build immutable candidates
+        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml build api worker web
+      - name: Verify Docker context exclusions
+        run: ./scripts/verify-docker-context
+      - name: Verify production runtimes
+        run: |
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml up --wait -d database
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml up -d worker
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml up --wait -d api web
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T api php -r '$loader = require "vendor/autoload.php"; if (!$loader->isClassMapAuthoritative() || !class_exists(App\Kernel::class)) { exit(1); }'
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T api sh -c '! command -v composer'
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T web sh -c '! command -v npm && ! command -v npx'
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T web sh -c 'test ! -d node_modules/vitest && test ! -d node_modules/eslint && test ! -d node_modules/typescript && test ! -d node_modules/@playwright'
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T api curl --fail --silent http://localhost/api/v1/health/live
+          docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
+      - name: Runtime logs
+        if: always()
+        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml logs
+      - name: Stop runtime
+        if: always()
+        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml down --volumes
+      - name: Publication policy
+        run: printf '%s\n' 'PR images are never published; main and tags are prepared for a later GHCR release workflow.'

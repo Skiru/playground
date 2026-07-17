@@ -1,0 +1,97 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_MONOREPO_V1_C0_C2",
+  "checkpoint": "C1",
+  "status": "PASS",
+  "branch": "feat/family-places-platform-v1",
+  "startSha": "ccfaeb2c0c6c1566d421e31fe1d10362b0d12333",
+  "endSha": "COMMIT_CONTAINING_THIS_REPORT",
+  "treeSha": "RESOLVE_WITH_GIT_REV_PARSE_HEAD_TREE_AFTER_COMMIT",
+  "implemented": [
+    "Symfony 8.1.1 API on PHP 8.5.8 with API Platform 4.3.17 and EasyAdmin 5.2",
+    "React 19.2 React Router 8.2 Framework Mode SSR with Vite 8.1.4",
+    "pnpm 11 workspace and generated Hey API Fetch SDK",
+    "PostgreSQL 18 with PostGIS 3.6.4 on isolated internal network",
+    "FrankenPHP classic-mode API, Node 24 SSR web and Messenger worker images",
+    "liveness, database readiness, correlation ID and protected admin entry",
+    "dev, test and production Compose variants with optional Redis and dev Mailpit",
+    "PHPUnit, PHP-CS-Fixer, PHPStan, Deptrac, ESLint, TypeScript and Vitest gates",
+    "pinned-action GitHub workflows and grouped Dependabot configuration",
+    "POSIX root automation with guarded data reset"
+  ],
+  "commands": [
+    "docker compose --env-file .env.example -f compose.yaml -f compose.dev.yaml config --quiet",
+    "docker compose --env-file .env.example -f compose.yaml -f compose.test.yaml config --quiet",
+    "docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml config --quiet",
+    "composer validate --strict",
+    "php bin/console lint:container",
+    "php bin/console lint:yaml config",
+    "vendor/bin/php-cs-fixer check --diff",
+    "vendor/bin/phpstan analyse --no-progress",
+    "vendor/bin/deptrac analyse",
+    "php bin/phpunit",
+    "pnpm install --frozen-lockfile",
+    "pnpm --filter @family-places/web lint",
+    "pnpm --filter @family-places/web typecheck",
+    "pnpm --filter @family-places/web test",
+    "pnpm --filter @family-places/web build",
+    "pnpm --filter @family-places/api-client build",
+    "./scripts/api-check",
+    "./scripts/smoke",
+    "SELECT PostGIS_Full_Version()",
+    "git diff --check"
+  ],
+  "testResults": [
+    "Composer validation and Symfony lint: PASS",
+    "PHP-CS-Fixer: PASS",
+    "PHPStan level 8: PASS",
+    "Deptrac: PASS with zero violations and zero skipped violations",
+    "PHPUnit: PASS, 4 tests and 12 assertions",
+    "pnpm frozen install: PASS",
+    "ESLint and strict TypeScript: PASS",
+    "Vitest: PASS, 1 test",
+    "React Router SSR production build: PASS",
+    "generated API client build and drift: PASS",
+    "Compose dev/test/prod syntax: PASS",
+    "API, web and database healthchecks: healthy; worker consuming",
+    "PostGIS 3.6.4 on PostgreSQL 18: PASS",
+    "SSR, liveness, readiness, admin unauthorized and smoke: PASS",
+    "Composer and pnpm high-severity audit: PASS"
+  ],
+  "findings": [
+    "host PHP 8.4 and Node 20 cannot run the required toolchain",
+    "React Router generator left npm/Tailwind boilerplate and port 5173 defaults",
+    "Messenger Doctrine adapter was initially absent",
+    "OpenAPI initially exported no paths",
+    "PostGIS image has no native ARM64 manifest"
+  ],
+  "findingsClosed": [
+    "all gates run in PHP 8.5 and Node 24 containers",
+    "web documentation and dev server use the pnpm monorepo and port 3000",
+    "official Symfony Doctrine Messenger adapter installed; dev worker uses in-memory transport",
+    "health operations are documented, tested and generated into the Fetch SDK",
+    "PostGIS uses the required verified amd64 digest with explicit emulation on ARM hosts"
+  ],
+  "knownLimitations": [
+    "C1 intentionally has no Places entities, catalogue fixtures or public search",
+    "development worker transport is non-persistent until C2 adds migration-backed transport tables",
+    "self-referential commit and tree SHA use symbolic values inside the containing commit"
+  ],
+  "externalConfigurationRequired": [
+    "replace development secrets in .env before shared or production use",
+    "set an explicit production MAP_STYLE_URL, attribution and provider name"
+  ],
+  "artifacts": [
+    "apps/api",
+    "apps/web",
+    "packages/api-client",
+    "compose.yaml",
+    "compose.dev.yaml",
+    "compose.test.yaml",
+    "compose.prod.yaml",
+    "infra/docker",
+    ".github/workflows",
+    "scripts"
+  ],
+  "cleanWorktree": false,
+  "nextAction": "Commit and push C1, verify clean worktree and only then begin C2"
+}

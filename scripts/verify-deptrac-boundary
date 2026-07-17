@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+fixture="$repo_dir/apps/api/src/Places/Domain/DeptracForbiddenDependencyProbe.php"
+api_image=${API_IMAGE:-family-places-api:development}
+mkdir -p "$(dirname -- "$fixture")"
+trap 'rm -f "$fixture"' EXIT HUP INT TERM
+
+cat >"$fixture" <<'PHP'
+<?php
+namespace App\Places\Domain;
+final class DeptracForbiddenDependencyProbe
+{
+    public function __construct(private \App\Shared\Infrastructure\Clock\SystemClock $clock) {}
+}
+PHP
+
+if docker run --rm -v "$repo_dir/apps/api:/app" -w /app "$api_image" vendor/bin/deptrac analyse >/dev/null 2>&1; then
+    printf '%s\n' 'Deptrac failed to detect a forbidden Domain to Infrastructure dependency.' >&2
+    exit 1
+fi
+
+printf '%s\n' 'Deptrac boundary mutation detected as expected.'

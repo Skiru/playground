@@ -1,0 +1,81 @@
+/* Semantic Design Tokens */
+:root {
+  /* Color - Brand semantic slots */
+  --color-brand-primary: var(--forest);
+  --color-brand-secondary: var(--rust);
+  
+  /* Color - Surfaces */
+  --color-page-background: var(--paper);
+  --color-surface-raised: #fffdf7;
+  --color-surface-panel: var(--forest);
+  --color-surface-aside: #e2ded2;
+  
+  /* Color - Typography */
+  --color-text-primary: var(--ink);
+  --color-text-muted: #59645d;
+  --color-text-inverse: #ffffff;
+  
+  /* Color - Borders and Lines */
+  --color-border-default: var(--line);
+  --color-border-dark: var(--ink);
+  
+  /* Color - Interactive and Actions */
+  --color-action-primary: var(--rust);
+  --color-action-primary-hover: #9c2e17;
+  --color-action-brand-hover: var(--forest);
+  
+  /* Color - Feedback States */
+  --color-success: #234c36;
+  --color-warning: #b43b22;
+  --color-danger: #b43b22;
+  --color-info: #17231d;
+  
+  /* Color - Utility / Focus */
+  --color-focus-ring: var(--rust);
+  --color-shadow-default: #d9d4c6;
+
+  /* Spacing Scale */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.3rem;
+  --space-sm: 0.4rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.2rem;
+  --space-2xl: 1.5rem;
+  --space-3xl: 1.8rem;
+  --space-4xl: 2rem;
+  --space-5xl: 3rem;
+  --space-6xl: 4rem;
+  --space-7xl: 5rem;
+  
+  /* Radius Scale */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 99px;
+
+  /* Shadows */
+  --shadow-card: 10px 10px 0 var(--color-shadow-default);
+  
+  /* Z-Index Layers */
+  --z-index-base: 1;
+  --z-index-sticky: 100;
+  --z-index-modal: 1000;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* Map Panel Tokens */
+  --map-panel-bg: var(--color-brand-primary);
+  --map-panel-color: var(--color-text-inverse);
+  --map-canvas-bg: #d8dfd5;
+}
+
+/* Reduced Motion Settings */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0s;
+    --transition-normal: 0s;
+  }
+}

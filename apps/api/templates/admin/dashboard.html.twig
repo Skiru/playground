@@ -1,0 +1,8 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block content_title %}FamilyPlaces administration{% endblock %}
+
+{% block main %}
+    <p>Catalogue administration uses the authoritative Place aggregate.</p>
+    <nav aria-label="Słowniki"><a href="{{ path('admin_places') }}">Miejsca</a> · <a href="{{ path('admin_dictionary_list', {type: 'cities'}) }}">Miasta</a> · <a href="{{ path('admin_dictionary_list', {type: 'categories'}) }}">Kategorie</a> · <a href="{{ path('admin_dictionary_list', {type: 'amenities'}) }}">Udogodnienia</a></nav>
+{% endblock %}

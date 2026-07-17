@@ -1,0 +1,29 @@
+name: Frontend quality
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Install pnpm workspace
+        run: docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm install --frozen-lockfile'
+      - name: Frontend checks
+        run: docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/api-client build && corepack pnpm --filter @family-places/web lint && corepack pnpm --filter @family-places/web typecheck && corepack pnpm --filter @family-places/web test && corepack pnpm --filter @family-places/web build'
+      - name: Build PHP 8.5 OpenAPI runtime
+        run: docker build --target development -t family-places-api:development -f infra/docker/api.Dockerfile .
+      - name: Generated client drift
+        run: ./scripts/api-check

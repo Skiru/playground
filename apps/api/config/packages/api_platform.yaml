@@ -1,0 +1,15 @@
+api_platform:
+    title: FamilyPlaces API
+    description: Versioned public contract for the FamilyPlaces catalogue.
+    version: 1.0.0
+    enable_swagger_ui: false
+    enable_re_doc: false
+    use_symfony_listeners: true
+    error_formats:
+        jsonproblem: ['application/problem+json']
+    defaults:
+        stateless: true
+        pagination_items_per_page: 20
+        pagination_maximum_items_per_page: 50
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']

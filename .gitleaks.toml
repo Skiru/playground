@@ -1,0 +1,12 @@
+title = "FamilyPlaces Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore false positives triggered by 40-character Git commit SHAs and build manifests"
+paths = [
+    '''scripts/verify-artifact-chain''',
+    '''compose\.prod\.yaml''',
+    '''reports/implementation/.*'''
+]

@@ -1,0 +1,27 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_EVIDENCE_REMOTE_FIX_V2",
+  "checkpoint": "R0",
+  "status": "PASS",
+  "decision": "PROCEED_TO_FIX_V2",
+  "checkedAt": "2026-07-17T07:50:00+02:00",
+  "timezone": "Europe/Warsaw",
+  "repository": "Skiru/playground",
+  "workingDirectory": "/Users/mkoziol/projects/playground",
+  "branch": "feat/family-places-platform-v1",
+  "headSha": "5436570f8cb847256a31dd72ac596a4744cb150a",
+  "headTree": "1c2e6f5c46f8bdc88f29deaf72cee029472549f6",
+  "expectedSha": "5436570f8cb847256a31dd72ac596a4744cb150a",
+  "baseCertificationSha": "5436570f8cb847256a31dd72ac596a4744cb150a",
+  "cleanWorktree": true,
+  "pullRequest": {
+    "number": 1,
+    "state": "open",
+    "headRef": "feat/family-places-platform-v1",
+    "headSha": "5436570f8cb847256a31dd72ac596a4744cb150a",
+    "baseRef": "main",
+    "merged": false,
+    "mergedAt": null,
+    "source": "https://api.github.com/repos/Skiru/playground/pulls/1"
+  },
+  "result": "Clean remote-first preflight verified; ready to execute security and artifact chain fixes."
+}

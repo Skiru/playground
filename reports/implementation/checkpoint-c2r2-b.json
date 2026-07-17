@@ -1,0 +1,46 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2R2_DOMAIN_INTEGRITY_AND_ADMIN_UX_CLOSURE",
+  "checkpoint": "C2R2-B",
+  "status": "PASS",
+  "checkedAt": "2026-07-16T15:23:37+02:00",
+  "inputHead": "f4c958e",
+  "singleAdministrationWritePath": true,
+  "command": "App\\Places\\Application\\Command\\UpdatePlaceAggregate",
+  "aggregateLoadsPerEdit": 1,
+  "versionAssertionsPerEdit": 1,
+  "logicalAggregateSavesPerEdit": 1,
+  "versionIncrementsPerEdit": 1,
+  "controllerVersionArithmetic": false,
+  "performanceContract": {
+    "aggregateRepositoryLoads": 1,
+    "cityResolutions": 1,
+    "categoryBatchResolutions": 1,
+    "amenityBatchResolutions": 1,
+    "aggregateRepositorySaves": 1,
+    "dictionaryNPlusOne": false
+  },
+  "evidence": {
+    "versionOneBecomesTwo": "PASS",
+    "sevenSectionEditDoesNotBecomeVersionEight": "PASS",
+    "staleVersionRejected": "PASS",
+    "concurrentAdministratorRegression": "PASS",
+    "lastCollectionFailureRollback": "PASS",
+    "coreRollback": "PASS",
+    "earlierCollectionsRollback": "PASS",
+    "administrationArchitectureTest": "PASS"
+  },
+  "gates": {
+    "focusedRegressionSuite": "PASS (36 tests, 125 assertions)",
+    "phpCsFixer": "PASS",
+    "phpstanLevel8": "PASS",
+    "deptrac": "PASS (0 violations, 0 errors)",
+    "symfonyContainerLint": "PASS",
+    "gitDiffCheck": "PASS",
+    "adversarialReview": "PASS (P0=0, P1=0)"
+  },
+  "notes": [
+    "The administration controller constructs exactly one UpdatePlaceAggregate command from the submitted expectedVersion.",
+    "Granular mutation handlers remain documented for bounded integration use cases and are excluded from the administration form path.",
+    "OpeningHoursModeInput preserves the Administration-to-Application dependency boundary; only the application handler maps it to the domain enum."
+  ]
+}

@@ -1,0 +1,5 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ type|title }} | FamilyPlaces Admin{% endblock %}
+{% block body %}<main><nav><a href="{{ path('admin') }}">Panel</a></nav><h1>{{ type|title }}</h1><a href="{{ path('admin_dictionary_new', {type: type}) }}">Dodaj</a>
+{% for message in app.flashes('success') %}<p role="status">{{ message }}</p>{% endfor %}{% for message in app.flashes('error') %}<p role="alert">{{ message }}</p>{% endfor %}
+<table><thead><tr><th>Nazwa</th><th>Slug</th><th>Aktywne</th><th>Kolejność</th><th>Akcje</th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.name }}</td><td>{{ item.slug }}</td><td>{{ item.enabled ? 'tak' : 'nie' }}</td><td>{{ item.display_order ?? '—' }}</td><td><a href="{{ path('admin_dictionary_edit', {type: type, id: item.id}) }}">Edytuj</a><form method="post" action="{{ path('admin_dictionary_delete', {type: type, id: item.id}) }}" style="display:inline"><input type="hidden" name="_token" value="{{ csrf_token('dictionary-delete-' ~ item.id) }}"><button>Usuń</button></form></td></tr>{% endfor %}</tbody></table></main>{% endblock %}

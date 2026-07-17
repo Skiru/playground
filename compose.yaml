@@ -1,0 +1,103 @@
+name: family-places
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: production
+    environment:
+      APP_ENV:
+      APP_DEBUG:
+      APP_SECRET:
+      DATABASE_URL:
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+      SERVER_NAME: :80
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost/api/v1/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [edge, internal]
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: production
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=128M"]
+    working_dir: /app
+    environment:
+      APP_ENV:
+      APP_DEBUG:
+      APP_SECRET:
+      DATABASE_URL:
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    networks: [internal]
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      target: production
+    environment:
+      NODE_ENV:
+      API_BASE_URL: http://api
+      MAP_STYLE_URL:
+      MAP_ATTRIBUTION:
+      MAP_PROVIDER_NAME:
+      PORT: 3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [edge]
+
+  database:
+    image: postgis/postgis:18-3.6@sha256:c893f6f2652d11e13f50f8623045b3523991b41d038b4d213dc040f42641f0d7
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB:
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    volumes:
+      - database-data:/var/lib/postgresql
+    networks: [internal]
+
+  redis:
+    image: redis:8-bookworm
+    profiles: [redis]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [internal]
+
+volumes:
+  database-data:
+  pnpm-store:
+
+networks:
+  edge:
+  internal:
+    internal: true

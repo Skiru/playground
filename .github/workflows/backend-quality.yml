@@ -1,0 +1,39 @@
+name: Backend quality
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Build PHP 8.5 development runtime
+        run: docker build --target development -t family-places-api-ci -f infra/docker/api.Dockerfile .
+      - name: Install backend dependencies
+        run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci composer install --no-interaction --prefer-dist
+      - name: Validate and lint
+        run: |
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci composer validate --strict
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/console lint:container
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/console lint:yaml config
+      - name: Static and architecture checks
+        run: |
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/php-cs-fixer check --diff
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/console cache:warmup --env=test
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/deptrac analyse
+          API_IMAGE=family-places-api-ci ./scripts/verify-deptrac-boundary
+      - name: Backend tests
+        run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/phpunit tests/Places/Domain tests/Places/Application tests/Identity tests/Discovery/Application tests/Shared

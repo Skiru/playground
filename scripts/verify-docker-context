@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+archive=$(mktemp)
+trap 'rm -f "$archive"' EXIT HUP INT TERM
+
+docker build --no-cache --output "type=tar,dest=$archive" -f "$repo_dir/infra/docker/context-test.Dockerfile" "$repo_dir" >/dev/null
+
+if tar -tf "$archive" | grep -Eq '(^|/)(\.git|node_modules|vendor|reports)(/|$)'; then
+    printf '%s\n' 'Docker build context contains an excluded path.' >&2
+    exit 1
+fi
+
+printf '%s\n' 'Docker build context exclusions verified.'
