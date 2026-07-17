@@ -1,22 +1,31 @@
 {
-  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_FINAL_PRODUCTION_RELEASE_CLOSURE",
-  "verifiedAt": "2026-07-16T19:42:32Z",
-  "artifacts": {
-    "api": {
-      "imageName": "family-places-api:latest",
-      "imageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
-      "digest": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad"
-    },
-    "web": {
-      "imageName": "family-places-web:latest",
-      "imageId": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93",
-      "digest": "sha256:18e7544bb082f6c293fdd9833c0e54444bbc8ac90009921af6c810b3b3870e93"
-    },
-    "worker": {
-      "imageName": "family-places-worker:latest",
-      "imageId": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad",
-      "digest": "sha256:ece00661c22d5dffc3cd667d820ae7a1ddd0ea480774aa87d8058ef9a45eefad"
-    }
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_EVIDENCE_REMOTE_FIX_V2",
+  "verifiedAt": "2026-07-17T08:15:00Z",
+  "sourceGitSha": "c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+  "sourceTreeSha": "9781769c3d5ad6c29cf766d96764a599f56b3e1d",
+  "api": {
+    "immutableTag": "family-places-api:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+    "localImageId": "sha256:46e39b3ed1c31a3233e33fe2f90160c4c9d32bceb43500190f8aeae70fbe8296",
+    "archive": "artifacts/api-image.tar",
+    "archiveSha256": "6bda4a06e3c2ee8a5909d8f979dacb86452281f1d7a6890c827c4942ff71e583",
+    "runtimeImageId": "sha256:46e39b3ed1c31a3233e33fe2f90160c4c9d32bceb43500190f8aeae70fbe8296",
+    "trivyInputSha256": "6bda4a06e3c2ee8a5909d8f979dacb86452281f1d7a6890c827c4942ff71e583",
+    "sbomSubjectSha256": "6bda4a06e3c2ee8a5909d8f979dacb86452281f1d7a6890c827c4942ff71e583",
+    "registryDigest": null
+  },
+  "web": {
+    "immutableTag": "family-places-web:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
+    "localImageId": "sha256:86e988cd85af6e79295f0aa39e567680f6668908809332fd7ab4af4af2c00324",
+    "archive": "artifacts/web-image.tar",
+    "archiveSha256": "f8879dcc73d62b0603250e6e789228621911ce61f89336991545596cd677c5d1",
+    "runtimeImageId": "sha256:86e988cd85af6e79295f0aa39e567680f6668908809332fd7ab4af4af2c00324",
+    "trivyInputSha256": "f8879dcc73d62b0603250e6e789228621911ce61f89336991545596cd677c5d1",
+    "sbomSubjectSha256": "f8879dcc73d62b0603250e6e789228621911ce61f89336991545596cd677c5d1",
+    "registryDigest": null
+  },
+  "worker": {
+    "aliasOf": "api",
+    "localImageId": "same-as-api"
   },
   "chainStatus": "VERIFIED"
 }

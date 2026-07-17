@@ -1,5 +1,6 @@
 services:
   api:
+    image: family-places-api:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc
     restart: unless-stopped
     environment:
       APP_ENV: prod
@@ -7,6 +8,7 @@ services:
       APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
   worker:
+    image: family-places-worker:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc
     restart: unless-stopped
     environment:
       APP_ENV: prod
@@ -14,6 +16,7 @@ services:
       APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
   web:
+    image: family-places-web:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc
     restart: unless-stopped
     environment:
       NODE_ENV: production

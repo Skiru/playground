@@ -1,0 +1,26 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_EVIDENCE_REMOTE_FIX_V2",
+  "queryTimestamp": "2026-07-17T08:20:00+02:00",
+  "branchProtection": {
+    "url": "https://api.github.com/repos/Skiru/playground/branches/main/protection",
+    "status": 401,
+    "response": {
+      "message": "Requires authentication",
+      "documentation_url": "https://docs.github.com/rest"
+    }
+  },
+  "rulesets": {
+    "url": "https://api.github.com/repos/Skiru/playground/rulesets",
+    "status": 200,
+    "response": []
+  },
+  "verification": {
+    "forcePushesBlocked": "UNKNOWN",
+    "branchDeletionBlocked": "UNKNOWN",
+    "pullRequestRequired": "UNKNOWN",
+    "requiredStatusChecks": "UNKNOWN",
+    "conversationsResolved": "UNKNOWN"
+  },
+  "repositoryGovernance": "OPERATOR_ACTION_REQUIRED",
+  "decision": "NOT_READY_TO_MERGE"
+}

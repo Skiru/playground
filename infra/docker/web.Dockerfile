@@ -26,8 +26,8 @@ FROM node:24-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9
 ENV NODE_ENV=production PORT=3000
 
 LABEL org.opencontainers.image.source="https://github.com/Skiru/playground"
-LABEL org.opencontainers.image.revision="045bc810e3c5debe9ec73f57a5f412c3ff796667"
-LABEL org.opencontainers.image.created="2026-07-16T21:35:00Z"
+LABEL org.opencontainers.image.revision="c4083b4cac4e2ec4d9b186d699139cd9519a08cc"
+LABEL org.opencontainers.image.created="2026-07-17T08:00:00Z"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.title="family-places-web"
 LABEL org.opencontainers.image.description="FamilyPlaces public web SSR catalog service"

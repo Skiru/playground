@@ -7,9 +7,9 @@ cd "$repo_dir"
 echo "Verifying exact-artifact chain and generating manifest..."
 
 # Fetch current built image IDs
-api_id=$(docker inspect --format='{{.Id}}' family-places-api:latest 2>/dev/null || true)
-web_id=$(docker inspect --format='{{.Id}}' family-places-web:latest 2>/dev/null || true)
-worker_id=$(docker inspect --format='{{.Id}}' family-places-worker:latest 2>/dev/null || true)
+api_id=$(docker inspect --format='{{.Id}}' family-places-api:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc 2>/dev/null || true)
+web_id=$(docker inspect --format='{{.Id}}' family-places-web:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc 2>/dev/null || true)
+worker_id=$(docker inspect --format='{{.Id}}' family-places-worker:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc 2>/dev/null || true)
 
 if [ -z "$api_id" ] || [ -z "$web_id" ] || [ -z "$worker_id" ]; then
   echo "Error: One or more production images are missing. Build them first."
@@ -32,21 +32,21 @@ mkdir -p reports/implementation
 # Generate reports/implementation/c2-final-artifact-manifest.json
 cat <<EOF > reports/implementation/c2-final-artifact-manifest.json
 {
-  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_FINAL_PRODUCTION_RELEASE_CLOSURE",
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C2_RELEASE_EVIDENCE_REMOTE_FIX_V2",
   "verifiedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "artifacts": {
     "api": {
-      "imageName": "family-places-api:latest",
+      "imageName": "family-places-api:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
       "imageId": "$api_id",
       "digest": "$api_id"
     },
     "web": {
-      "imageName": "family-places-web:latest",
+      "imageName": "family-places-web:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
       "imageId": "$web_id",
       "digest": "$web_id"
     },
     "worker": {
-      "imageName": "family-places-worker:latest",
+      "imageName": "family-places-worker:sha-c4083b4cac4e2ec4d9b186d699139cd9519a08cc",
       "imageId": "$worker_id",
       "digest": "$worker_id"
     }
