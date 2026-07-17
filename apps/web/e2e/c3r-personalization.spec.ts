@@ -14,7 +14,7 @@ test.describe("C3R Personalization and Security E2E", () => {
     await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
 
     // 4. Verify successful login and session menu button in the header (initials DU)
-    const duButton = page.getByRole("button", { name: "DU", exact: true });
+    const duButton = page.getByRole("button", { name: "DU", exact: true }).filter({ visible: true });
     await expect(duButton).toBeVisible();
 
     // 5. Reload page to verify session persistence
@@ -31,6 +31,7 @@ test.describe("C3R Personalization and Security E2E", () => {
     
     // Toggle favorite on the list card
     const favButton = page.locator(".place-card").first().locator('button[title="Dodaj do ulubionych"]');
+    await expect(favButton).toBeEnabled();
     await favButton.click();
     
     // Verify toast notification for success
