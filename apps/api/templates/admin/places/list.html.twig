@@ -1,20 +1,184 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/layout.html.twig' %}
+
 {% block title %}Miejsca | FamilyPlaces Admin{% endblock %}
-{% block body %}
-<main>
-    <h1>Miejsca</h1>
-    <a href="{{ path('admin_places_new') }}">Dodaj miejsce</a>
-    {% for message in app.flashes('success') %}<p role="status">{{ message }}</p>{% endfor %}
-    {% for message in app.flashes('error') %}<p role="alert">{{ message }}</p>{% endfor %}
-    <table><thead><tr><th>Nazwa</th><th>Miasto</th><th>Status</th><th>Akcje</th></tr></thead><tbody>
-    {% for place in places %}
-        <tr><td><a href="{{ path('admin_places_view', {id: place.id}) }}">{{ place.name }}</a></td><td>{{ place.city }}</td><td>{{ place.status.value }}</td><td>
-        <a href="{{ path('admin_places_edit', {id: place.id}) }}">edit</a>
-        {% for action in ['submit','publish','unpublish','reverify','close','archive'] %}
-            <form method="post" action="{{ path('admin_places_action', {id: place.id, action: action}) }}" style="display:inline"><input type="hidden" name="_token" value="{{ csrf_token('place-' ~ place.id) }}"><input type="hidden" name="version" value="{{ place.version }}"><button type="submit">{{ action }}</button></form>
-        {% endfor %}
-        </td></tr>
+
+{% block content_title %}Miejsca{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('admin_places_new') }}" class="btn btn-primary">
+        <i class="fa fa-plus me-1"></i> Dodaj miejsce
+    </a>
+{% endblock %}
+
+{% block main %}
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     {% endfor %}
-    </tbody></table>
-</main>
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    <!-- Filters & Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('admin_places') }}" class="row g-2 align-items-end m-0">
+                <div class="col-md-3">
+                    <label for="search" class="form-label small fw-bold">Szukaj</label>
+                    <input type="text" name="search" id="search" value="{{ search }}" class="form-control form-control-sm" placeholder="Nazwa lub slug...">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label small fw-bold">Status publikacji</label>
+                    <select name="status" id="status" class="form-select form-select-sm">
+                        <option value="">Wszystkie</option>
+                        {% for s in statuses %}
+                            <option value="{{ s.value }}" {% if status == s.value %}selected{% endif %}>{{ s.value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="city" class="form-label small fw-bold">Miasto</label>
+                    <select name="city" id="city" class="form-select form-select-sm">
+                        <option value="">Wszystkie</option>
+                        {% for c in cities %}
+                            <option value="{{ c.slug }}" {% if city == c.slug %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort" class="form-label small fw-bold">Sortowanie</label>
+                    <select name="sort" id="sort" class="form-select form-select-sm">
+                        <option value="updated_at" {% if sort == 'updated_at' %}selected{% endif %}>Najnowsze zmiany</option>
+                        <option value="updated_at_asc" {% if sort == 'updated_at_asc' %}selected{% endif %}>Najstarsze zmiany</option>
+                        <option value="name" {% if sort == 'name' %}selected{% endif %}>Nazwa A-Z</option>
+                        <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Nazwa Z-A</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                        <i class="fa fa-filter me-1"></i> Filtruj
+                    </button>
+                    <a href="{{ path('admin_places') }}" class="btn btn-sm btn-outline-secondary w-100">
+                        <i class="fa fa-times me-1"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Places Table -->
+    <div class="place-table-responsive card">
+        <div class="card-body p-0">
+            <table class="table table-striped table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 70px; padding-left: 1.25rem;">Foto</th>
+                        <th>Nazwa</th>
+                        <th>Miasto</th>
+                        <th>Status publikacji</th>
+                        <th>Status weryfikacji</th>
+                        <th>Wersja</th>
+                        <th>Aktualizacja</th>
+                        <th class="text-end" style="width: 220px; padding-right: 1.25rem;">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for place in places %}
+                    <tr>
+                        <td style="padding-left: 1.25rem;">
+                            {% if place.mainPhotoPath %}
+                                <img src="/media/{{ place.mainPhotoPath }}" alt="{{ place.name }}" class="photo-preview-thumbnail" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" onError="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+                                <span class="badge bg-secondary thumbnail-fallback" style="display: none; width: 50px; height: 50px; line-height: 40px; text-align: center; border: 1px dashed #ccc;"><i class="fa fa-image"></i></span>
+                            {% else %}
+                                <span class="badge bg-secondary thumbnail-fallback" style="width: 50px; height: 50px; line-height: 40px; text-align: center; border: 1px dashed #ccc; display: inline-block; color: #a0aec0; background-color: #edf2f7 !important;"><i class="fa fa-image"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ path('admin_places_view', {id: place.id}) }}" class="fw-bold text-decoration-none">{{ place.name }}</a>
+                            <div class="small text-muted">{{ place.slug }}</div>
+                        </td>
+                        <td>{{ place.city }}</td>
+                        <td>
+                            <span class="status-badge status-badge-{{ place.status.value }}">
+                                {{ place.status.value }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">
+                                {{ place.verificationStatus.value }}
+                            </span>
+                        </td>
+                        <td><span class="badge bg-light text-dark">v{{ place.version }}</span></td>
+                        <td>
+                            <small class="text-muted">
+                                {{ place.updatedAt ? place.updatedAt|date('Y-m-d H:i') : '-' }}
+                            </small>
+                        </td>
+                        <td class="text-end" style="padding-right: 1.25rem;">
+                            <div class="d-inline-flex gap-1 justify-content-end align-items-center">
+                                <a href="{{ path('admin_places_edit', {id: place.id}) }}" class="btn btn-sm btn-outline-primary" title="Edytuj">
+                                    <i class="fa fa-edit"></i> Edytuj
+                                </a>
+                                
+                                {% if place.availableActions|length > 0 %}
+                                    <div class="dropdown d-inline-block">
+                                        <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="actions-{{ place.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Workflow
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actions-{{ place.id }}">
+                                            {% for action in place.availableActions %}
+                                                <li>
+                                                    <form method="post" action="{{ path('admin_places_action', {id: place.id, action: action}) }}" class="m-0">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('place-' ~ place.id) }}">
+                                                        <input type="hidden" name="version" value="{{ place.version }}">
+                                                        <button type="submit" class="dropdown-item" {% if action == 'archive' %}data-confirm="Czy na pewno chcesz zarchiwizować to miejsce?"{% endif %}>
+                                                            <i class="fa fa-play fa-sm me-1 text-muted"></i> {{ action }}
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">Brak miejsc do wyświetlenia.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if totalPages > 1 %}
+        <nav class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted small">Pokazano {{ places|length }} z {{ total }} miejsc</span>
+            <ul class="pagination pagination-sm m-0">
+                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ path('admin_places', app.request.query.all|merge({'page': page - 1})) }}">Poprzednia</a>
+                </li>
+                {% for p in 1..totalPages %}
+                    <li class="page-item {% if page == p %}active{% endif %}">
+                        <a class="page-link" href="{{ path('admin_places', app.request.query.all|merge({'page': p})) }}">{{ p }}</a>
+                    </li>
+                {% endfor %}
+                <li class="page-item {% if page == totalPages %}disabled{% endif %}">
+                    <a class="page-link" href="{{ path('admin_places', app.request.query.all|merge({'page': page + 1})) }}">Następna</a>
+                </li>
+            </ul>
+        </nav>
+    {% else %}
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted small">Pokazano {{ places|length }} z {{ total }} miejsc</span>
+        </div>
+    {% endif %}
 {% endblock %}

@@ -1,11 +1,25 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/layout.html.twig' %}
+
 {% block title %}Nowe miejsce | FamilyPlaces Admin{% endblock %}
-{% block stylesheets %}{% include 'admin/places/_form_styles.html.twig' %}{% endblock %}
-{% block body %}
-<main class="place-form-page">
-    <nav><a href="{{ path('admin_places') }}">Anuluj</a></nav>
-    <h1>Nowe miejsce</h1>
-    {% include 'admin/places/_form.html.twig' with {submitLabel: 'Utwórz cały draft'} %}
-</main>
+
+{% block content_title %}
+    <ol class="breadcrumb mb-1 fs-6">
+        <li class="breadcrumb-item"><a href="{{ path('admin') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ path('admin_places') }}">Miejsca</a></li>
+        <li class="breadcrumb-item active text-dark">Nowe miejsce</li>
+    </ol>
+    <h1 class="m-0 fs-2 fw-bold text-dark">Nowe miejsce</h1>
 {% endblock %}
-{% block javascripts %}{% include 'admin/places/_form_script.html.twig' %}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('admin_places') }}" class="btn btn-outline-secondary">
+        <i class="fa fa-arrow-left me-1"></i> Anuluj
+    </a>
+{% endblock %}
+
+{% block main %}
+    <div class="container-fluid p-0">
+        {% include 'admin/places/_form.html.twig' with {submitLabel: 'Utwórz cały draft'} %}
+    </div>
+    {% include 'admin/places/_form_script.html.twig' %}
+{% endblock %}
