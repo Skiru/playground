@@ -113,6 +113,7 @@ services:
             $publicUrl: '%env(STORAGE_S3_PUBLIC_URL)%'
 
     App\Shared\Application\Storage\StorageInterface: '@App\Shared\Infrastructure\Storage\StorageService'
+    App\Shared\Application\Storage\ImageProcessor: '@App\Shared\Infrastructure\Storage\GdImageProcessor'
 
     Jsor\Doctrine\PostGIS\Event\ORMSchemaEventListener:
         tags: [{ name: doctrine.event_listener, event: postGenerateSchemaTable, connection: default }]

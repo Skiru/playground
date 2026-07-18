@@ -50,7 +50,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                 '.$distance.' AS distance_meters, p.longitude, p.latitude,
                 '.self::openExpression().' AS is_open_now,
                 true AS complete, '.$score.' AS relevance_score,
-                (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'completed\' LIMIT 1) AS main_photo_variants
+                (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'COMPLETED\' LIMIT 1) AS main_photo_variants
             FROM places p JOIN cities c ON c.id = p.city_id
             WHERE '.implode(' AND ', $where).'
             ORDER BY '.$order.' LIMIT :limit OFFSET :offset';
@@ -87,8 +87,8 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             COALESCE((SELECT json_agg(json_build_object(\'name\', z.name, \'minAgeMonths\', z.min_age_months, \'maxAgeMonths\', z.max_age_months, \'notes\', z.notes) ORDER BY z.min_age_months) FROM place_age_zones z WHERE z.place_id=p.id), \'[]\'::json) age_zones,
             COALESCE((SELECT json_agg(json_build_object(\'weekday\', w.weekday, \'sequence\', w.sequence, \'opensAt\', w.opens_at, \'closesAt\', w.closes_at, \'closesNextDay\', w.closes_next_day) ORDER BY w.weekday,w.sequence) FROM weekly_opening_intervals w WHERE w.place_id=p.id), \'[]\'::json) weekly_opening,
             COALESCE((SELECT json_agg(json_build_object(\'localDate\', s.local_date, \'closed\', s.mode=\'closed\', \'note\', s.note) ORDER BY s.local_date) FROM special_opening_days s WHERE s.place_id=p.id), \'[]\'::json) special_opening,
-            (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'completed\' LIMIT 1) AS main_photo_variants,
-            COALESCE((SELECT json_agg(json_build_object(\'id\', id, \'is_main\', is_main, \'alt_text\', alt_text, \'caption\', caption, \'variants\', variants) ORDER BY display_order, id) FROM place_photos WHERE place_id = p.id AND status = \'completed\'), \'[]\'::json) AS photos
+            (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'COMPLETED\' LIMIT 1) AS main_photo_variants,
+            COALESCE((SELECT json_agg(json_build_object(\'id\', id, \'is_main\', is_main, \'alt_text\', alt_text, \'caption\', caption, \'variants\', variants) ORDER BY display_order, id) FROM place_photos WHERE place_id = p.id AND status = \'COMPLETED\'), \'[]\'::json) AS photos
             FROM places p JOIN cities c ON c.id=p.city_id WHERE p.slug=:slug AND p.status=\'published\'', ['slug' => $slug]);
 
         return false === $row ? null : self::detailsItem($row);

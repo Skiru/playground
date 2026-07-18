@@ -35,11 +35,32 @@ use App\Places\Domain\VerificationStatus;
 use App\Places\Domain\WeeklyOpeningInterval;
 use App\Shared\Application\Clock;
 use App\Shared\Application\TransactionManager;
+use App\Shared\Application\Storage\StorageInterface;
+use App\Shared\Application\Storage\StorageObjectKey;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Uid\Uuid;
+use App\Places\Application\Command\UploadPlacePhotos;
+use App\Places\Application\Command\SetMainPlacePhoto;
+use App\Places\Application\Command\UpdatePlacePhotoMetadata;
+use App\Places\Application\Command\ReorderPlacePhotos;
+use App\Places\Application\Command\RequestPlacePhotoReprocessing;
+use App\Places\Application\Command\DeletePlacePhoto;
+use App\Places\Application\Command\CompletePlacePhotoProcessing;
+use App\Places\Application\Command\FailPlacePhotoProcessing;
+use App\Places\Application\Command\UploadPlacePhotosInput;
+use App\Places\Application\Command\ProcessPhoto;
+use App\Places\Domain\PlacePhoto;
+use App\Places\Domain\PlacePhotoStatus;
 
 final readonly class PlaceCommandHandler
 {
-    public function __construct(private PlaceRepository $places, private TransactionManager $transactions, private Clock $clock)
-    {
+    public function __construct(
+        private PlaceRepository $places,
+        private TransactionManager $transactions,
+        private Clock $clock,
+        private StorageInterface $storage,
+        private MessageBusInterface $bus,
+    ) {
     }
 
     public function create(CreatePlaceDraft $command): string
@@ -267,5 +288,317 @@ final readonly class PlaceCommandHandler
     private function externalReferences(Place $place, array $inputs): array
     {
         return array_map(static fn ($input): ExternalPlaceReference => new ExternalPlaceReference($place, $input->provider, $input->externalId, $input->sourceUrl), $inputs);
+    }
+
+    public function uploadPhotos(UploadPlacePhotos $command): void
+    {
+        $input = new UploadPlacePhotosInput($command->files);
+        $errors = $input->validate();
+        if (!empty($errors)) {
+            throw new \InvalidArgumentException(implode('; ', $errors));
+        }
+
+        $now = $this->clock->now();
+        $stagedKeys = [];
+
+        try {
+            foreach ($input->images() as $image) {
+                $photoId = Uuid::v7();
+                $key = StorageObjectKey::source($command->placeId, $photoId->toRfc4122());
+                
+                $contents = file_get_contents($image->file()->getPathname());
+                if (false === $contents) {
+                    throw new \RuntimeException('Failed to read uploaded file.');
+                }
+                
+                $this->storage->write($key->toString(), $contents);
+                $stagedKeys[] = [
+                    'id' => $photoId,
+                    'key' => $key,
+                    'originalName' => $image->file()->getClientOriginalName(),
+                ];
+            }
+
+            $this->transactions->transactional(function () use ($command, $stagedKeys, $now): void {
+                $place = $this->places->get($command->placeId);
+                $currentPhotosCount = \count($place->photos());
+
+                foreach ($stagedKeys as $index => $staged) {
+                    $isMain = (0 === $currentPhotosCount && 0 === $index);
+                    $photo = PlacePhoto::reconstitute(
+                        $staged['id'],
+                        $place,
+                        $staged['originalName'],
+                        $staged['key']->toString(),
+                        PlacePhotoStatus::QUEUED,
+                        $isMain,
+                        $currentPhotosCount + $index,
+                        null,
+                        null,
+                        null,
+                        1,
+                        null,
+                        null,
+                        $now,
+                        $now
+                    );
+
+                    $place->addPhoto($photo, $now);
+                    $this->bus->dispatch(new ProcessPhoto($staged['id']->toRfc4122()));
+                }
+
+                $this->places->save($place, $place->version());
+            });
+
+        } catch (\Throwable $exception) {
+            foreach ($stagedKeys as $staged) {
+                $this->storage->delete($staged['key']->toString());
+            }
+            throw $exception;
+        }
+    }
+
+    public function setMainPhoto(SetMainPlacePhoto $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            $photoExists = false;
+            $photoIsCompleted = false;
+
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() === $command->photoId) {
+                    $photoExists = true;
+                    if ($photo->status() === PlacePhotoStatus::COMPLETED) {
+                        $photoIsCompleted = true;
+                    }
+                    break;
+                }
+            }
+
+            if (!$photoExists) {
+                throw new \InvalidArgumentException('Target photo does not exist.');
+            }
+
+            if (!$photoIsCompleted) {
+                throw new \DomainException('Only COMPLETED photos can be set as main.');
+            }
+
+            foreach ($place->photos() as $photo) {
+                $isTarget = $photo->id()->toRfc4122() === $command->photoId;
+                $photo->setMain($isTarget, $now);
+            }
+
+            $this->places->save($place, $place->version());
+        });
+    }
+
+    public function updatePhotoMetadata(UpdatePlacePhotoMetadata $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            $targetPhoto = null;
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() === $command->photoId) {
+                    $targetPhoto = $photo;
+                    break;
+                }
+            }
+
+            if (!$targetPhoto) {
+                throw new \InvalidArgumentException('Photo not found.');
+            }
+
+            $altText = $command->altText !== null ? preg_replace('/\s+/', ' ', trim($command->altText)) : null;
+            if ($altText === '') {
+                $altText = null;
+            }
+            if ($altText !== null && mb_strlen($altText) > 255) {
+                throw new \InvalidArgumentException('Alt text cannot exceed 255 characters.');
+            }
+
+            $caption = $command->caption !== null ? preg_replace('/\s+/', ' ', trim($command->caption)) : null;
+            if ($caption === '') {
+                $caption = null;
+            }
+            if ($caption !== null && mb_strlen($caption) > 500) {
+                throw new \InvalidArgumentException('Caption cannot exceed 500 characters.');
+            }
+
+            $targetPhoto->updateDetails($altText, $caption, $command->displayOrder, $now);
+            $this->places->save($place, $place->version());
+        });
+    }
+
+    public function reorderPlacePhotos(ReorderPlacePhotos $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            $existingPhotos = $place->photos();
+            $existingIds = array_map(static fn (PlacePhoto $p): string => $p->id()->toRfc4122(), $existingPhotos);
+
+            if (\count(array_unique($command->photoIds)) !== \count($command->photoIds)) {
+                throw new \InvalidArgumentException('Duplicate photo IDs detected.');
+            }
+
+            if (\count($command->photoIds) !== \count($existingIds)) {
+                throw new \InvalidArgumentException('Reorder list must contain all photos belonging to this place.');
+            }
+
+            foreach ($command->photoIds as $photoId) {
+                if (!in_array($photoId, $existingIds, true)) {
+                    throw new \InvalidArgumentException(\sprintf('Photo with ID "%s" does not belong to this place.', $photoId));
+                }
+            }
+
+            foreach ($existingPhotos as $photo) {
+                $index = array_search($photo->id()->toRfc4122(), $command->photoIds, true);
+                $photo->updateDetails($photo->altText(), $photo->caption(), (int) $index, $now);
+            }
+
+            $this->places->save($place, $place->version());
+        });
+    }
+
+    public function requestPlacePhotoReprocessing(RequestPlacePhotoReprocessing $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            $targetPhoto = null;
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() === $command->photoId) {
+                    $targetPhoto = $photo;
+                    break;
+                }
+            }
+
+            if (!$targetPhoto) {
+                throw new \InvalidArgumentException('Photo not found.');
+            }
+
+            $targetPhoto->incrementGeneration($now);
+            $this->places->save($place, $place->version());
+
+            $this->bus->dispatch(new ProcessPhoto($command->photoId));
+        });
+    }
+
+    public function deletePlacePhoto(DeletePlacePhoto $command): void
+    {
+        $photoToDelete = null;
+        $remainingPhotos = [];
+
+        $this->transactions->transactional(function () use ($command, &$photoToDelete, &$remainingPhotos): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() === $command->photoId) {
+                    $photoToDelete = $photo;
+                    $photo->markDeleting($now);
+                } else {
+                    $remainingPhotos[] = $photo;
+                }
+            }
+
+            if ($photoToDelete) {
+                $this->places->save($place, $place->version());
+            }
+        });
+
+        if (!$photoToDelete) {
+            return;
+        }
+
+        $this->storage->delete($photoToDelete->filePath());
+
+        $variants = ['thumbnail_mini', 'thumbnail', 'card', 'hero', 'original_max'];
+        for ($g = 1; $g <= $photoToDelete->processingGeneration(); $g++) {
+            foreach ($variants as $v) {
+                $variantKey = StorageObjectKey::variant($command->placeId, $command->photoId, $g, $v);
+                $this->storage->delete($variantKey->toString());
+            }
+        }
+
+        $this->transactions->transactional(function () use ($command, $photoToDelete): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            $cleanedPhotos = [];
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() !== $command->photoId) {
+                    $cleanedPhotos[] = $photo;
+                }
+            }
+
+            if ($photoToDelete->isMain() && \count($cleanedPhotos) > 0) {
+                $newMain = null;
+                foreach ($cleanedPhotos as $photo) {
+                    if ($photo->status() === PlacePhotoStatus::COMPLETED) {
+                        $newMain = $photo;
+                        break;
+                    }
+                }
+                if ($newMain) {
+                    $newMain->setMain(true, $now);
+                }
+            }
+
+            $place->replacePhotos($cleanedPhotos, $now);
+            $this->places->save($place, $place->version());
+        });
+    }
+
+    public function completePhotoProcessing(CompletePlacePhotoProcessing $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() === $command->photoId) {
+                    if ($photo->status() === PlacePhotoStatus::DELETING) {
+                        return;
+                    }
+                    if ($photo->processingGeneration() !== $command->generation) {
+                        return;
+                    }
+                    $photo->markCompleted($command->generation, $command->variants, $now);
+                    break;
+                }
+            }
+
+            $this->places->save($place, $place->version());
+        });
+    }
+
+    public function failPhotoProcessing(FailPlacePhotoProcessing $command): void
+    {
+        $this->transactions->transactional(function () use ($command): void {
+            $place = $this->places->get($command->placeId);
+            $now = $this->clock->now();
+
+            foreach ($place->photos() as $photo) {
+                if ($photo->id()->toRfc4122() === $command->photoId) {
+                    if ($photo->status() === PlacePhotoStatus::DELETING) {
+                        return;
+                    }
+                    if ($photo->processingGeneration() !== $command->generation) {
+                        return;
+                    }
+                    $photo->markFailed($command->generation, $command->failureCode, $now);
+                    break;
+                }
+            }
+
+            $this->places->save($place, $place->version());
+        });
     }
 }

@@ -38,7 +38,6 @@ final readonly class UploadedPlaceImage
             return 'Failed to open fileinfo database.';
         }
         $mime = finfo_file($finfo, $pathname);
-        finfo_close($finfo);
 
         $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!in_array($mime, $allowedMimes, true)) {

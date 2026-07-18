@@ -488,7 +488,7 @@ final class PersonalizationController
                 (SELECT MIN(min_age_months) FROM place_age_zones paz WHERE paz.place_id = p.id) AS min_age_months,
                 (SELECT MAX(max_age_months) FROM place_age_zones paz WHERE paz.place_id = p.id) AS max_age_months,
                 p.longitude, p.latitude,
-                (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'completed\' LIMIT 1) AS main_photo_variants
+                (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'COMPLETED\' LIMIT 1) AS main_photo_variants
             FROM places p JOIN cities c ON c.id = p.city_id
             WHERE p.id IN (:place_ids)';
 

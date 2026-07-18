@@ -9,13 +9,16 @@ use Symfony\Component\Uid\Uuid;
 final class PlacePhoto
 {
     private Uuid $id;
-    private string $status = 'processing';
+    private PlacePhotoStatus $status;
     private bool $isMain = false;
     private int $displayOrder = 0;
     private ?string $altText = null;
     private ?string $caption = null;
     /** @var array<string, string>|null */
     private ?array $variants = null;
+    private int $processingGeneration = 1;
+    private ?string $failureCode = null;
+    private ?\DateTimeImmutable $processedAt = null;
     private \DateTimeImmutable $updatedAt;
 
     public function __construct(
@@ -25,6 +28,7 @@ final class PlacePhoto
         private readonly \DateTimeImmutable $createdAt,
     ) {
         $this->id = Uuid::v7();
+        $this->status = PlacePhotoStatus::QUEUED;
         $this->updatedAt = $createdAt;
     }
 
@@ -36,12 +40,15 @@ final class PlacePhoto
         Place $place,
         string $originalFilename,
         string $filePath,
-        string $status,
+        PlacePhotoStatus $status,
         bool $isMain,
         int $displayOrder,
         ?string $altText,
         ?string $caption,
         ?array $variants,
+        int $processingGeneration,
+        ?string $failureCode,
+        ?\DateTimeImmutable $processedAt,
         \DateTimeImmutable $createdAt,
         \DateTimeImmutable $updatedAt,
     ): self {
@@ -53,6 +60,9 @@ final class PlacePhoto
         $photo->altText = $altText;
         $photo->caption = $caption;
         $photo->variants = $variants;
+        $photo->processingGeneration = $processingGeneration;
+        $photo->failureCode = $failureCode;
+        $photo->processedAt = $processedAt;
         $photo->updatedAt = $updatedAt;
 
         return $photo;
@@ -78,7 +88,7 @@ final class PlacePhoto
         return $this->filePath;
     }
 
-    public function status(): string
+    public function status(): PlacePhotoStatus
     {
         return $this->status;
     }
@@ -109,6 +119,21 @@ final class PlacePhoto
         return $this->variants;
     }
 
+    public function processingGeneration(): int
+    {
+        return $this->processingGeneration;
+    }
+
+    public function failureCode(): ?string
+    {
+        return $this->failureCode;
+    }
+
+    public function processedAt(): ?\DateTimeImmutable
+    {
+        return $this->processedAt;
+    }
+
     public function createdAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -119,18 +144,44 @@ final class PlacePhoto
         return $this->updatedAt;
     }
 
-    /** @param array<string, string> $variants */
-    public function markCompleted(array $variants, \DateTimeImmutable $updatedAt): void
+    public function startProcessing(int $generation, \DateTimeImmutable $now): void
     {
-        $this->status = 'completed';
-        $this->variants = $variants;
-        $this->updatedAt = $updatedAt;
+        $this->status = PlacePhotoStatus::PROCESSING;
+        $this->processingGeneration = $generation;
+        $this->updatedAt = $now;
     }
 
-    public function markFailed(\DateTimeImmutable $updatedAt): void
+    /** @param array<string, string> $variants */
+    public function markCompleted(int $generation, array $variants, \DateTimeImmutable $now): void
     {
-        $this->status = 'failed';
-        $this->updatedAt = $updatedAt;
+        $this->status = PlacePhotoStatus::COMPLETED;
+        $this->processingGeneration = $generation;
+        $this->variants = $variants;
+        $this->processedAt = $now;
+        $this->updatedAt = $now;
+        $this->failureCode = null;
+    }
+
+    public function markFailed(int $generation, string $failureCode, \DateTimeImmutable $now): void
+    {
+        $this->status = PlacePhotoStatus::FAILED;
+        $this->processingGeneration = $generation;
+        $this->failureCode = $failureCode;
+        $this->updatedAt = $now;
+    }
+
+    public function markDeleting(\DateTimeImmutable $now): void
+    {
+        $this->status = PlacePhotoStatus::DELETING;
+        $this->updatedAt = $now;
+    }
+
+    public function incrementGeneration(\DateTimeImmutable $now): void
+    {
+        $this->status = PlacePhotoStatus::QUEUED;
+        $this->processingGeneration++;
+        $this->failureCode = null;
+        $this->updatedAt = $now;
     }
 
     public function updateDetails(?string $altText, ?string $caption, int $displayOrder, \DateTimeImmutable $updatedAt): void
