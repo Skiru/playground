@@ -9,9 +9,9 @@ import { PageContainer } from "../components/layout/PageContainer"
 import { FavoriteButton } from "~/components/places/FavoriteButton"
 import { loadAmenities, loadCategories, loadCities, loadMapPlaces, loadPlaces } from "../lib/api.server"
 import { content } from "../content"
-import { brand } from "../brand/default-brand"
 import type { Route } from "./+types/places"
 import { Button } from "~/components/ui/button"
+import { PlaceImage } from "../components/media/PlaceImage"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -133,21 +133,14 @@ export function PlacesView({
                 <CardContent className="p-6 flex flex-col md:flex-row gap-6">
                   {/* Aspect video thumbnail placeholder */}
                   <div className="relative w-full md:w-48 aspect-video md:aspect-[4/3] rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                    {place.main_photo ? (
-                      <img
-                        src={place.main_photo.thumbnail}
-                        srcSet={`${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w`}
-                        sizes="(max-width: 768px) 100vw, 192px"
-                        alt={place.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <img
-                        src={brand.placePlaceholder.path}
-                        alt={brand.placePlaceholder.alt}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    )}
+                    <PlaceImage
+                      mainPhotoUrl={place.main_photo?.thumbnail}
+                      srcSet={place.main_photo ? `${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w` : undefined}
+                      sizes="(max-width: 768px) 100vw, 192px"
+                      placeName={place.name}
+                      categorySlug={place.categories[0]?.slug}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
                     <Badge className="absolute top-2 left-2 bg-primary text-white font-mono text-2xs py-0.5 px-2 font-bold rounded">
                       {place.indoor ? content.places.indoor : place.outdoor ? content.places.outdoor : "miejscówka"}
                     </Badge>

@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "~/components/ui/sheet"
 import { UserArea } from "./UserArea"
+import { AppImage } from "../media/AppImage"
 
 export function SiteHeader() {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -30,8 +31,9 @@ export function SiteHeader() {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center space-x-2">
             <span className="hidden sm:inline-block">
-              <img
+              <AppImage
                 src={brand.wordmark.path}
+                fallback={brand.wordmark.path}
                 alt={brand.wordmark.alt}
                 width={brand.wordmark.width || 120}
                 height={brand.wordmark.height || 30}
@@ -39,8 +41,9 @@ export function SiteHeader() {
               />
             </span>
             <span className="sm:hidden">
-              <img
+              <AppImage
                 src={brand.compactMark.path}
+                fallback={brand.compactMark.path}
                 alt={brand.compactMark.alt}
                 width={brand.compactMark.width || 32}
                 height={brand.compactMark.height || 32}
@@ -91,8 +94,9 @@ export function SiteHeader() {
               <SheetContent side="right" className="w-[300px] p-6">
                 <SheetHeader className="text-left border-b pb-4 mb-4">
                   <SheetTitle className="text-lg font-bold">
-                    <img
+                    <AppImage
                       src={brand.wordmark.path}
+                      fallback={brand.wordmark.path}
                       alt={brand.wordmark.alt}
                       width={120}
                       className="h-6 w-auto object-contain"

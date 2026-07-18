@@ -3,11 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "react-router build",
+    "build": "node scripts/validate-brand-assets.mjs && rm -rf build && react-router build",
     "dev": "react-router dev",
     "lint": "eslint app",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc",
+    "typecheck": "node scripts/validate-brand-assets.mjs && react-router typegen && tsc",
     "test": "vitest run --config vitest.config.ts",
     "e2e": "playwright test"
   },

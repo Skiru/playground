@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <rect width="800" height="450" fill="#ebf8ff"/>
+  <rect x="100" y="100" width="600" height="250" rx="10" fill="#3182ce" opacity="0.1"/>
+  <text x="400" y="240" font-family="system-ui, sans-serif" font-weight="bold" font-size="32" fill="#2b6cb0" text-anchor="middle">Odkrywaj rodzinne miejsca</text>
+</svg>
