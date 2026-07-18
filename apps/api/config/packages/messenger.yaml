@@ -16,6 +16,7 @@ framework:
         routing:
             # Route your messages to the transports
             'App\Places\Application\Command\ProcessPhoto': async
+            'App\Places\Application\Command\CleanupPlacePhotoFiles': async
 
 # when@test:
 #    framework:

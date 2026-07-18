@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Places\Application;
 
 use App\Places\Application\Command\ArchivePlace;
+use App\Places\Application\Command\CleanupPlacePhotoFiles;
 use App\Places\Application\Command\CompletePlacePhotoProcessing;
 use App\Places\Application\Command\CreatePlaceDraft;
 use App\Places\Application\Command\DeletePlacePhoto;
@@ -492,9 +493,8 @@ final readonly class PlaceCommandHandler
     public function deletePlacePhoto(DeletePlacePhoto $command): void
     {
         $photoToDelete = null;
-        $remainingPhotos = [];
 
-        $this->transactions->transactional(function () use ($command, &$photoToDelete, &$remainingPhotos): void {
+        $this->transactions->transactional(function () use ($command, &$photoToDelete): void {
             $place = $this->places->get($command->placeId);
             $now = $this->clock->now();
 
@@ -502,56 +502,14 @@ final readonly class PlaceCommandHandler
                 if ($photo->id()->toRfc4122() === $command->photoId) {
                     $photoToDelete = $photo;
                     $photo->markDeleting($now);
-                } else {
-                    $remainingPhotos[] = $photo;
+                    break;
                 }
             }
 
             if ($photoToDelete) {
                 $this->places->save($place, $place->version());
+                $this->bus->dispatch(new CleanupPlacePhotoFiles($command->placeId, $command->photoId));
             }
-        });
-
-        if (!$photoToDelete) {
-            return;
-        }
-
-        $this->storage->delete($photoToDelete->filePath());
-
-        $variants = ['thumbnail_mini', 'thumbnail', 'card', 'hero', 'original_max'];
-        for ($g = 1; $g <= $photoToDelete->processingGeneration(); ++$g) {
-            foreach ($variants as $v) {
-                $variantKey = StorageObjectKey::variant($command->placeId, $command->photoId, $g, $v);
-                $this->storage->delete($variantKey->toString());
-            }
-        }
-
-        $this->transactions->transactional(function () use ($command, $photoToDelete): void {
-            $place = $this->places->get($command->placeId);
-            $now = $this->clock->now();
-
-            $cleanedPhotos = [];
-            foreach ($place->photos() as $photo) {
-                if ($photo->id()->toRfc4122() !== $command->photoId) {
-                    $cleanedPhotos[] = $photo;
-                }
-            }
-
-            if ($photoToDelete->isMain() && \count($cleanedPhotos) > 0) {
-                $newMain = null;
-                foreach ($cleanedPhotos as $photo) {
-                    if (PlacePhotoStatus::COMPLETED === $photo->status()) {
-                        $newMain = $photo;
-                        break;
-                    }
-                }
-                if ($newMain) {
-                    $newMain->setMain(true, $now);
-                }
-            }
-
-            $place->replacePhotos($cleanedPhotos, $now);
-            $this->places->save($place, $place->version());
         });
     }
 
