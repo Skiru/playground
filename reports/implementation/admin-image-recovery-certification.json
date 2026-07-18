@@ -1,0 +1,27 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_ADMIN_UI_AND_IMAGE_FALLBACK_RECOVERY",
+  "status": "PASS",
+  "certifiedAt": "2026-07-19T00:30:00+02:00",
+  "branch": "fix/admin-easyadmin-and-image-fallbacks",
+  "gates": {
+    "EASYADMIN_SHELL": "PASS",
+    "EASYADMIN_MENU": "PASS",
+    "ADMIN_LOGIN_UI": "PASS",
+    "ADMIN_LIST": "PASS",
+    "ADMIN_DETAIL": "PASS",
+    "ADMIN_FORMS": "PASS",
+    "ADMIN_MEDIA": "PASS",
+    "WORKFLOW_ACTIONS": "PASS",
+    "BRAND_ASSETS_EXIST": "PASS",
+    "BRAND_ASSET_VALIDATION": "PASS",
+    "PLACE_IMAGE_FALLBACK": "PASS",
+    "BROKEN_URL_FALLBACK": "PASS",
+    "CATEGORY_FALLBACK": "PASS",
+    "GALLERY_FALLBACK": "PASS",
+    "ADMIN_DESKTOP": "PASS",
+    "ADMIN_MOBILE": "PASS",
+    "PUBLIC_DESKTOP": "PASS",
+    "PUBLIC_MOBILE": "PASS",
+    "ACCESSIBILITY": "PASS"
+  }
+}
