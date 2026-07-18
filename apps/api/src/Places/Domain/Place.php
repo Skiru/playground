@@ -31,6 +31,8 @@ final class Place
     private array $specialOpeningDays = [];
     /** @var list<ExternalPlaceReference> */
     private array $externalReferences = [];
+    /** @var list<PlacePhoto> */
+    private array $photos = [];
     private ?string $addressLine2 = null;
     private ?string $priceDescription = null;
     private ?string $websiteUrl = null;
@@ -313,6 +315,33 @@ final class Place
     public function replaceAgeZones(array $ageZones, \DateTimeImmutable $now): void
     {
         $this->ageZones = $ageZones;
+        $this->updatedAt = $now;
+    }
+
+    /** @return list<PlacePhoto> */
+    public function photos(): array
+    {
+        usort($this->photos, static function (PlacePhoto $a, PlacePhoto $b): int {
+            if ($a->displayOrder() !== $b->displayOrder()) {
+                return $a->displayOrder() <=> $b->displayOrder();
+            }
+
+            return $a->id()->toRfc4122() <=> $b->id()->toRfc4122();
+        });
+
+        return $this->photos;
+    }
+
+    /** @param list<PlacePhoto> $photos */
+    public function replacePhotos(array $photos, \DateTimeImmutable $now): void
+    {
+        $this->photos = $photos;
+        $this->updatedAt = $now;
+    }
+
+    public function addPhoto(PlacePhoto $photo, \DateTimeImmutable $now): void
+    {
+        $this->photos[] = $photo;
         $this->updatedAt = $now;
     }
 

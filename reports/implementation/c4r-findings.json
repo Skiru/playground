@@ -1,0 +1,16 @@
+[
+  {
+    "id": "FIND-1",
+    "severity": "P0",
+    "description": "SQL strings in PlaceReadRepository and PersonalizationController had unescaped single quotes when matching status 'COMPLETED', causing PHP syntax errors.",
+    "fix": "Escaped all SQL status strings to \\'COMPLETED\\' within single-quoted PHP strings.",
+    "status": "FIXED"
+  },
+  {
+    "id": "FIND-2",
+    "severity": "P1",
+    "description": "The api:openapi:export command in the script ran against the pre-compiled development container image, missing our recent HealthOpenApiFactory changes.",
+    "fix": "Rebuilt the family-places-api:development image locally before exporting and generating client types.",
+    "status": "FIXED"
+  }
+]

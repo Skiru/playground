@@ -13,6 +13,7 @@ services:
       - "127.0.0.1:8080:80"
     volumes:
       - ./apps/api:/app
+      - media-data:/data/familyplaces-media
   worker:
     build:
       target: development
@@ -24,6 +25,7 @@ services:
       MESSENGER_TRANSPORT_DSN: in-memory://
     volumes:
       - ./apps/api:/app
+      - media-data:/data/familyplaces-media
   web:
     build:
       target: development

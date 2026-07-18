@@ -1,2 +1,5 @@
 services:
     App\Identity\Application\Google\GoogleIdentityVerifier: '@App\Identity\Infrastructure\Google\FakeGoogleIdentityVerifier'
+    App\Shared\Application\Storage\StorageInterface:
+        alias: App\Shared\Infrastructure\Storage\StorageService
+        public: true

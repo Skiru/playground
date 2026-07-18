@@ -90,7 +90,9 @@ final class PlaceCommandsTest extends TestCase
         $transactions->expects(self::once())->method('transactional')->willReturnCallback(static fn (callable $operation): mixed => $operation());
         $clock = $this->createStub(Clock::class);
         $clock->method('now')->willReturn($now);
-        $handler = new PlaceCommandHandler($places, $transactions, $clock);
+        $storage = $this->createMock(\App\Shared\Application\Storage\StorageInterface::class);
+        $bus = $this->createMock(\Symfony\Component\Messenger\MessageBusInterface::class);
+        $handler = new PlaceCommandHandler($places, $transactions, $clock, $storage, $bus);
 
         $handler->create(new CreatePlaceDraft(
             'Place',
@@ -133,7 +135,9 @@ final class PlaceCommandsTest extends TestCase
         $transactions->expects(self::once())->method('transactional')->willReturnCallback(static fn (callable $operation): mixed => $operation());
         $clock = $this->createStub(Clock::class);
         $clock->method('now')->willReturn($now);
-        $handler = new PlaceCommandHandler($places, $transactions, $clock);
+        $storage = $this->createMock(\App\Shared\Application\Storage\StorageInterface::class);
+        $bus = $this->createMock(\Symfony\Component\Messenger\MessageBusInterface::class);
+        $handler = new PlaceCommandHandler($places, $transactions, $clock, $storage, $bus);
 
         $handler->update(new UpdatePlaceAggregate($place->id()->toRfc4122(), 1, 'After', 'after', 'Short', 'Description', 'Street 2', '00-002', 'warszawa', 'PL', 52.3, 21.1, 'Europe/Warsaw', true, false, false, VerificationStatusInput::UNVERIFIED, ['parks'], 'parks', [], [new AgeZoneInput('Children', 12, 72)], OpeningHoursModeInput::UNKNOWN, [], [], []));
 

@@ -1,0 +1,14 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C4R_MEDIA_PIPELINE_PRODUCT_CLOSURE",
+  "status": "PASS",
+  "certifiedAt": "2026-07-18T18:41:00+02:00",
+  "commitSha": "d367db48d7ba94e559382d160138c59d1f9c4a3f",
+  "treeSha": "0ec7cac88fa950ea47d3a5df977f1094d4ea68c9",
+  "branch": "feat/family-places-c4-media-gallery",
+  "gates": {
+    "GateA": "PASS",
+    "GateB": "PASS",
+    "GateC": "PASS",
+    "GateD": "PASS"
+  }
+}

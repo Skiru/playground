@@ -36,4 +36,8 @@ jobs:
           docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci vendor/bin/deptrac analyse
           API_IMAGE=family-places-api-ci ./scripts/verify-deptrac-boundary
       - name: Backend tests
-        run: docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/apps/api:/app" -w /app family-places-api-ci php bin/phpunit tests/Places/Domain tests/Places/Application tests/Identity tests/Discovery/Application tests/Shared
+        run: |
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:database:create --if-not-exists
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit tests/Places/Domain tests/Places/Application tests/Identity tests/Discovery/Application tests/Shared
