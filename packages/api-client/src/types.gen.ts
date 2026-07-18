@@ -473,13 +473,6 @@ export type SearchPlacesResponses = {
             is_open_now: boolean | null;
             complete: boolean;
             relevance_score: number;
-            main_photo?: {
-                thumbnail_mini?: string;
-                thumbnail?: string;
-                card?: string;
-                hero?: string;
-                original?: string;
-            } | null;
         }>;
         pagination: {
             page: number;
@@ -565,26 +558,6 @@ export type GetPlaceBySlugResponses = {
         verification_status: string;
         longitude: number;
         latitude: number;
-        main_photo?: {
-            thumbnail_mini?: string;
-            thumbnail?: string;
-            card?: string;
-            hero?: string;
-            original?: string;
-        } | null;
-        photos?: Array<{
-            id?: string;
-            is_main?: boolean;
-            alt_text?: string | null;
-            caption?: string | null;
-            variants?: {
-                thumbnail_mini?: string;
-                thumbnail?: string;
-                card?: string;
-                hero?: string;
-                original?: string;
-            };
-        }>;
     };
 };
 
@@ -679,13 +652,6 @@ export type ListFavoritesResponses = {
                     latitude: number;
                 };
                 published: boolean;
-                main_photo?: {
-                    thumbnail_mini?: string;
-                    thumbnail?: string;
-                    card?: string;
-                    hero?: string;
-                    original?: string;
-                } | null;
             };
         }>;
         pagination: {
@@ -798,13 +764,6 @@ export type ListVisitsResponses = {
                     latitude: number;
                 };
                 published: boolean;
-                main_photo?: {
-                    thumbnail_mini?: string;
-                    thumbnail?: string;
-                    card?: string;
-                    hero?: string;
-                    original?: string;
-                } | null;
             };
         }>;
         pagination: {

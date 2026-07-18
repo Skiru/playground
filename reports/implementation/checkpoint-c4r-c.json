@@ -1,0 +1,19 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C4R_MEDIA_PIPELINE_PRODUCT_CLOSURE",
+  "checkpoint": "C4R-C",
+  "status": "PASS",
+  "checkedAt": "2026-07-18T15:58:00+02:00",
+  "imageProcessorBoundary": "PASS",
+  "alphaPreservation": "PASS",
+  "webpConversion": "PASS",
+  "responsiveImages": "PASS",
+  "accessibleGallery": "PASS",
+  "figureFigcaptionUsed": "PASS",
+  "keyboardAccessible": "PASS",
+  "openApiSynced": "PASS",
+  "generatedClientDriftFree": "PASS",
+  "tests": {
+    "passed": 10,
+    "assertions": 10
+  }
+}

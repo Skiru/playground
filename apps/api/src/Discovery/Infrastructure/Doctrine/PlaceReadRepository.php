@@ -12,14 +12,18 @@ use App\Discovery\Application\Dto\PlaceListItem;
 use App\Discovery\Application\PlaceReadModel;
 use App\Discovery\Application\PlaceSearchQuery;
 use App\Shared\Application\Clock;
+use App\Shared\Application\Storage\StorageInterface;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 final readonly class PlaceReadRepository implements PlaceReadModel
 {
-    public function __construct(private Connection $connection, private Clock $clock)
-    {
+    public function __construct(
+        private Connection $connection,
+        private Clock $clock,
+        private StorageInterface $storage,
+    ) {
     }
 
     /** @return array{items: list<PlaceListItem>, total: int} */
@@ -65,7 +69,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
         }
         $count = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM places p JOIN cities c ON c.id = p.city_id WHERE '.implode(' AND ', $where), $countParameters, $types);
 
-        return ['items' => array_map(self::listItem(...), $items), 'total' => $count];
+        return ['items' => array_map($this->listItem(...), $items), 'total' => $count];
     }
 
     /** @return list<array<string, mixed>> */
@@ -91,7 +95,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             COALESCE((SELECT json_agg(json_build_object(\'id\', id, \'is_main\', is_main, \'alt_text\', alt_text, \'caption\', caption, \'variants\', variants) ORDER BY display_order, id) FROM place_photos WHERE place_id = p.id AND status = \'COMPLETED\'), \'[]\'::json) AS photos
             FROM places p JOIN cities c ON c.id=p.city_id WHERE p.slug=:slug AND p.status=\'published\'', ['slug' => $slug]);
 
-        return false === $row ? null : self::detailsItem($row);
+        return false === $row ? null : $this->detailsItem($row);
     }
 
     /** @return array{features: list<MapPlaceFeature>, truncated: bool} */
@@ -180,22 +184,38 @@ final readonly class PlaceReadRepository implements PlaceReadModel
     }
 
     /** @param array<string, mixed> $row */
-    private static function listItem(array $row): PlaceListItem
+    private function listItem(array $row): PlaceListItem
     {
         $mainPhoto = null;
         if (isset($row['main_photo_variants']) && \is_string($row['main_photo_variants'])) {
-            $mainPhoto = json_decode($row['main_photo_variants'], true);
+            $decoded = json_decode($row['main_photo_variants'], true);
+            if (\is_array($decoded)) {
+                $mainPhoto = [];
+                foreach ($decoded as $vName => $vData) {
+                    if (isset($vData['key'])) {
+                        $mainPhoto[$vName] = $this->storage->getUrl($vData['key']);
+                    }
+                }
+            }
         }
 
         return new PlaceListItem((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['city'], self::namedItems($row['categories']), new AgeSummary((int) $row['min_age_months'], null === $row['max_age_months'] ? null : (int) $row['max_age_months']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], (string) $row['verification_status'], self::namedItems($row['amenities']), null === $row['distance_meters'] ? null : (float) $row['distance_meters'], (float) $row['longitude'], (float) $row['latitude'], new OpeningStatus(null === $row['is_open_now'] ? null : (bool) $row['is_open_now']), (bool) $row['complete'], (float) $row['relevance_score'], $mainPhoto);
     }
 
     /** @param array<string, mixed> $row */
-    private static function detailsItem(array $row): PlaceDetails
+    private function detailsItem(array $row): PlaceDetails
     {
         $mainPhoto = null;
         if (isset($row['main_photo_variants']) && \is_string($row['main_photo_variants'])) {
-            $mainPhoto = json_decode($row['main_photo_variants'], true);
+            $decoded = json_decode($row['main_photo_variants'], true);
+            if (\is_array($decoded)) {
+                $mainPhoto = [];
+                foreach ($decoded as $vName => $vData) {
+                    if (isset($vData['key'])) {
+                        $mainPhoto[$vName] = $this->storage->getUrl($vData['key']);
+                    }
+                }
+            }
         }
         $photosList = [];
         if (isset($row['photos']) && \is_string($row['photos'])) {
@@ -204,12 +224,22 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                 $pVariants = isset($rawPhoto['variants']) && (\is_array($rawPhoto['variants']) || \is_string($rawPhoto['variants']))
                     ? (\is_array($rawPhoto['variants']) ? $rawPhoto['variants'] : json_decode((string) $rawPhoto['variants'], true))
                     : [];
+                
+                $mappedVariants = [];
+                if (\is_array($pVariants)) {
+                    foreach ($pVariants as $vName => $vData) {
+                        if (isset($vData['key'])) {
+                            $mappedVariants[$vName] = $this->storage->getUrl($vData['key']);
+                        }
+                    }
+                }
+
                 $photosList[] = [
                     'id' => (string) $rawPhoto['id'],
                     'is_main' => (bool) $rawPhoto['is_main'],
                     'alt_text' => isset($rawPhoto['alt_text']) && \is_string($rawPhoto['alt_text']) ? $rawPhoto['alt_text'] : null,
                     'caption' => isset($rawPhoto['caption']) && \is_string($rawPhoto['caption']) ? $rawPhoto['caption'] : null,
-                    'variants' => $pVariants,
+                    'variants' => $mappedVariants,
                 ];
             }
         }

@@ -1127,29 +1127,6 @@
                                                     },
                                                     "relevance_score": {
                                                         "type": "number"
-                                                    },
-                                                    "main_photo": {
-                                                        "type": [
-                                                            "object",
-                                                            "null"
-                                                        ],
-                                                        "properties": {
-                                                            "thumbnail_mini": {
-                                                                "type": "string"
-                                                            },
-                                                            "thumbnail": {
-                                                                "type": "string"
-                                                            },
-                                                            "card": {
-                                                                "type": "string"
-                                                            },
-                                                            "hero": {
-                                                                "type": "string"
-                                                            },
-                                                            "original": {
-                                                                "type": "string"
-                                                            }
-                                                        }
                                                     }
                                                 }
                                             }
@@ -1638,76 +1615,6 @@
                                         },
                                         "latitude": {
                                             "type": "number"
-                                        },
-                                        "main_photo": {
-                                            "type": [
-                                                "object",
-                                                "null"
-                                            ],
-                                            "properties": {
-                                                "thumbnail_mini": {
-                                                    "type": "string"
-                                                },
-                                                "thumbnail": {
-                                                    "type": "string"
-                                                },
-                                                "card": {
-                                                    "type": "string"
-                                                },
-                                                "hero": {
-                                                    "type": "string"
-                                                },
-                                                "original": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "photos": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "string",
-                                                        "format": "uuid"
-                                                    },
-                                                    "is_main": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "alt_text": {
-                                                        "type": [
-                                                            "string",
-                                                            "null"
-                                                        ]
-                                                    },
-                                                    "caption": {
-                                                        "type": [
-                                                            "string",
-                                                            "null"
-                                                        ]
-                                                    },
-                                                    "variants": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "thumbnail_mini": {
-                                                                "type": "string"
-                                                            },
-                                                            "thumbnail": {
-                                                                "type": "string"
-                                                            },
-                                                            "card": {
-                                                                "type": "string"
-                                                            },
-                                                            "hero": {
-                                                                "type": "string"
-                                                            },
-                                                            "original": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
                                         }
                                     }
                                 }
@@ -1901,29 +1808,6 @@
                                                             },
                                                             "published": {
                                                                 "type": "boolean"
-                                                            },
-                                                            "main_photo": {
-                                                                "type": [
-                                                                    "object",
-                                                                    "null"
-                                                                ],
-                                                                "properties": {
-                                                                    "thumbnail_mini": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "thumbnail": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "card": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "hero": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "original": {
-                                                                        "type": "string"
-                                                                    }
-                                                                }
                                                             }
                                                         }
                                                     }
@@ -2238,29 +2122,6 @@
                                                             },
                                                             "published": {
                                                                 "type": "boolean"
-                                                            },
-                                                            "main_photo": {
-                                                                "type": [
-                                                                    "object",
-                                                                    "null"
-                                                                ],
-                                                                "properties": {
-                                                                    "thumbnail_mini": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "thumbnail": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "card": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "hero": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "original": {
-                                                                        "type": "string"
-                                                                    }
-                                                                }
                                                             }
                                                         }
                                                     }

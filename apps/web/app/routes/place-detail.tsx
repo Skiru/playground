@@ -67,6 +67,9 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
             srcSet={`${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original} 1920w`}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
             alt={place.name}
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             className="h-full w-full object-cover"
           />
         ) : (
@@ -186,21 +189,22 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" aria-label="Galeria zdjęć">
                   {place.photos.map((photo) => (
-                    <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted cursor-pointer hover:border-primary/50 transition-all duration-300">
-                      <img
-                        src={photo.variants?.thumbnail}
-                        srcSet={`${photo.variants?.thumbnail_mini} 150w, ${photo.variants?.thumbnail} 400w, ${photo.variants?.card} 800w`}
-                        sizes="(max-width: 640px) 50vw, 150px"
-                        alt={photo.alt_text || "Zdjęcie galerii"}
-                        title={photo.caption || undefined}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      {photo.caption && (
-                        <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1.5 text-center text-white text-4xs font-mono font-medium line-clamp-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {photo.caption}
-                        </div>
-                      )}
-                    </div>
+                    <figure key={photo.id} tabIndex={0} className="group relative flex flex-col gap-2 rounded-lg border bg-muted p-2 hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary transition-all duration-300">
+                      <div className="aspect-square overflow-hidden rounded-md">
+                        <img
+                          src={photo.variants?.thumbnail}
+                          srcSet={`${photo.variants?.thumbnail_mini} 150w, ${photo.variants?.thumbnail} 400w, ${photo.variants?.card} 800w`}
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                          alt={photo.alt_text || `Zdjęcie przedstawiające ${place.name}`}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <figcaption className="text-3xs text-muted-foreground font-medium px-1 line-clamp-2 min-h-[2.5rem] leading-snug">
+                        {photo.caption || photo.alt_text || "Zdjęcie z galerii"}
+                      </figcaption>
+                    </figure>
                   ))}
                 </div>
               </CardContent>
