@@ -1,0 +1,20 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_ADMIN_UI_AND_IMAGE_FALLBACK_RECOVERY",
+  "baseBranch": "main",
+  "targetBranch": "fix/admin-easyadmin-and-image-fallbacks",
+  "timezone": "Europe/Warsaw",
+  "timestamp": "2026-07-18T22:56:01+02:00",
+  "rootCauses": {
+    "list_extends_base": true,
+    "view_extends_base": true,
+    "new_extends_base": true,
+    "edit_extends_base": true,
+    "login_extends_base": true,
+    "base_no_styles": true,
+    "custom_place_controller_outside_easyadmin": true,
+    "dashboard_controller_missing_menu_items": true,
+    "default_brand_points_to_missing_paths": true,
+    "public_brand_does_not_exist": true,
+    "frontend_components_missing_onerror": true
+  }
+}
