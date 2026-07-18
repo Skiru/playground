@@ -1,0 +1,29 @@
+{
+  "phpunit": {
+    "total_tests": 90,
+    "assertions": 735,
+    "status": "PASS"
+  },
+  "vitest": {
+    "total_tests": 10,
+    "status": "PASS"
+  },
+  "playwright": {
+    "total_tests": 20,
+    "passed": 20,
+    "c3r_personalization": {
+      "desktop": "PASS",
+      "mobile": "PASS"
+    },
+    "status": "PASS"
+  },
+  "axe_accessibility": {
+    "status": "PASS"
+  },
+  "static_analysis": {
+    "phpstan": "PASS",
+    "deptrac": "PASS",
+    "eslint": "PASS",
+    "typescript": "PASS"
+  }
+}

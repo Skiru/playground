@@ -1,0 +1,12 @@
+{
+  "E2E_INPUT_SHA": "cb2f42befa8afe316e6104b67e218891ad4ad3c7",
+  "E2E_INPUT_TREE": "b32cc7e85c558434d9954c6c1734e96bcde0d47c",
+  "branch": "feat/family-places-c3-product-experience",
+  "status": "PASS",
+  "decision": "PROCEED",
+  "pr_number": 9,
+  "pr_state": "open",
+  "pr_merged": false,
+  "local_head_matches_remote_and_pr_head": true,
+  "worktree_clean": true
+}

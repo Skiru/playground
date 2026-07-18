@@ -7,6 +7,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    env(DEV_AUTH_ENABLED): '0'
 
 services:
     # default configuration for services in *this* file
@@ -28,6 +29,15 @@ services:
 
     App\Identity\UI\:
         resource: '../src/Identity/UI/'
+
+    App\Personalization\Application\:
+        resource: '../src/Personalization/Application/'
+
+    App\Personalization\Infrastructure\:
+        resource: '../src/Personalization/Infrastructure/'
+
+    App\Personalization\UI\:
+        resource: '../src/Personalization/UI/'
 
     App\Places\Application\:
         resource: '../src/Places/Application/'
@@ -63,6 +73,17 @@ services:
         tags: [monolog.processor]
 
     App\Identity\Application\UserRepository: '@App\Identity\Infrastructure\Doctrine\UserRepository'
+    App\Identity\Application\ExternalIdentityRepository: '@App\Identity\Infrastructure\Doctrine\ExternalIdentityRepository'
+    App\Identity\Application\Google\GoogleIdentityVerifier: '@App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier'
+
+    App\Personalization\Application\FavoriteRepository: '@App\Personalization\Infrastructure\Doctrine\FavoriteRepository'
+    App\Personalization\Application\VisitRepository: '@App\Personalization\Infrastructure\Doctrine\VisitRepository'
+    App\Personalization\Domain\PublishedPlaceLookup: '@App\Personalization\Infrastructure\PublishedPlaceDbalLookup'
+
+    App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier:
+        arguments:
+            $clientId: '%env(resolve:GOOGLE_CLIENT_ID)%'
+
     App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
 

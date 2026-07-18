@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetAmenitiesData, GetAmenitiesResponses, GetCategoriesData, GetCategoriesResponses, GetCitiesData, GetCitiesResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetMapPlacesData, GetMapPlacesErrors, GetMapPlacesResponses, GetPlaceBySlugData, GetPlaceBySlugErrors, GetPlaceBySlugResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses } from './types.gen';
+import type { AddFavoriteData, AddFavoriteErrors, AddFavoriteResponses, AddVisitData, AddVisitErrors, AddVisitResponses, DeleteVisitData, DeleteVisitErrors, DeleteVisitResponses, GetAmenitiesData, GetAmenitiesResponses, GetCategoriesData, GetCategoriesResponses, GetCitiesData, GetCitiesResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetMapPlacesData, GetMapPlacesErrors, GetMapPlacesResponses, GetPlaceBySlugData, GetPlaceBySlugErrors, GetPlaceBySlugResponses, GetPlaceStateData, GetPlaceStateErrors, GetPlaceStateResponses, ListFavoritesData, ListFavoritesErrors, ListFavoritesResponses, ListVisitsData, ListVisitsErrors, ListVisitsResponses, LoginWithDevAuthData, LoginWithDevAuthErrors, LoginWithDevAuthResponses, LoginWithGoogleData, LoginWithGoogleErrors, LoginWithGoogleResponses, RemoveFavoriteData, RemoveFavoriteErrors, RemoveFavoriteResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, UpdateVisitData, UpdateVisitErrors, UpdateVisitResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,23 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * Authenticate with Google ID token
+ */
+export const loginWithGoogle = <ThrowOnError extends boolean = false>(options?: Options<LoginWithGoogleData, ThrowOnError>): RequestResult<LoginWithGoogleResponses, LoginWithGoogleErrors, ThrowOnError> => (options?.client ?? client).post<LoginWithGoogleResponses, LoginWithGoogleErrors, ThrowOnError>({
+    url: '/api/v1/auth/google',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Dev bypass login
+ */
+export const loginWithDevAuth = <ThrowOnError extends boolean = false>(options?: Options<LoginWithDevAuthData, ThrowOnError>): RequestResult<LoginWithDevAuthResponses, LoginWithDevAuthErrors, ThrowOnError> => (options?.client ?? client).post<LoginWithDevAuthResponses, LoginWithDevAuthErrors, ThrowOnError>({ url: '/api/v1/dev-auth/login', ...options });
 
 /**
  * List enabled amenities
@@ -65,3 +82,57 @@ export const getHealthLive = <ThrowOnError extends boolean = false>(options?: Op
  * Checks the required PostgreSQL dependency; optional Redis is excluded.
  */
 export const getHealthReady = <ThrowOnError extends boolean = false>(options?: Options<GetHealthReadyData, ThrowOnError>): RequestResult<GetHealthReadyResponses, GetHealthReadyErrors, ThrowOnError> => (options?.client ?? client).get<GetHealthReadyResponses, GetHealthReadyErrors, ThrowOnError>({ url: '/api/v1/health/ready', ...options });
+
+/**
+ * List favorite places
+ */
+export const listFavorites = <ThrowOnError extends boolean = false>(options?: Options<ListFavoritesData, ThrowOnError>): RequestResult<ListFavoritesResponses, ListFavoritesErrors, ThrowOnError> => (options?.client ?? client).get<ListFavoritesResponses, ListFavoritesErrors, ThrowOnError>({ url: '/api/v1/me/favorites', ...options });
+
+/**
+ * Get favorite and visit states for a batch of places
+ */
+export const getPlaceState = <ThrowOnError extends boolean = false>(options?: Options<GetPlaceStateData, ThrowOnError>): RequestResult<GetPlaceStateResponses, GetPlaceStateErrors, ThrowOnError> => (options?.client ?? client).get<GetPlaceStateResponses, GetPlaceStateErrors, ThrowOnError>({ url: '/api/v1/me/place-state', ...options });
+
+/**
+ * List recorded visits
+ */
+export const listVisits = <ThrowOnError extends boolean = false>(options?: Options<ListVisitsData, ThrowOnError>): RequestResult<ListVisitsResponses, ListVisitsErrors, ThrowOnError> => (options?.client ?? client).get<ListVisitsResponses, ListVisitsErrors, ThrowOnError>({ url: '/api/v1/me/visits', ...options });
+
+/**
+ * Delete a recorded visit
+ */
+export const deleteVisit = <ThrowOnError extends boolean = false>(options: Options<DeleteVisitData, ThrowOnError>): RequestResult<DeleteVisitResponses, DeleteVisitErrors, ThrowOnError> => (options.client ?? client).delete<DeleteVisitResponses, DeleteVisitErrors, ThrowOnError>({ url: '/api/v1/me/visits/{visitId}', ...options });
+
+/**
+ * Update a recorded visit
+ */
+export const updateVisit = <ThrowOnError extends boolean = false>(options: Options<UpdateVisitData, ThrowOnError>): RequestResult<UpdateVisitResponses, UpdateVisitErrors, ThrowOnError> => (options.client ?? client).patch<UpdateVisitResponses, UpdateVisitErrors, ThrowOnError>({
+    url: '/api/v1/me/visits/{visitId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove place from favorites
+ */
+export const removeFavorite = <ThrowOnError extends boolean = false>(options: Options<RemoveFavoriteData, ThrowOnError>): RequestResult<RemoveFavoriteResponses, RemoveFavoriteErrors, ThrowOnError> => (options.client ?? client).delete<RemoveFavoriteResponses, RemoveFavoriteErrors, ThrowOnError>({ url: '/api/v1/places/{placeId}/favorite', ...options });
+
+/**
+ * Add place to favorites
+ */
+export const addFavorite = <ThrowOnError extends boolean = false>(options: Options<AddFavoriteData, ThrowOnError>): RequestResult<AddFavoriteResponses, AddFavoriteErrors, ThrowOnError> => (options.client ?? client).put<AddFavoriteResponses, AddFavoriteErrors, ThrowOnError>({ url: '/api/v1/places/{placeId}/favorite', ...options });
+
+/**
+ * Record a visit to a place
+ */
+export const addVisit = <ThrowOnError extends boolean = false>(options: Options<AddVisitData, ThrowOnError>): RequestResult<AddVisitResponses, AddVisitErrors, ThrowOnError> => (options.client ?? client).post<AddVisitResponses, AddVisitErrors, ThrowOnError>({
+    url: '/api/v1/places/{placeId}/visits',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});

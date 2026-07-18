@@ -4,6 +4,104 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type LoginWithGoogleData = {
+    /**
+     * Google ID token.
+     */
+    body?: {
+        credential: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/google';
+};
+
+export type LoginWithGoogleErrors = {
+    /**
+     * Invalid Google credential.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * Account link required.
+     */
+    409: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type LoginWithGoogleError = LoginWithGoogleErrors[keyof LoginWithGoogleErrors];
+
+export type LoginWithGoogleResponses = {
+    /**
+     * Successfully authenticated.
+     */
+    200: {
+        authenticated: boolean;
+        user: {
+            id: string;
+            displayName: string;
+            initials: string;
+            roles: Array<string>;
+        } | null;
+        csrfToken: string | null;
+    };
+};
+
+export type LoginWithGoogleResponse = LoginWithGoogleResponses[keyof LoginWithGoogleResponses];
+
+export type LoginWithDevAuthData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/dev-auth/login';
+};
+
+export type LoginWithDevAuthErrors = {
+    /**
+     * Not found.
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type LoginWithDevAuthError = LoginWithDevAuthErrors[keyof LoginWithDevAuthErrors];
+
+export type LoginWithDevAuthResponses = {
+    /**
+     * Successfully authenticated.
+     */
+    200: {
+        authenticated: boolean;
+        user: {
+            id: string;
+            displayName: string;
+            initials: string;
+            roles: Array<string>;
+        } | null;
+        csrfToken: string | null;
+    };
+};
+
+export type LoginWithDevAuthResponse = LoginWithDevAuthResponses[keyof LoginWithDevAuthResponses];
+
 export type GetAmenitiesData = {
     body?: never;
     path?: never;
@@ -499,3 +597,452 @@ export type GetHealthReadyResponses = {
      */
     200: unknown;
 };
+
+export type ListFavoritesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number.
+         */
+        page?: number;
+        /**
+         * Page size.
+         */
+        pageSize?: number;
+    };
+    url: '/api/v1/me/favorites';
+};
+
+export type ListFavoritesErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type ListFavoritesError = ListFavoritesErrors[keyof ListFavoritesErrors];
+
+export type ListFavoritesResponses = {
+    /**
+     * Successfully listed.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            placeId: string;
+            createdAt: string;
+            place: {
+                id: string;
+                slug: string;
+                name: string;
+                shortDescription: string;
+                city: string;
+                category: string;
+                ageSummary: string;
+                coordinates: {
+                    longitude: number;
+                    latitude: number;
+                };
+                published: boolean;
+            };
+        }>;
+        pagination: {
+            page: number;
+            pageSize: number;
+            totalItems: number;
+            totalPages: number;
+        };
+    };
+};
+
+export type ListFavoritesResponse = ListFavoritesResponses[keyof ListFavoritesResponses];
+
+export type GetPlaceStateData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Array of place UUIDs.
+         */
+        'placeIds[]'?: Array<string>;
+    };
+    url: '/api/v1/me/place-state';
+};
+
+export type GetPlaceStateErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type GetPlaceStateError = GetPlaceStateErrors[keyof GetPlaceStateErrors];
+
+export type GetPlaceStateResponses = {
+    /**
+     * Successfully retrieved state.
+     */
+    200: {
+        [key: string]: {
+            favorite: boolean;
+            lastVisitedOn: string | null;
+        };
+    };
+};
+
+export type GetPlaceStateResponse = GetPlaceStateResponses[keyof GetPlaceStateResponses];
+
+export type ListVisitsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number.
+         */
+        page?: number;
+        /**
+         * Page size.
+         */
+        pageSize?: number;
+    };
+    url: '/api/v1/me/visits';
+};
+
+export type ListVisitsErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type ListVisitsError = ListVisitsErrors[keyof ListVisitsErrors];
+
+export type ListVisitsResponses = {
+    /**
+     * Successfully listed.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            placeId: string;
+            visitedOn: string;
+            note: string | null;
+            createdAt: string;
+            updatedAt: string;
+            place: {
+                id: string;
+                slug: string;
+                name: string;
+                shortDescription: string;
+                city: string;
+                category: string;
+                ageSummary: string;
+                coordinates: {
+                    longitude: number;
+                    latitude: number;
+                };
+                published: boolean;
+            };
+        }>;
+        pagination: {
+            page: number;
+            pageSize: number;
+            totalItems: number;
+            totalPages: number;
+        };
+    };
+};
+
+export type ListVisitsResponse = ListVisitsResponses[keyof ListVisitsResponses];
+
+export type DeleteVisitData = {
+    body?: never;
+    path: {
+        /**
+         * Visit UUID.
+         */
+        visitId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/visits/{visitId}';
+};
+
+export type DeleteVisitErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * Visit not found.
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type DeleteVisitError = DeleteVisitErrors[keyof DeleteVisitErrors];
+
+export type DeleteVisitResponses = {
+    /**
+     * Successfully deleted.
+     */
+    204: void;
+};
+
+export type DeleteVisitResponse = DeleteVisitResponses[keyof DeleteVisitResponses];
+
+export type UpdateVisitData = {
+    /**
+     * Updated visit details.
+     */
+    body?: {
+        visitedOn?: string;
+        note?: string | null;
+    };
+    path: {
+        /**
+         * Visit UUID.
+         */
+        visitId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/visits/{visitId}';
+};
+
+export type UpdateVisitErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * Visit not found.
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type UpdateVisitError = UpdateVisitErrors[keyof UpdateVisitErrors];
+
+export type UpdateVisitResponses = {
+    /**
+     * Successfully updated.
+     */
+    200: {
+        id: string;
+        placeId: string;
+        visitedOn: string;
+        note: string | null;
+        createdAt: string;
+        updatedAt: string;
+    };
+};
+
+export type UpdateVisitResponse = UpdateVisitResponses[keyof UpdateVisitResponses];
+
+export type RemoveFavoriteData = {
+    body?: never;
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: never;
+    url: '/api/v1/places/{placeId}/favorite';
+};
+
+export type RemoveFavoriteErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type RemoveFavoriteError = RemoveFavoriteErrors[keyof RemoveFavoriteErrors];
+
+export type RemoveFavoriteResponses = {
+    /**
+     * Successfully removed.
+     */
+    204: void;
+};
+
+export type RemoveFavoriteResponse = RemoveFavoriteResponses[keyof RemoveFavoriteResponses];
+
+export type AddFavoriteData = {
+    body?: never;
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: never;
+    url: '/api/v1/places/{placeId}/favorite';
+};
+
+export type AddFavoriteErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * Place not found.
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type AddFavoriteError = AddFavoriteErrors[keyof AddFavoriteErrors];
+
+export type AddFavoriteResponses = {
+    /**
+     * Successfully favorited.
+     */
+    200: {
+        id: string;
+        placeId: string;
+        createdAt: string;
+    };
+};
+
+export type AddFavoriteResponse = AddFavoriteResponses[keyof AddFavoriteResponses];
+
+export type AddVisitData = {
+    /**
+     * Visit details.
+     */
+    body?: {
+        visitedOn: string;
+        note?: string | null;
+    };
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: never;
+    url: '/api/v1/places/{placeId}/visits';
+};
+
+export type AddVisitErrors = {
+    /**
+     * Invalid request payload.
+     */
+    400: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+    /**
+     * Place not found.
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type AddVisitError = AddVisitErrors[keyof AddVisitErrors];
+
+export type AddVisitResponses = {
+    /**
+     * Successfully created visit.
+     */
+    201: {
+        id: string;
+        placeId: string;
+        visitedOn: string;
+        note: string | null;
+        createdAt: string;
+        updatedAt: string;
+    };
+};
+
+export type AddVisitResponse = AddVisitResponses[keyof AddVisitResponses];

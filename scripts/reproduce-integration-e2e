@@ -1,0 +1,88 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+# Activate node v24 via fnm
+eval "$(fnm env --shell=bash)"
+export CI=true
+
+# Parse arguments
+PROJECT_ARG=""
+SPEC_ARG=""
+
+for arg in "$@"; do
+  case $arg in
+    --project=desktop)
+      PROJECT_ARG="--project=chromium-desktop"
+      ;;
+    --project=mobile)
+      PROJECT_ARG="--project=chromium-mobile"
+      ;;
+    --spec=*)
+      SPEC_ARG="${arg#*=}"
+      ;;
+    *)
+      # positional or other arguments
+      ;;
+  esac
+done
+
+echo "=== Step 1: Cleaning up compose stack ==="
+docker compose -f compose.yaml -f compose.test.yaml down --volumes --remove-orphans
+docker compose -f compose.yaml -f compose.e2e.yaml down --volumes --remove-orphans
+
+# Setup trap for cleanup
+cleanup() {
+  echo "=== Step 11: Cleaning up compose stack ==="
+  docker compose -f compose.yaml -f compose.e2e.yaml logs > /tmp/reproduce-e2e-service.log || true
+  docker compose -f compose.yaml -f compose.e2e.yaml down --volumes --remove-orphans || true
+}
+trap cleanup EXIT
+
+echo "=== Step 2: Building images ==="
+docker compose -f compose.yaml -f compose.test.yaml build api
+docker compose -f compose.yaml -f compose.e2e.yaml build api web worker
+
+echo "=== Step 3: Starting PostgreSQL/PostGIS ==="
+docker compose -f compose.yaml -f compose.test.yaml up --wait -d database
+
+echo "=== Step 4 & 5: Running migrations and loading deterministic fixtures ==="
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:database:create --if-not-exists
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
+
+echo "=== Step 6: Building frontend/API ==="
+pnpm --filter @family-places/api-client build
+pnpm --filter @family-places/web build
+
+echo "=== Step 7 & 8: Starting final production E2E stack ==="
+docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d database api web
+docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
+
+echo "=== Step 9: Running Playwright tests ==="
+export WEB_BASE_URL="http://127.0.0.1:3000"
+export API_BASE_URL_BROWSER="http://127.0.0.1:8080"
+
+EXIT_CODE=0
+if [ -n "$SPEC_ARG" ]; then
+  if [ -n "$PROJECT_ARG" ]; then
+    pnpm --filter @family-places/web e2e -- "$SPEC_ARG" "$PROJECT_ARG" || EXIT_CODE=$?
+  else
+    pnpm --filter @family-places/web e2e -- "$SPEC_ARG" || EXIT_CODE=$?
+  fi
+else
+  if [ -n "$PROJECT_ARG" ]; then
+    pnpm --filter @family-places/web e2e -- "$PROJECT_ARG" || EXIT_CODE=$?
+  else
+    pnpm --filter @family-places/web e2e || EXIT_CODE=$?
+  fi
+fi
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "=== Step 10: Collecting logs after failure ==="
+  docker compose -f compose.yaml -f compose.e2e.yaml logs > /tmp/reproduce-e2e-failure-service.log || true
+fi
+
+exit $EXIT_CODE

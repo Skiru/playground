@@ -1,0 +1,22 @@
+{
+  "findings": [
+    {
+      "findingID": "ST_STICKY_HEADER_INTERSECTION",
+      "traceEvidence": "SiteHeader sticky layout with h-16 covers elements scrolled to the top of the viewport by Playwright, preventing standard clicking actions.",
+      "rootCause": "The browser scrolls elements to the absolute top of the viewport, placing them underneath the z-50 SiteHeader. Previously this was worked around using force: true clicks, which masks actual user layout issues.",
+      "fix": "Added scroll-mt-20 class to the key actionable Card and action bar containers in routes (places list, place details, visit history, favorites list). This naturally positions scrolled elements 20px / 5rem below the header, making them fully actionable.",
+      "regressionTest": "apps/web/e2e/c3r-personalization.spec.ts",
+      "targetedRun": "Passed",
+      "fullE2ERun": "Passed"
+    },
+    {
+      "findingID": "PNPM_NO_TTY_HEADLESS_ABORT",
+      "traceEvidence": "pnpm throws ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY inside node:24-bookworm container when executing static check script in non-interactive shell.",
+      "rootCause": "In headless environments, pnpm requires the CI=true environment variable to safely purge directories or modify node_modules without interactive TTY prompt confirmation.",
+      "fix": "Passed -e CI=true to the docker run node container inside the scripts/check script.",
+      "regressionTest": "scripts/check",
+      "targetedRun": "Passed",
+      "fullE2ERun": "Passed"
+    }
+  ]
+}

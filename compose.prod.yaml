@@ -7,6 +7,8 @@ services:
       APP_DEBUG: 0
       APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      DEV_AUTH_ENABLED: "false"
   worker:
     image: family-places-worker:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50
     restart: unless-stopped
@@ -23,6 +25,10 @@ services:
       MAP_STYLE_URL: ${MAP_STYLE_URL:?MAP_STYLE_URL is required in production}
       MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:?MAP_ATTRIBUTION is required in production}
       MAP_PROVIDER_NAME: ${MAP_PROVIDER_NAME:?MAP_PROVIDER_NAME is required in production}
+      GOOGLE_IDENTITY_ENABLED: ${GOOGLE_IDENTITY_ENABLED:-false}
+      PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      DEV_AUTH_ENABLED: false
+      APP_ENV: prod
   database:
     restart: unless-stopped
     environment:

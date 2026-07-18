@@ -88,6 +88,9 @@
             ".php-cs-fixer.dist.php"
         ]
     },
+    "google/apiclient": {
+        "version": "v2.19.4"
+    },
     "jsor/doctrine-postgis": {
         "version": "v2.4.0"
     },

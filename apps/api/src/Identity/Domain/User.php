@@ -14,6 +14,7 @@ final class User implements UserInterface, PasswordAuthenticatedUserInterface
     private Uuid $id;
     private string $email;
     private ?string $passwordHash = null;
+    /** @deprecated */
     private ?string $googleSubject = null;
     /** @var list<string> */
     private array $roles;

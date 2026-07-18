@@ -13,6 +13,9 @@ security:
         main:
             lazy: true
             provider: admin_users
+            user_checker: App\Identity\UI\Security\UserChecker
+            custom_authenticators:
+                - App\Identity\UI\Security\GoogleCredentialAuthenticator
             form_login:
                 login_path: admin_login
                 check_path: admin_login
@@ -35,9 +38,26 @@ when@test:
                 memory:
                     users:
                         admin@example.test: { password: '$2y$04$1gdB2/YIo.5sVRE7JpMdR.AL2c9cef8DPnEm/4fDHp/syvn/zOTBK', roles: [ROLE_ADMIN] }
+            chain_provider:
+                chain:
+                    providers: [test_users, admin_users]
         firewalls:
             main:
-                provider: test_users
+                provider: chain_provider
+                user_checker: App\Identity\UI\Security\UserChecker
+                custom_authenticators:
+                    - App\Identity\UI\Security\GoogleCredentialAuthenticator
+                form_login:
+                    login_path: admin_login
+                    check_path: admin_login
+                    enable_csrf: true
+                    default_target_path: /admin
+                login_throttling:
+                    max_attempts: 5
+                    interval: '15 minutes'
+                logout:
+                    path: admin_logout
+                    target: admin_login
         password_hashers:
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto

@@ -1,0 +1,2 @@
+services:
+    App\Identity\Application\Google\GoogleIdentityVerifier: '@App\Identity\Infrastructure\Google\FakeGoogleIdentityVerifier'

@@ -1,0 +1,9 @@
+{
+  "C3R_INPUT_SHA": "75682a7d8657479ece04ea0117534c7b14160667",
+  "C3R_INPUT_TREE": "d252a1963ad08bdcf38cf56ab2c61c91e518f4cf",
+  "branch": "feat/family-places-c3-product-experience",
+  "worktree_clean": true,
+  "local_equals_remote": true,
+  "ancestor_verified": true,
+  "status": "PASS"
+}

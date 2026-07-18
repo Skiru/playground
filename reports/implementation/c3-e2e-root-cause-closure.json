@@ -1,0 +1,58 @@
+{
+  "TASK_ID": "PLAYGROUND_FAMILY_PLACES_C3_E2E_ROOT_CAUSE_CLOSURE",
+  "status": "PASS",
+  "decision": "READY_TO_MERGE_C3",
+  "input_sha": "cb2f42befa8afe316e6104b67e218891ad4ad3c7",
+  "input_tree": "b32cc7e85c558434d9954c6c1734e96bcde0d47c",
+  "final_implementation_sha": "d7ae5ee6226e71d83ed1caaf77b6427a7db112c8",
+  "final_implementation_tree": "b6ab161d34f97f97dddeac283536205f95ca1a4f",
+  "failing_run_id": "29612753003",
+  "failing_run_url": "https://github.com/Skiru/playground/actions/runs/29612753003",
+  "failing_test_titles_before": [
+    "C3R Personalization and Security E2E > complete user journey: login, reload session, favorite, visit, edit, delete, logout"
+  ],
+  "projects": [
+    "chromium-desktop",
+    "chromium-mobile"
+  ],
+  "root_causes": "SiteHeader sticky layout with h-16 covers elements scrolled to the top of the viewport by Playwright, preventing standard clicking actions.",
+  "changed_files": [
+    "apps/web/app/routes/places.tsx",
+    "apps/web/app/routes/place-detail.tsx",
+    "apps/web/app/routes/account/visits.tsx",
+    "apps/web/app/routes/account/favorites.tsx",
+    "apps/web/e2e/c3r-personalization.spec.ts",
+    "scripts/check"
+  ],
+  "regression_tests": [
+    "apps/web/e2e/c3r-personalization.spec.ts"
+  ],
+  "force_true_before": 5,
+  "force_true_after": 0,
+  "arbitrary_waits_after": 0,
+  "first_nth_audited": {
+    "c3r-personalization.spec.ts": "6 first() calls used for layout selection or targeting specific list results, fully validated.",
+    "public.spec.ts": "4 first() / nth() calls used for listing page targeting, fully validated.",
+    "accessibility.spec.ts": "1 first() call used for link selection, fully validated.",
+    "admin.spec.ts": "6 first() / nth() calls used for form row inputs, fully validated."
+  },
+  "local_clean_run_1": "PASS",
+  "local_clean_run_2": "PASS",
+  "test_counts": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "flaky": 0,
+    "retries": 0
+  },
+  "flaky_count": 0,
+  "pr_url": "https://github.com/Skiru/playground/pull/9",
+  "final_check_results": {
+    "Backend quality": "PASS",
+    "Frontend quality": "PASS",
+    "Containers": "PASS",
+    "Security audit": "PASS",
+    "Dependency review": "PASS",
+    "Integration and browser E2E": "PASS"
+  }
+}

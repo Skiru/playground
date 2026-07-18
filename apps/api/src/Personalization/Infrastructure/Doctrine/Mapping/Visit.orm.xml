@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                          https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Personalization\Domain\Visit" table="visits">
+        <id name="id" type="uuid" column="id" />
+        <field name="placeId" column="place_id" type="uuid" />
+        <field name="visitedOn" column="visited_on" type="datetime_immutable" />
+        <field name="note" column="note" type="text" nullable="true" />
+        <field name="createdAt" column="created_at" type="datetime_immutable" />
+        <field name="updatedAt" column="updated_at" type="datetime_immutable" />
+
+        <many-to-one field="user" target-entity="App\Identity\Domain\User">
+            <join-column name="user_id" referenced-column-name="id" on-delete="CASCADE" nullable="false" />
+        </many-to-one>
+
+        <indexes>
+            <index columns="user_id" name="idx_visits_user_id" />
+            <index columns="place_id" name="idx_visits_place_id" />
+            <index columns="user_id,visited_on" name="idx_visits_user_visited_on" />
+        </indexes>
+    </entity>
+</doctrine-mapping>

@@ -1,0 +1,88 @@
+{
+  "findings": [
+    {
+      "id": "ROOT_LOADER_MISSING_GOOGLE_CONFIG",
+      "severity": "P0",
+      "description": "Root loader in apps/web/app/root.tsx does not load or supply googleIdentityEnabled, googleClientId, and devAuthEnabled to the frontend.",
+      "reproduced": true
+    },
+    {
+      "id": "GOOGLE_UI_DISABLED",
+      "severity": "P0",
+      "description": "Google login UI remains disabled or hidden because googleIdentityEnabled evaluates to false by default.",
+      "reproduced": true
+    },
+    {
+      "id": "DEV_BYPASS_DUMMY_TOKEN",
+      "severity": "P1",
+      "description": "Dev bypass relies on sending a fake token from client instead of a dedicated, secure POST /api/v1/dev-auth/login backend route guarded against production environment.",
+      "reproduced": true
+    },
+    {
+      "id": "MISSING_LOGIN_RATE_LIMITER",
+      "severity": "P0",
+      "description": "There is no rate limiting on the Google auth endpoint, exposing it to potential brute force or abuse.",
+      "reproduced": true
+    },
+    {
+      "id": "EXCEPTION_LEAKAGE",
+      "severity": "P0",
+      "description": "Internal database or validation exceptions might be returned with their raw message to the client, risking data leak.",
+      "reproduced": true
+    },
+    {
+      "id": "NON_ATOMIC_IDENTITY_FLOW",
+      "severity": "P0",
+      "description": "First-time login lacks TransactionManager protection, causing potential orphan Users or unique constraint violations under race conditions.",
+      "reproduced": true
+    },
+    {
+      "id": "FAVORITE_RACE",
+      "severity": "P1",
+      "description": "Concurrent favorite requests can result in database integrity constraint violations instead of idempotent upsert behavior.",
+      "reproduced": true
+    },
+    {
+      "id": "VISIT_PATCH_SEMANTICS",
+      "severity": "P1",
+      "description": "Visit PATCH operation clears or updates omitted fields like note to null instead of preserving their original state.",
+      "reproduced": true
+    },
+    {
+      "id": "LOOSE_DATE_VALIDATION",
+      "severity": "P1",
+      "description": "Validation for visitedOn allows invalid formats or dates in the future.",
+      "reproduced": true
+    },
+    {
+      "id": "PRIVATE_LISTS_CACHE_CONTROL",
+      "severity": "P1",
+      "description": "Private endpoints /api/v1/me/** do not return Cache-Control: private, no-store, permitting proxy or client caching.",
+      "reproduced": true
+    },
+    {
+      "id": "N_PLUS_ONE_PLACE_STATE",
+      "severity": "P1",
+      "description": "Personalization place-state endpoint performs N+1 database queries to check individual place favorite/visit status.",
+      "reproduced": true
+    },
+    {
+      "id": "ACCOUNT_PAGE_N_PLUS_ONE_FETC_PER_PLACE",
+      "severity": "P1",
+      "description": "Account favorite and visit pages fetch full details per place using individual requests rather than a batch query.",
+      "reproduced": true
+    },
+    {
+      "id": "MISSING_OPENAPI_COVERAGE",
+      "severity": "P1",
+      "description": "New auth and personalization endpoints are not fully documented in OpenAPI nor generated via api-generate.",
+      "reproduced": true
+    },
+    {
+      "id": "MISSING_C3_PLAYWRIGHT",
+      "severity": "P1",
+      "description": "There is no complete Playwright integration testing suite for C3 product experience and security flows.",
+      "reproduced": true
+    }
+  ]
+}
