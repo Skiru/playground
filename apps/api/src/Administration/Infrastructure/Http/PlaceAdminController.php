@@ -25,6 +25,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
 
 #[Route('/admin/places')]
 #[IsGranted('ROLE_ADMIN')]
@@ -118,5 +119,186 @@ final class PlaceAdminController extends AbstractController
         }
 
         return $this->redirectToRoute('admin_places');
+    }
+
+    #[Route('/{id}/photos/upload', name: 'admin_places_photos_upload', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function uploadPhotos(string $id, Request $request, \Symfony\Component\Messenger\MessageBusInterface $bus, \App\Shared\Application\Storage\StorageInterface $storage): RedirectResponse
+    {
+        if (!$this->isCsrfTokenValid('place-photos-'.$id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $place = $this->places->get($id);
+        $uploadedFiles = $request->files->get('photos');
+
+        if ($uploadedFiles) {
+            $now = new \DateTimeImmutable();
+            if (!\is_array($uploadedFiles)) {
+                $uploadedFiles = [$uploadedFiles];
+            }
+
+            foreach ($uploadedFiles as $file) {
+                if ($file instanceof \Symfony\Component\HttpFoundation\File\UploadedFile) {
+                    $photoId = Uuid::v7();
+                    $originalFilename = $file->getClientOriginalName();
+                    $extension = $file->getClientOriginalExtension() ?: 'jpg';
+
+                    // Determine safe file name and path
+                    $filename = \sprintf('original_%s.%s', $photoId->toRfc4122(), $extension);
+                    $storagePath = \sprintf('places/%s/photos/%s/%s', $id, $photoId->toRfc4122(), $filename);
+
+                    // Write original file to storage
+                    $contents = file_get_contents($file->getPathname());
+                    if (false === $contents) {
+                        throw new \RuntimeException('Failed to read uploaded file.');
+                    }
+                    $storage->write($storagePath, $contents);
+
+                    // Create PlacePhoto and add it to Place
+                    $isMain = 0 === \count($place->photos());
+
+                    $photo = \App\Places\Domain\PlacePhoto::reconstitute(
+                        $photoId,
+                        $place,
+                        $originalFilename,
+                        $storagePath,
+                        'processing',
+                        $isMain,
+                        \count($place->photos()),
+                        null,
+                        null,
+                        null,
+                        $now,
+                        $now
+                    );
+
+                    $place->addPhoto($photo, $now);
+                    $bus->dispatch(new \App\Places\Application\Command\ProcessPhoto($photoId->toRfc4122()));
+                }
+            }
+
+            $this->places->save($place, $place->version());
+            $this->addFlash('success', 'Photos uploaded successfully and queued for processing.');
+        }
+
+        return $this->redirectToRoute('admin_places_view', ['id' => $id]);
+    }
+
+    #[Route('/{id}/photos/{photoId}/delete', name: 'admin_places_photos_delete', requirements: ['id' => '[0-9a-f-]{36}', 'photoId' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function deletePhoto(string $id, string $photoId, Request $request, \App\Shared\Application\Storage\StorageInterface $storage): RedirectResponse
+    {
+        if (!$this->isCsrfTokenValid('place-photo-ops-'.$photoId, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $place = $this->places->get($id);
+        $photos = $place->photos();
+
+        $photoToDelete = null;
+        $remainingPhotos = [];
+        foreach ($photos as $photo) {
+            if ($photo->id()->toRfc4122() === $photoId) {
+                $photoToDelete = $photo;
+            } else {
+                $remainingPhotos[] = $photo;
+            }
+        }
+
+        if ($photoToDelete) {
+            // Delete original file from storage
+            $storage->delete($photoToDelete->filePath());
+
+            // Delete variants from storage
+            if ($photoToDelete->variants()) {
+                foreach ($photoToDelete->variants() as $variantUrl) {
+                    $relativePart = parse_url($variantUrl, \PHP_URL_PATH);
+                    if ($relativePart) {
+                        $relativePart = str_replace('/uploads/', '', $relativePart);
+                        $storage->delete($relativePart);
+                    }
+                }
+            }
+
+            if ($photoToDelete->isMain() && \count($remainingPhotos) > 0) {
+                $remainingPhotos[0]->setMain(true, new \DateTimeImmutable());
+            }
+
+            $place->replacePhotos($remainingPhotos, new \DateTimeImmutable());
+            $this->places->save($place, $place->version());
+
+            $this->addFlash('success', 'Photo deleted.');
+        }
+
+        return $this->redirectToRoute('admin_places_view', ['id' => $id]);
+    }
+
+    #[Route('/{id}/photos/{photoId}/set-main', name: 'admin_places_photos_set_main', requirements: ['id' => '[0-9a-f-]{36}', 'photoId' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function setMainPhoto(string $id, string $photoId, Request $request): RedirectResponse
+    {
+        if (!$this->isCsrfTokenValid('place-photo-ops-'.$photoId, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $place = $this->places->get($id);
+        $now = new \DateTimeImmutable();
+
+        foreach ($place->photos() as $photo) {
+            $isTarget = $photo->id()->toRfc4122() === $photoId;
+            $photo->setMain($isTarget, $now);
+        }
+
+        $this->places->save($place, $place->version());
+        $this->addFlash('success', 'Main photo updated.');
+
+        return $this->redirectToRoute('admin_places_view', ['id' => $id]);
+    }
+
+    #[Route('/{id}/photos/{photoId}/update', name: 'admin_places_photos_update', requirements: ['id' => '[0-9a-f-]{36}', 'photoId' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function updatePhoto(string $id, string $photoId, Request $request): RedirectResponse
+    {
+        if (!$this->isCsrfTokenValid('place-photo-ops-'.$photoId, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $place = $this->places->get($id);
+        $now = new \DateTimeImmutable();
+
+        foreach ($place->photos() as $photo) {
+            if ($photo->id()->toRfc4122() === $photoId) {
+                $altText = $request->request->get('alt_text') ? trim((string) $request->request->get('alt_text')) : null;
+                $caption = $request->request->get('caption') ? trim((string) $request->request->get('caption')) : null;
+                $displayOrder = $request->request->getInt('display_order', $photo->displayOrder());
+
+                $photo->updateDetails($altText, $caption, $displayOrder, $now);
+                break;
+            }
+        }
+
+        $this->places->save($place, $place->version());
+        $this->addFlash('success', 'Photo details updated.');
+
+        return $this->redirectToRoute('admin_places_view', ['id' => $id]);
+    }
+
+    #[Route('/{id}/photos/{photoId}/reprocess', name: 'admin_places_photos_reprocess', requirements: ['id' => '[0-9a-f-]{36}', 'photoId' => '[0-9a-f-]{36}'], methods: ['POST'])]
+    public function reprocessPhoto(string $id, string $photoId, Request $request, \Symfony\Component\Messenger\MessageBusInterface $bus): RedirectResponse
+    {
+        if (!$this->isCsrfTokenValid('place-photo-ops-'.$photoId, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $place = $this->places->get($id);
+        foreach ($place->photos() as $photo) {
+            if ($photo->id()->toRfc4122() === $photoId) {
+                $photo->updateDetails($photo->altText(), $photo->caption(), $photo->displayOrder(), new \DateTimeImmutable());
+                $this->places->save($place, $place->version());
+
+                $bus->dispatch(new \App\Places\Application\Command\ProcessPhoto($photoId));
+                $this->addFlash('success', 'Reprocessing queued.');
+                break;
+            }
+        }
+
+        return $this->redirectToRoute('admin_places_view', ['id' => $id]);
     }
 }

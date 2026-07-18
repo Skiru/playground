@@ -14,6 +14,7 @@ use App\Places\Domain\ExternalPlaceReference;
 use App\Places\Domain\OpeningHoursMode;
 use App\Places\Domain\Place;
 use App\Places\Domain\PlaceAgeZone;
+use App\Places\Domain\PlacePhoto;
 use App\Places\Domain\PlaceStatus;
 use App\Places\Domain\SpecialOpeningDay;
 use App\Places\Domain\SpecialOpeningDayMode;
@@ -184,6 +185,26 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         }
         $place->replaceExternalReferences($references, $place->updatedAt());
 
+        $photos = [];
+        foreach ($this->connection->fetchAllAssociative('SELECT * FROM place_photos WHERE place_id=:id ORDER BY display_order, id', ['id' => $id]) as $photoRow) {
+            $variants = null === $photoRow['variants'] ? null : json_decode((string) $photoRow['variants'], true);
+            $photos[] = PlacePhoto::reconstitute(
+                Uuid::fromString((string) $photoRow['id']),
+                $place,
+                (string) $photoRow['original_filename'],
+                (string) $photoRow['file_path'],
+                (string) $photoRow['status'],
+                (bool) $photoRow['is_main'],
+                (int) $photoRow['display_order'],
+                $photoRow['alt_text'] ? (string) $photoRow['alt_text'] : null,
+                $photoRow['caption'] ? (string) $photoRow['caption'] : null,
+                $variants,
+                $this->date($photoRow['created_at']),
+                $this->date($photoRow['updated_at'])
+            );
+        }
+        $place->replacePhotos($photos, $place->updatedAt());
+
         return $place;
     }
 
@@ -212,7 +233,7 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         foreach ($place->amenities() as $amenity) {
             $this->connection->insert('place_amenities', ['place_id' => $id, 'amenity_id' => $amenity->id()->toRfc4122()]);
         }
-        foreach (['place_age_zones', 'weekly_opening_intervals', 'special_opening_days', 'external_place_references'] as $table) {
+        foreach (['place_age_zones', 'weekly_opening_intervals', 'special_opening_days', 'external_place_references', 'place_photos'] as $table) {
             $this->connection->executeStatement('DELETE FROM '.$table.' WHERE place_id=:id', ['id' => $id]);
         }
         foreach ($place->ageZones() as $zone) {
@@ -231,6 +252,25 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
         }
         foreach ($place->externalReferences() as $reference) {
             $this->connection->insert('external_place_references', ['id' => $reference->id()->toRfc4122(), 'place_id' => $id, 'provider' => $reference->provider(), 'external_id' => $reference->externalId(), 'source_url' => $reference->sourceUrl(), 'imported_at' => $reference->importedAt(), 'last_verified_at' => $reference->lastVerifiedAt()], ['imported_at' => Types::DATETIME_IMMUTABLE, 'last_verified_at' => Types::DATETIME_IMMUTABLE]);
+        }
+        foreach ($place->photos() as $photo) {
+            $this->connection->insert('place_photos', [
+                'id' => $photo->id()->toRfc4122(),
+                'place_id' => $id,
+                'original_filename' => $photo->originalFilename(),
+                'file_path' => $photo->filePath(),
+                'status' => $photo->status(),
+                'is_main' => (int) $photo->isMain(),
+                'display_order' => $photo->displayOrder(),
+                'alt_text' => $photo->altText(),
+                'caption' => $photo->caption(),
+                'variants' => $photo->variants() ? json_encode($photo->variants(), \JSON_THROW_ON_ERROR) : null,
+                'created_at' => $photo->createdAt(),
+                'updated_at' => $photo->updatedAt(),
+            ], [
+                'created_at' => Types::DATETIME_IMMUTABLE,
+                'updated_at' => Types::DATETIME_IMMUTABLE,
+            ]);
         }
     }
 

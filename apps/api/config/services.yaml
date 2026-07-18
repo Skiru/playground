@@ -8,6 +8,14 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     env(DEV_AUTH_ENABLED): '0'
+    env(STORAGE_DRIVER): 'local'
+    env(STORAGE_BASE_URL): '/uploads'
+    env(STORAGE_S3_ENDPOINT): ''
+    env(STORAGE_S3_KEY): ''
+    env(STORAGE_S3_SECRET): ''
+    env(STORAGE_S3_BUCKET): ''
+    env(STORAGE_S3_REGION): 'us-east-1'
+    env(STORAGE_S3_PUBLIC_URL): ''
 
 services:
     # default configuration for services in *this* file
@@ -86,6 +94,23 @@ services:
 
     App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
+
+    # Storage Configuration
+    App\Shared\Infrastructure\Storage\LocalStorageAdapter:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+            $baseUrl: '%env(STORAGE_BASE_URL)%'
+
+    App\Shared\Infrastructure\Storage\S3StorageAdapter:
+        arguments:
+            $endpoint: '%env(STORAGE_S3_ENDPOINT)%'
+            $key: '%env(STORAGE_S3_KEY)%'
+            $secret: '%env(STORAGE_S3_SECRET)%'
+            $bucket: '%env(STORAGE_S3_BUCKET)%'
+            $region: '%env(STORAGE_S3_REGION)%'
+            $publicUrl: '%env(STORAGE_S3_PUBLIC_URL)%'
+
+    App\Shared\Application\Storage\StorageInterface: '@App\Shared\Infrastructure\Storage\StorageService'
 
     Jsor\Doctrine\PostGIS\Event\ORMSchemaEventListener:
         tags: [{ name: doctrine.event_listener, event: postGenerateSchemaTable, connection: default }]
