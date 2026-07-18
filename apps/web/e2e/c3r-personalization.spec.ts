@@ -84,6 +84,14 @@ test.describe("C3R Personalization and Security E2E", () => {
     // Verify deletion success
     await expect(page.getByText("Wizyta została usunięta z historii.")).toBeVisible();
 
+    // Clean up favorite state to prevent fixture leaks across runs or projects
+    await page.goto("/konto/ulubione");
+    const removeFavBtn = page.getByLabel("Usuń z ulubionych").first();
+    if (await removeFavBtn.isVisible()) {
+      await removeFavBtn.click();
+      await expect(page.getByText("Usunięto z ulubionych.")).toBeVisible();
+    }
+
     // 7. Logout and verify unauthenticated state
     await page.goto("/");
     await duButton.click();

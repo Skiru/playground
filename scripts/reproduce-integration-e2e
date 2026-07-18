@@ -6,6 +6,7 @@ cd "$repo_dir"
 
 # Activate node v24 via fnm
 eval "$(fnm env --shell=bash)"
+export CI=true
 
 # Parse arguments
 PROJECT_ARG=""
