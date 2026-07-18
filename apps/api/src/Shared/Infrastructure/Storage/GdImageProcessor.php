@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Storage;
 
+use App\Shared\Application\Storage\CorruptImageException;
 use App\Shared\Application\Storage\ImageProcessor;
 use App\Shared\Application\Storage\UnsupportedImageException;
-use App\Shared\Application\Storage\CorruptImageException;
 
 final class GdImageProcessor implements ImageProcessor
 {
     public function resizeToWebp(string $imageBytes, int $targetWidth, int $quality = 80): string
     {
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $finfo = new \finfo(\FILEINFO_MIME_TYPE);
         $mime = $finfo->buffer($imageBytes);
 
         $supportedMimes = [

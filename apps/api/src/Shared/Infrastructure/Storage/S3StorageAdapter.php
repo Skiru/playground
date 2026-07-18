@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Storage;
 
+use App\Shared\Application\Storage\StorageConfigurationException;
+use App\Shared\Application\Storage\StorageException;
 use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageObjectKey;
-use App\Shared\Application\Storage\StorageException;
-use App\Shared\Application\Storage\TransientStorageException;
 use App\Shared\Application\Storage\StorageObjectNotFoundException;
-use App\Shared\Application\Storage\StorageConfigurationException;
+use App\Shared\Application\Storage\TransientStorageException;
 use Aws\S3\S3Client;
 
 final class S3StorageAdapter implements StorageInterface
@@ -71,19 +71,19 @@ final class S3StorageAdapter implements StorageInterface
                 throw new StorageObjectNotFoundException(\sprintf('File "%s" not found in S3.', $path), 0, $e);
             }
             if (429 === $statusCode || ($statusCode >= 500 && $statusCode < 600) || 'RequestTimeout' === $errorCode || 'SlowDown' === $errorCode) {
-                throw new TransientStorageException('Transient S3 storage error: ' . $e->getMessage(), 0, $e);
+                throw new TransientStorageException('Transient S3 storage error: '.$e->getMessage(), 0, $e);
             }
             if (403 === $statusCode || 'InvalidAccessKeyId' === $errorCode || 'SignatureDoesNotMatch' === $errorCode) {
-                throw new StorageConfigurationException('S3 configuration or credential error: ' . $e->getMessage(), 0, $e);
+                throw new StorageConfigurationException('S3 configuration or credential error: '.$e->getMessage(), 0, $e);
             }
-            throw new StorageException('S3 storage error: ' . $e->getMessage(), 0, $e);
-        } catch (\GuzzleHttp\Exception\ConnectException | \GuzzleHttp\Exception\RequestException | \Aws\Exception\CredentialsException $e) {
-            throw new TransientStorageException('Transient S3 connection error: ' . $e->getMessage(), 0, $e);
+            throw new StorageException('S3 storage error: '.$e->getMessage(), 0, $e);
+        } catch (\GuzzleHttp\Exception\ConnectException|\GuzzleHttp\Exception\RequestException|\Aws\Exception\CredentialsException $e) {
+            throw new TransientStorageException('Transient S3 connection error: '.$e->getMessage(), 0, $e);
         } catch (\Throwable $e) {
             if ($e instanceof StorageException) {
                 throw $e;
             }
-            throw new StorageException('Unexpected S3 error: ' . $e->getMessage(), 0, $e);
+            throw new StorageException('Unexpected S3 error: '.$e->getMessage(), 0, $e);
         }
     }
 
@@ -102,7 +102,7 @@ final class S3StorageAdapter implements StorageInterface
             $params['CacheControl'] = 'max-age=31536000, public, immutable';
         }
 
-        $this->executeS3Call(function (S3Client $client) use ($params) {
+        $this->executeS3Call(static function (S3Client $client) use ($params) {
             $client->putObject($params);
         }, $path);
     }
@@ -116,7 +116,7 @@ final class S3StorageAdapter implements StorageInterface
                 'Key' => $key->toString(),
             ];
 
-            $this->executeS3Call(function (S3Client $client) use ($params) {
+            $this->executeS3Call(static function (S3Client $client) use ($params) {
                 $client->deleteObject($params);
             }, $path);
         } catch (\InvalidArgumentException) {
@@ -134,7 +134,7 @@ final class S3StorageAdapter implements StorageInterface
             'Key' => $key->toString(),
         ];
 
-        $result = $this->executeS3Call(function (S3Client $client) use ($params) {
+        $result = $this->executeS3Call(static function (S3Client $client) use ($params) {
             return $client->getObject($params);
         }, $path);
 

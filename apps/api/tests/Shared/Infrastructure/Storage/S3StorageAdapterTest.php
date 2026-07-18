@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Shared\Infrastructure\Storage;
 
-use App\Shared\Infrastructure\Storage\S3StorageAdapter;
 use App\Shared\Application\Storage\StorageConfigurationException;
+use App\Shared\Infrastructure\Storage\S3StorageAdapter;
 use PHPUnit\Framework\TestCase;
 
 final class S3StorageAdapterTest extends TestCase

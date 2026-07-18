@@ -5,37 +5,33 @@ declare(strict_types=1);
 namespace App\Tests\Places\Application\Command;
 
 use App\Places\Application\Command\ProcessPhoto;
-use App\Places\Application\Command\ProcessPhotoHandler;
 use App\Places\Application\Command\ProcessPhotoFailureSubscriber;
-use App\Places\Application\Command\FailPlacePhotoProcessing;
+use App\Places\Application\Command\ProcessPhotoHandler;
 use App\Places\Application\PlaceCommandHandler;
 use App\Places\Application\PlaceRepository;
+use App\Places\Domain\Category;
+use App\Places\Domain\City;
 use App\Places\Domain\Place;
 use App\Places\Domain\PlacePhoto;
 use App\Places\Domain\PlacePhotoStatus;
 use App\Places\Domain\PlaceStatus;
-use App\Places\Domain\VerificationStatus;
-use App\Places\Domain\City;
-use App\Places\Domain\Category;
+use App\Places\Domain\ValueObject\Coordinates;
 use App\Places\Domain\ValueObject\PlaceName;
 use App\Places\Domain\ValueObject\PlaceSlug;
-use App\Places\Domain\ValueObject\Coordinates;
+use App\Places\Domain\VerificationStatus;
 use App\Shared\Application\Clock;
+use App\Shared\Application\Storage\CorruptImageException;
 use App\Shared\Application\Storage\ImageProcessor;
 use App\Shared\Application\Storage\StorageInterface;
-use App\Shared\Application\Storage\PermanentImageProcessingException;
-use App\Shared\Application\Storage\UnsupportedImageException;
-use App\Shared\Application\Storage\CorruptImageException;
-use App\Shared\Application\Storage\StorageObjectNotFoundException;
 use App\Shared\Application\Storage\TransientStorageException;
-use App\Shared\Application\Storage\StorageConfigurationException;
+use App\Shared\Application\Storage\UnsupportedImageException;
 use App\Shared\Application\TransactionManager;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class ProcessPhotoHandlerTest extends TestCase
@@ -81,7 +77,7 @@ final class ProcessPhotoHandlerTest extends TestCase
         $now = new \DateTimeImmutable('2026-07-18T19:00:00Z');
         $city = new City('Warszawa', 'warszawa', 'PL', new Coordinates(52.2, 21.0), 12, 15, 'Europe/Warsaw', true, $now);
         $primaryCategory = new Category('Parks', 'parks', null, 'parks', true, 1);
-        
+
         $place = Place::reconstitute(
             Uuid::fromString($placeId),
             1,
@@ -111,7 +107,7 @@ final class ProcessPhotoHandlerTest extends TestCase
             Uuid::fromString($photoId),
             $place,
             'test.jpg',
-            'places/' . $placeId . '/photos/' . $photoId . '/source',
+            'places/'.$placeId.'/photos/'.$photoId.'/source',
             PlacePhotoStatus::QUEUED,
             true,
             0,
@@ -235,7 +231,7 @@ final class ProcessPhotoHandlerTest extends TestCase
         $connection = $this->createMock(Connection::class);
         $connection->method('fetchOne')->willReturnMap([
             ['SELECT place_id FROM place_photos WHERE id = :id', ['id' => $photoId], $placeId],
-            ['SELECT processing_generation FROM place_photos WHERE id = :id', ['id' => $photoId], 2]
+            ['SELECT processing_generation FROM place_photos WHERE id = :id', ['id' => $photoId], 2],
         ]);
 
         $placesMock = $this->createMock(PlaceRepository::class);
@@ -290,16 +286,16 @@ final class ProcessPhotoHandlerTest extends TestCase
 
         $callCount = 0;
         $writtenKeys = [];
-        $this->storage->method('write')->willReturnCallback(function (string $path) use (&$callCount, &$writtenKeys) {
-            $callCount++;
-            if ($callCount === 2) {
+        $this->storage->method('write')->willReturnCallback(static function (string $path) use (&$callCount, &$writtenKeys) {
+            ++$callCount;
+            if (2 === $callCount) {
                 throw new TransientStorageException('Write failure');
             }
             $writtenKeys[] = $path;
         });
 
         $deletedKeys = [];
-        $this->storage->method('delete')->willReturnCallback(function (string $path) use (&$deletedKeys) {
+        $this->storage->method('delete')->willReturnCallback(static function (string $path) use (&$deletedKeys) {
             $deletedKeys[] = $path;
         });
 
@@ -342,9 +338,10 @@ final class ProcessPhotoHandlerTest extends TestCase
         // Mock PlaceRepository to return generation 1 on the first get(), and generation 2 on subsequent get() (concurrent increment)
         $this->places->method('get')->willReturnCallback(function () use ($placeId, $photoId) {
             static $calls = 0;
-            $calls++;
+            ++$calls;
             $gen = min($calls, 2);
             [$place, $photo] = $this->createRealPlaceAndPhoto($placeId, $photoId, $gen);
+
             return $place;
         });
 
@@ -357,7 +354,7 @@ final class ProcessPhotoHandlerTest extends TestCase
         // Let's load the second version (generation 2) to check it remained QUEUED (the race condition worked!)
         $finalPlace = $this->places->get($placeId);
         $finalPhoto = $finalPlace->photos()[0];
-        
+
         self::assertSame(PlacePhotoStatus::QUEUED, $finalPhoto->status());
         self::assertSame(2, $finalPhoto->processingGeneration());
     }

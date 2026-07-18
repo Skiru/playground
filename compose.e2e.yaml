@@ -7,6 +7,8 @@ services:
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
       GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: "true"
+      MEDIA_E2E_MODE: "true"
+      MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:8080/media
     ports:
       - "127.0.0.1:8080:80"
     volumes:
@@ -17,6 +19,8 @@ services:
       APP_DEBUG: 0
       APP_SECRET: deterministic-e2e-secret
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
+      MEDIA_E2E_MODE: "true"
+      MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:8080/media
     volumes:
       - media-data:/data/familyplaces-media
   web:

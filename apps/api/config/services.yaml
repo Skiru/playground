@@ -18,6 +18,7 @@ parameters:
     env(STORAGE_S3_BUCKET): ''
     env(STORAGE_S3_REGION): 'us-east-1'
     env(STORAGE_S3_PUBLIC_URL): ''
+    env(MEDIA_E2E_MODE): 'false'
 
 services:
     # default configuration for services in *this* file

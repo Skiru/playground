@@ -6,8 +6,8 @@ namespace App\Shared\Infrastructure\Storage;
 
 use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageObjectKey;
-use App\Shared\Application\Storage\TransientStorageException;
 use App\Shared\Application\Storage\StorageObjectNotFoundException;
+use App\Shared\Application\Storage\TransientStorageException;
 
 final class LocalStorageAdapter implements StorageInterface
 {

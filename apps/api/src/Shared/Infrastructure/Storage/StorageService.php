@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Storage;
 
-use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageConfigurationException;
+use App\Shared\Application\Storage\StorageInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class StorageService implements StorageInterface
@@ -19,22 +19,25 @@ final readonly class StorageService implements StorageInterface
         #[Autowire('%env(default::MEDIA_PUBLIC_BASE_URL)%')] ?string $mediaPublicBaseUrl,
         #[Autowire('%env(default::STORAGE_S3_PUBLIC_URL)%')] ?string $s3PublicUrl,
         #[Autowire('%env(APP_ENV)%')] string $appEnv,
+        #[Autowire('%env(MEDIA_E2E_MODE)%')] ?string $mediaE2EMode = 'false',
     ) {
         $normalizedDriver = strtolower($driver);
         if ('local' !== $normalizedDriver && 's3' !== $normalizedDriver) {
             throw new \InvalidArgumentException(\sprintf('Invalid storage driver "%s". Allowed values are "local", "s3".', $driver));
         }
 
+        $e2eMode = 'true' === strtolower((string) $mediaE2EMode);
+
         if ('s3' === $normalizedDriver) {
-            $this->validateUrl((string) $s3PublicUrl, 'STORAGE_S3_PUBLIC_URL', $appEnv);
+            $this->validateUrl((string) $s3PublicUrl, 'STORAGE_S3_PUBLIC_URL', $appEnv, $e2eMode);
         } else {
-            $this->validateUrl((string) $mediaPublicBaseUrl, 'MEDIA_PUBLIC_BASE_URL', $appEnv);
+            $this->validateUrl((string) $mediaPublicBaseUrl, 'MEDIA_PUBLIC_BASE_URL', $appEnv, $e2eMode);
         }
 
         $this->adapter = 's3' === $normalizedDriver ? $s3 : $local;
     }
 
-    private function validateUrl(string $url, string $envVarName, string $appEnv): void
+    private function validateUrl(string $url, string $envVarName, string $appEnv, bool $e2eMode): void
     {
         if (empty($url)) {
             throw new StorageConfigurationException(\sprintf('%s is required.', $envVarName));
@@ -52,16 +55,21 @@ final readonly class StorageService implements StorageInterface
             throw new StorageConfigurationException(\sprintf('%s scheme must be http or https.', $envVarName));
         }
 
-        if ('127.0.0.1' === $host) {
-            throw new StorageConfigurationException(\sprintf('%s host cannot be 127.0.0.1.', $envVarName));
-        }
+        $isProd = 'prod' === strtolower($appEnv);
 
-        if ('localhost' === $host && 'prod' === strtolower($appEnv)) {
-            throw new StorageConfigurationException(\sprintf('%s host cannot be localhost in production.', $envVarName));
-        }
-
-        if ('http' === $scheme && 'prod' === strtolower($appEnv)) {
-            throw new StorageConfigurationException(\sprintf('%s scheme must be https in production.', $envVarName));
+        if ($isProd) {
+            if ($e2eMode) {
+                if ('http://127.0.0.1:8080/media' !== $url) {
+                    throw new StorageConfigurationException(\sprintf('%s must be exactly http://127.0.0.1:8080/media in E2E mode.', $envVarName));
+                }
+            } else {
+                if ('https' !== $scheme) {
+                    throw new StorageConfigurationException(\sprintf('%s scheme must be https in production.', $envVarName));
+                }
+                if ('localhost' === $host || '127.0.0.1' === $host) {
+                    throw new StorageConfigurationException(\sprintf('%s host cannot be localhost or loopback in production.', $envVarName));
+                }
+            }
         }
     }
 

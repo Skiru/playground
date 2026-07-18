@@ -7,15 +7,12 @@ namespace App\Places\Application\Command;
 use App\Places\Application\PlaceRepository;
 use App\Places\Domain\PlacePhotoStatus;
 use App\Shared\Application\Clock;
+use App\Shared\Application\Storage\CorruptImageException;
 use App\Shared\Application\Storage\ImageProcessor;
 use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageObjectKey;
-use App\Shared\Application\Storage\PermanentImageProcessingException;
-use App\Shared\Application\Storage\UnsupportedImageException;
-use App\Shared\Application\Storage\CorruptImageException;
 use App\Shared\Application\Storage\StorageObjectNotFoundException;
-use App\Shared\Application\Storage\TransientStorageException;
-use App\Shared\Application\Storage\StorageConfigurationException;
+use App\Shared\Application\Storage\UnsupportedImageException;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -174,7 +171,7 @@ final readonly class ProcessPhotoHandler
                 'place_id' => (string) $placeId,
                 'generation' => $generation,
                 'failure_code' => $failureCode,
-                'exception_class' => \get_class($exception),
+                'exception_class' => $exception::class,
             ]);
 
             // If permanent processing failure, mark FAILED and don't retry
