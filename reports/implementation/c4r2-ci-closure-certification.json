@@ -1,0 +1,29 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C4R2_CI_RUNTIME_CLOSURE",
+  "status": "PASS",
+  "certifiedAt": "2026-07-18T21:49:00+02:00",
+  "implementationSha": "8108cd071e14d9e41d85a2a1238edbef0eedaa1a",
+  "prNumber": 11,
+  "runIds": {
+    "backend": "29658833175",
+    "build_containers": "29658833167",
+    "integration_e2e": "29658833171",
+    "frontend": "29658833181",
+    "audit_security": "29658833174"
+  },
+  "conclusions": {
+    "PHP_CS_FIXER": "PASS",
+    "PHPSTAN": "PASS",
+    "DEPTRAC": "PASS",
+    "BACKEND_TESTS": "PASS (124/124)",
+    "PRODUCTION_MEDIA_POLICY": "PASS (HTTPS/loopback/fail-fast)",
+    "PRODUCTION_RUNTIME_SMOKE": "PASS (Containers verified)",
+    "E2E_MEDIA_POLICY": "PASS (MEDIA_E2E_MODE verified)",
+    "E2E_RUNTIME_SUITE": "PASS (Playwright desktop/mobile successful)"
+  },
+  "metrics": {
+    "P0_OPEN": 0,
+    "P1_OPEN": 0,
+    "P2_BACKLOG": 3
+  }
+}
