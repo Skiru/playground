@@ -11,8 +11,15 @@ use App\Places\Domain\Place;
 
 interface PlaceRepository
 {
-    /** @return list<AdminPlaceSummary> */
-    public function listForAdministration(): array;
+    /** @return array{items: list<AdminPlaceSummary>, total: int} */
+    public function listForAdministration(
+        ?string $search = null,
+        ?string $status = null,
+        ?string $city = null,
+        ?string $sort = null,
+        int $page = 1,
+        int $pageSize = 20,
+    ): array;
 
     public function get(string $id): Place;
 

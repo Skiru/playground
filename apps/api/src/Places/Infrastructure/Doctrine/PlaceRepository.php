@@ -36,11 +36,91 @@ final readonly class PlaceRepository implements PlaceRepositoryPort
     {
     }
 
-    public function listForAdministration(): array
-    {
-        $rows = $this->connection->fetchAllAssociative('SELECT p.id,p.name,p.slug,p.status,p.version,c.name city FROM places p JOIN cities c ON c.id=p.city_id ORDER BY p.updated_at DESC,p.id');
+    public function listForAdministration(
+        ?string $search = null,
+        ?string $status = null,
+        ?string $city = null,
+        ?string $sort = null,
+        int $page = 1,
+        int $pageSize = 20,
+    ): array {
+        $where = ['1=1'];
+        $params = [];
 
-        return array_map(static fn (array $row): AdminPlaceSummary => new AdminPlaceSummary((string) $row['id'], (string) $row['name'], (string) $row['slug'], PlaceStatus::from((string) $row['status']), (string) $row['city'], (int) $row['version']), $rows);
+        $countTypes = [];
+        if (null !== $search && '' !== $search) {
+            $where[] = '(p.name ILIKE :search OR p.slug ILIKE :search)';
+            $params['search'] = '%'.$search.'%';
+            $countTypes['search'] = \Doctrine\DBAL\ParameterType::STRING;
+        }
+
+        if (null !== $status && '' !== $status) {
+            $where[] = 'p.status = :status';
+            $params['status'] = $status;
+            $countTypes['status'] = \Doctrine\DBAL\ParameterType::STRING;
+        }
+
+        if (null !== $city && '' !== $city) {
+            $where[] = 'c.slug = :city';
+            $params['city'] = $city;
+            $countTypes['city'] = \Doctrine\DBAL\ParameterType::STRING;
+        }
+
+        $orderMap = [
+            'name' => 'p.name ASC',
+            'name_desc' => 'p.name DESC',
+            'city' => 'c.name ASC',
+            'city_desc' => 'c.name DESC',
+            'status' => 'p.status ASC',
+            'status_desc' => 'p.status DESC',
+            'updated_at' => 'p.updated_at DESC',
+            'updated_at_asc' => 'p.updated_at ASC',
+        ];
+        $orderBy = null !== $sort ? ($orderMap[$sort] ?? 'p.updated_at DESC, p.id') : 'p.updated_at DESC, p.id';
+
+        $whereClause = implode(' AND ', $where);
+
+        $total = (int) $this->connection->fetchOne("
+            SELECT COUNT(*)
+            FROM places p
+            JOIN cities c ON c.id = p.city_id
+            WHERE {$whereClause}
+        ", $params, $countTypes);
+
+        $offset = ($page - 1) * $pageSize;
+        $params['limit'] = $pageSize;
+        $params['offset'] = $offset;
+
+        $types = $countTypes;
+        $types['limit'] = \Doctrine\DBAL\ParameterType::INTEGER;
+        $types['offset'] = \Doctrine\DBAL\ParameterType::INTEGER;
+
+        $rows = $this->connection->fetchAllAssociative("
+            SELECT p.id, p.name, p.slug, p.status, p.verification_status, p.version, p.updated_at, c.name city,
+                   (SELECT file_path FROM place_photos WHERE place_id = p.id AND is_main = true AND status = 'COMPLETED' LIMIT 1) as main_photo_path
+            FROM places p
+            JOIN cities c ON c.id = p.city_id
+            WHERE {$whereClause}
+            ORDER BY {$orderBy}
+            LIMIT :limit OFFSET :offset
+        ", $params, $types);
+
+        $items = array_map(static fn (array $row): AdminPlaceSummary => new AdminPlaceSummary(
+            (string) $row['id'],
+            (string) $row['name'],
+            (string) $row['slug'],
+            PlaceStatus::from((string) $row['status']),
+            (string) $row['city'],
+            (int) $row['version'],
+            VerificationStatus::from((string) $row['verification_status']),
+            (string) $row['updated_at'],
+            $row['main_photo_path'] ? (string) $row['main_photo_path'] : null
+        ), $rows);
+
+        return [
+            'items' => $items,
+            'total' => $total,
+        ];
     }
 
     public function get(string $id): Place
