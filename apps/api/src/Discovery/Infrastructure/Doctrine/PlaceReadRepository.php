@@ -224,7 +224,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                 $pVariants = isset($rawPhoto['variants']) && (\is_array($rawPhoto['variants']) || \is_string($rawPhoto['variants']))
                     ? (\is_array($rawPhoto['variants']) ? $rawPhoto['variants'] : json_decode((string) $rawPhoto['variants'], true))
                     : [];
-                
+
                 $mappedVariants = [];
                 if (\is_array($pVariants)) {
                     foreach ($pVariants as $vName => $vData) {

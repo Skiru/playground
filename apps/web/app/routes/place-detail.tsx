@@ -64,7 +64,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
         {place.main_photo ? (
           <img
             src={place.main_photo.hero}
-            srcSet={`${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original} 1920w`}
+            srcSet={`${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original_max} 1920w`}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
             alt={place.name}
             loading="eager"

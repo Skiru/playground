@@ -5,24 +5,36 @@ declare(strict_types=1);
 namespace App\Places\Application;
 
 use App\Places\Application\Command\ArchivePlace;
+use App\Places\Application\Command\CompletePlacePhotoProcessing;
 use App\Places\Application\Command\CreatePlaceDraft;
+use App\Places\Application\Command\DeletePlacePhoto;
+use App\Places\Application\Command\FailPlacePhotoProcessing;
 use App\Places\Application\Command\MarkPlaceNeedsReverification;
 use App\Places\Application\Command\MarkPlaceTemporarilyClosed;
+use App\Places\Application\Command\ProcessPhoto;
 use App\Places\Application\Command\PublishPlace;
+use App\Places\Application\Command\ReorderPlacePhotos;
 use App\Places\Application\Command\ReplaceExternalReferences;
 use App\Places\Application\Command\ReplacePlaceAgeZones;
 use App\Places\Application\Command\ReplacePlaceAmenities;
 use App\Places\Application\Command\ReplacePlaceCategories;
 use App\Places\Application\Command\ReplaceSpecialOpeningDays;
 use App\Places\Application\Command\ReplaceWeeklyOpeningHours;
+use App\Places\Application\Command\RequestPlacePhotoReprocessing;
+use App\Places\Application\Command\SetMainPlacePhoto;
 use App\Places\Application\Command\SubmitPlaceForReview;
 use App\Places\Application\Command\UnpublishPlace;
 use App\Places\Application\Command\UpdatePlaceAggregate;
 use App\Places\Application\Command\UpdatePlaceCoreDetails;
+use App\Places\Application\Command\UpdatePlacePhotoMetadata;
+use App\Places\Application\Command\UploadPlacePhotos;
+use App\Places\Application\Command\UploadPlacePhotosInput;
 use App\Places\Domain\ExternalPlaceReference;
 use App\Places\Domain\OpeningHoursMode;
 use App\Places\Domain\Place;
 use App\Places\Domain\PlaceAgeZone;
+use App\Places\Domain\PlacePhoto;
+use App\Places\Domain\PlacePhotoStatus;
 use App\Places\Domain\PlaceStatus;
 use App\Places\Domain\SpecialOpeningDay;
 use App\Places\Domain\SpecialOpeningDayMode;
@@ -34,23 +46,11 @@ use App\Places\Domain\ValueObject\PlaceSlug;
 use App\Places\Domain\VerificationStatus;
 use App\Places\Domain\WeeklyOpeningInterval;
 use App\Shared\Application\Clock;
-use App\Shared\Application\TransactionManager;
 use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageObjectKey;
+use App\Shared\Application\TransactionManager;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
-use App\Places\Application\Command\UploadPlacePhotos;
-use App\Places\Application\Command\SetMainPlacePhoto;
-use App\Places\Application\Command\UpdatePlacePhotoMetadata;
-use App\Places\Application\Command\ReorderPlacePhotos;
-use App\Places\Application\Command\RequestPlacePhotoReprocessing;
-use App\Places\Application\Command\DeletePlacePhoto;
-use App\Places\Application\Command\CompletePlacePhotoProcessing;
-use App\Places\Application\Command\FailPlacePhotoProcessing;
-use App\Places\Application\Command\UploadPlacePhotosInput;
-use App\Places\Application\Command\ProcessPhoto;
-use App\Places\Domain\PlacePhoto;
-use App\Places\Domain\PlacePhotoStatus;
 
 final readonly class PlaceCommandHandler
 {
@@ -305,12 +305,12 @@ final readonly class PlaceCommandHandler
             foreach ($input->images() as $image) {
                 $photoId = Uuid::v7();
                 $key = StorageObjectKey::source($command->placeId, $photoId->toRfc4122());
-                
+
                 $contents = file_get_contents($image->file()->getPathname());
                 if (false === $contents) {
                     throw new \RuntimeException('Failed to read uploaded file.');
                 }
-                
+
                 $this->storage->write($key->toString(), $contents);
                 $stagedKeys[] = [
                     'id' => $photoId,
@@ -349,7 +349,6 @@ final readonly class PlaceCommandHandler
 
                 $this->places->save($place, $place->version());
             });
-
         } catch (\Throwable $exception) {
             foreach ($stagedKeys as $staged) {
                 $this->storage->delete($staged['key']->toString());
@@ -370,7 +369,7 @@ final readonly class PlaceCommandHandler
             foreach ($place->photos() as $photo) {
                 if ($photo->id()->toRfc4122() === $command->photoId) {
                     $photoExists = true;
-                    if ($photo->status() === PlacePhotoStatus::COMPLETED) {
+                    if (PlacePhotoStatus::COMPLETED === $photo->status()) {
                         $photoIsCompleted = true;
                     }
                     break;
@@ -412,19 +411,19 @@ final readonly class PlaceCommandHandler
                 throw new \InvalidArgumentException('Photo not found.');
             }
 
-            $altText = $command->altText !== null ? preg_replace('/\s+/', ' ', trim($command->altText)) : null;
-            if ($altText === '') {
+            $altText = null !== $command->altText ? preg_replace('/\s+/', ' ', trim($command->altText)) : null;
+            if ('' === $altText) {
                 $altText = null;
             }
-            if ($altText !== null && mb_strlen($altText) > 255) {
+            if (null !== $altText && mb_strlen($altText) > 255) {
                 throw new \InvalidArgumentException('Alt text cannot exceed 255 characters.');
             }
 
-            $caption = $command->caption !== null ? preg_replace('/\s+/', ' ', trim($command->caption)) : null;
-            if ($caption === '') {
+            $caption = null !== $command->caption ? preg_replace('/\s+/', ' ', trim($command->caption)) : null;
+            if ('' === $caption) {
                 $caption = null;
             }
-            if ($caption !== null && mb_strlen($caption) > 500) {
+            if (null !== $caption && mb_strlen($caption) > 500) {
                 throw new \InvalidArgumentException('Caption cannot exceed 500 characters.');
             }
 
@@ -451,7 +450,7 @@ final readonly class PlaceCommandHandler
             }
 
             foreach ($command->photoIds as $photoId) {
-                if (!in_array($photoId, $existingIds, true)) {
+                if (!\in_array($photoId, $existingIds, true)) {
                     throw new \InvalidArgumentException(\sprintf('Photo with ID "%s" does not belong to this place.', $photoId));
                 }
             }
@@ -520,7 +519,7 @@ final readonly class PlaceCommandHandler
         $this->storage->delete($photoToDelete->filePath());
 
         $variants = ['thumbnail_mini', 'thumbnail', 'card', 'hero', 'original_max'];
-        for ($g = 1; $g <= $photoToDelete->processingGeneration(); $g++) {
+        for ($g = 1; $g <= $photoToDelete->processingGeneration(); ++$g) {
             foreach ($variants as $v) {
                 $variantKey = StorageObjectKey::variant($command->placeId, $command->photoId, $g, $v);
                 $this->storage->delete($variantKey->toString());
@@ -541,7 +540,7 @@ final readonly class PlaceCommandHandler
             if ($photoToDelete->isMain() && \count($cleanedPhotos) > 0) {
                 $newMain = null;
                 foreach ($cleanedPhotos as $photo) {
-                    if ($photo->status() === PlacePhotoStatus::COMPLETED) {
+                    if (PlacePhotoStatus::COMPLETED === $photo->status()) {
                         $newMain = $photo;
                         break;
                     }
@@ -564,7 +563,7 @@ final readonly class PlaceCommandHandler
 
             foreach ($place->photos() as $photo) {
                 if ($photo->id()->toRfc4122() === $command->photoId) {
-                    if ($photo->status() === PlacePhotoStatus::DELETING) {
+                    if (PlacePhotoStatus::DELETING === $photo->status()) {
                         return;
                     }
                     if ($photo->processingGeneration() !== $command->generation) {
@@ -587,7 +586,7 @@ final readonly class PlaceCommandHandler
 
             foreach ($place->photos() as $photo) {
                 if ($photo->id()->toRfc4122() === $command->photoId) {
-                    if ($photo->status() === PlacePhotoStatus::DELETING) {
+                    if (PlacePhotoStatus::DELETING === $photo->status()) {
                         return;
                     }
                     if ($photo->processingGeneration() !== $command->generation) {

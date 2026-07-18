@@ -35,6 +35,7 @@ final readonly class ProcessPhotoHandler
         $placeId = $this->connection->fetchOne('SELECT place_id FROM place_photos WHERE id = :id', ['id' => $photoId]);
         if (false === $placeId) {
             $this->logger->info('Photo not found in database, ignoring.', ['photo_id' => $photoId]);
+
             return;
         }
 
@@ -50,12 +51,14 @@ final readonly class ProcessPhotoHandler
 
         if (!$photo) {
             $this->logger->info('Photo not found in aggregate, ignoring.', ['photo_id' => $photoId]);
+
             return;
         }
 
         // 2. Check if DELETING -> idempotent no-op
-        if ($photo->status() === PlacePhotoStatus::DELETING) {
+        if (PlacePhotoStatus::DELETING === $photo->status()) {
             $this->logger->info('Photo is deleting, ignoring.', ['photo_id' => $photoId]);
+
             return;
         }
 
@@ -85,9 +88,9 @@ final readonly class ProcessPhotoHandler
             // 7. Generate variants
             foreach ($widths as $name => $width) {
                 $resizedBytes = $this->processor->resizeToWebp($originalBytes, $width);
-                
+
                 $variantKey = StorageObjectKey::variant((string) $placeId, $photoId, $generation, $name);
-                
+
                 // 8. Write variant to storage under generation-specific key
                 $this->storage->write($variantKey->toString(), $resizedBytes);
                 $writtenKeys[] = $variantKey->toString();
@@ -117,11 +120,12 @@ final readonly class ProcessPhotoHandler
             }
 
             // 9. Check generation and status again
-            if (!$photo || $photo->status() === PlacePhotoStatus::DELETING || $photo->processingGeneration() !== $generation) {
+            if (!$photo || PlacePhotoStatus::DELETING === $photo->status() || $photo->processingGeneration() !== $generation) {
                 // Stale generation or deleting -> cleanup and return
                 foreach ($writtenKeys as $key) {
                     $this->storage->delete($key);
                 }
+
                 return;
             }
 
@@ -130,7 +134,6 @@ final readonly class ProcessPhotoHandler
             $this->places->save($place, $place->version());
 
             $this->logger->info('Photo processed successfully.', ['photo_id' => $photoId, 'generation' => $generation]);
-
         } catch (\Throwable $exception) {
             // Clean up any partially written variants
             foreach ($writtenKeys as $key) {
@@ -153,6 +156,7 @@ final readonly class ProcessPhotoHandler
                     }
                 }
                 $this->places->save($place, $place->version());
+
                 return;
             }
 

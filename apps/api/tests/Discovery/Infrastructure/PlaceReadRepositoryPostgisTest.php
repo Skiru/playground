@@ -188,6 +188,7 @@ final class PlaceReadRepositoryPostgisTest extends KernelTestCase
     private function repository(string $instant): PlaceReadRepository
     {
         $storage = $this->createMock(\App\Shared\Application\Storage\StorageInterface::class);
+
         return new PlaceReadRepository($this->connection, new FrozenClock(new \DateTimeImmutable($instant)), $storage);
     }
 

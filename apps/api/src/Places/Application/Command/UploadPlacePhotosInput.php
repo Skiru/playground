@@ -64,7 +64,7 @@ final readonly class UploadPlacePhotosInput
         // Validate each file
         foreach ($this->images as $index => $image) {
             $fileError = $image->validate();
-            if ($fileError !== null) {
+            if (null !== $fileError) {
                 $errors[$index] = $fileError;
             }
         }

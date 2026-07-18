@@ -16,14 +16,14 @@ final readonly class StorageObjectKey
 
         $segments = explode('/', $value);
         foreach ($segments as $segment) {
-            if ($segment === '') {
+            if ('' === $segment) {
                 throw new \InvalidArgumentException('Empty segments not allowed.');
             }
         }
 
         $uuidRegex = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
-        $sourcePattern = '#^places/(' . $uuidRegex . ')/photos/(' . $uuidRegex . ')/source$#';
-        $variantPattern = '#^places/(' . $uuidRegex . ')/photos/(' . $uuidRegex . ')/variants/([0-9]+)/([a-zA-Z0-9_-]+)\.webp$#';
+        $sourcePattern = '#^places/('.$uuidRegex.')/photos/('.$uuidRegex.')/source$#';
+        $variantPattern = '#^places/('.$uuidRegex.')/photos/('.$uuidRegex.')/variants/([0-9]+)/([a-zA-Z0-9_-]+)\.webp$#';
 
         if (!preg_match($sourcePattern, $value) && !preg_match($variantPattern, $value)) {
             throw new \InvalidArgumentException('Invalid storage key format.');

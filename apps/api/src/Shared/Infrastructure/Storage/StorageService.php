@@ -17,7 +17,7 @@ final readonly class StorageService implements StorageInterface
         #[Autowire('%env(default::STORAGE_DRIVER)%')] string $driver,
     ) {
         $normalizedDriver = strtolower($driver);
-        if ($normalizedDriver !== 'local' && $normalizedDriver !== 's3') {
+        if ('local' !== $normalizedDriver && 's3' !== $normalizedDriver) {
             throw new \InvalidArgumentException(\sprintf('Invalid storage driver "%s". Allowed values are "local", "s3".', $driver));
         }
         $this->adapter = 's3' === $normalizedDriver ? $s3 : $local;

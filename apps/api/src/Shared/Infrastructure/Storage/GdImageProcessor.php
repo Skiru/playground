@@ -23,14 +23,14 @@ final class GdImageProcessor implements ImageProcessor
         }
 
         // Normalize EXIF orientation of JPEG if exif extension is available
-        if (function_exists('exif_read_data')) {
+        if (\function_exists('exif_read_data')) {
             $tmpFile = tempnam(sys_get_temp_dir(), 'exif_');
             if (false !== $tmpFile) {
                 file_put_contents($tmpFile, $imageBytes);
                 $mime = mime_content_type($tmpFile);
-                if ($mime === 'image/jpeg') {
+                if ('image/jpeg' === $mime) {
                     $exif = exif_read_data($tmpFile);
-                    if (is_array($exif) && isset($exif['Orientation'])) {
+                    if (\is_array($exif) && isset($exif['Orientation'])) {
                         $orientation = (int) $exif['Orientation'];
                         switch ($orientation) {
                             case 3:
@@ -84,7 +84,7 @@ final class GdImageProcessor implements ImageProcessor
 
         imagealphablending($newImage, false);
         imagesavealpha($newImage, true);
-        
+
         $transparent = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
         if (false !== $transparent) {
             imagefilledrectangle($newImage, 0, 0, $targetWidth, $targetHeight, $transparent);

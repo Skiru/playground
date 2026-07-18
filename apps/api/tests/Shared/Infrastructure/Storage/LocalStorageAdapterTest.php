@@ -13,7 +13,7 @@ final class LocalStorageAdapterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->tempDir = sys_get_temp_dir() . '/media_test_' . bin2hex(random_bytes(4));
+        $this->tempDir = sys_get_temp_dir().'/media_test_'.bin2hex(random_bytes(4));
         if (!is_dir($this->tempDir)) {
             mkdir($this->tempDir, 0755, true);
         }
@@ -29,7 +29,7 @@ final class LocalStorageAdapterTest extends TestCase
         if (is_dir($dir)) {
             $files = array_diff(scandir($dir), ['.', '..']);
             foreach ($files as $file) {
-                $path = $dir . '/' . $file;
+                $path = $dir.'/'.$file;
                 is_dir($path) ? $this->removeDirectory($path) : unlink($path);
             }
             rmdir($dir);
@@ -46,7 +46,7 @@ final class LocalStorageAdapterTest extends TestCase
         $adapter->write($path, 'test original content');
 
         // Check if saved inside the "private" subdirectory
-        $expectedFile = $this->tempDir . '/private/' . $path;
+        $expectedFile = $this->tempDir.'/private/'.$path;
         self::assertFileExists($expectedFile);
         self::assertSame('test original content', $adapter->read($path));
 
@@ -69,12 +69,12 @@ final class LocalStorageAdapterTest extends TestCase
         $adapter->write($path, 'test variant content');
 
         // Check if saved inside the "public" subdirectory
-        $expectedFile = $this->tempDir . '/public/' . $path;
+        $expectedFile = $this->tempDir.'/public/'.$path;
         self::assertFileExists($expectedFile);
         self::assertSame('test variant content', $adapter->read($path));
 
         // Public variant has public URL
-        self::assertSame('/media/' . $path, $adapter->getUrl($path));
+        self::assertSame('/media/'.$path, $adapter->getUrl($path));
     }
 
     public function testGetUrlThrowsForPrivateSource(): void
@@ -101,10 +101,10 @@ final class LocalStorageAdapterTest extends TestCase
         self::assertTrue(true);
 
         $adapter->write($path, 'content');
-        self::assertFileExists($this->tempDir . '/private/' . $path);
+        self::assertFileExists($this->tempDir.'/private/'.$path);
 
         $adapter->delete($path);
-        self::assertFileDoesNotExist($this->tempDir . '/private/' . $path);
+        self::assertFileDoesNotExist($this->tempDir.'/private/'.$path);
 
         // Multiple deletes do not fail
         $adapter->delete($path);

@@ -23,8 +23,8 @@ final class LocalStorageAdapter implements StorageInterface
         $key = new StorageObjectKey($path);
         $isSource = !str_contains($key->toString(), '/variants/');
         $subDir = $isSource ? 'private' : 'public';
-        
-        $fullPath = $this->storageDir . '/' . $subDir . '/' . $key->toString();
+
+        $fullPath = $this->storageDir.'/'.$subDir.'/'.$key->toString();
 
         if (str_contains($fullPath, '..')) {
             throw new \InvalidArgumentException('Path traversal attempt detected.');
@@ -45,17 +45,17 @@ final class LocalStorageAdapter implements StorageInterface
             }
         }
 
-        $tempFile = $fullPath . '.' . bin2hex(random_bytes(8)) . '.tmp';
-        
-        $stream = fopen($tempFile, 'wb');
+        $tempFile = $fullPath.'.'.bin2hex(random_bytes(8)).'.tmp';
+
+        $stream = fopen($tempFile, 'w');
         if (false === $stream) {
             throw new \RuntimeException(\sprintf('Failed to open temporary file "%s" for writing.', $tempFile));
         }
-        
+
         $writeResult = fwrite($stream, $contents);
         fclose($stream);
 
-        if (false === $writeResult || strlen($contents) !== $writeResult) {
+        if (false === $writeResult || \strlen($contents) !== $writeResult) {
             unlink($tempFile);
             throw new \RuntimeException(\sprintf('Failed to write complete contents to temporary file "%s".', $tempFile));
         }
@@ -92,7 +92,7 @@ final class LocalStorageAdapter implements StorageInterface
             throw new \RuntimeException(\sprintf('File "%s" not found in local storage.', $path));
         }
 
-        $stream = fopen($fullPath, 'rb');
+        $stream = fopen($fullPath, 'r');
         if (false === $stream) {
             throw new \RuntimeException(\sprintf('Failed to open file "%s" for reading.', $fullPath));
         }
@@ -114,6 +114,6 @@ final class LocalStorageAdapter implements StorageInterface
             throw new \RuntimeException('Private sources do not have a public URL.');
         }
 
-        return $this->baseUrl . '/' . $key->toString();
+        return $this->baseUrl.'/'.$key->toString();
     }
 }

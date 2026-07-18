@@ -41,34 +41,40 @@ final class MediaSmokeCommand extends Command
             $output->writeln('Writing private sentinel to storage...');
             $this->storage->write(self::SOURCE_PATH, self::SENTINEL_CONTENT);
             $output->writeln('Private sentinel written successfully.');
+
             return Command::SUCCESS;
         }
 
         if ($input->getOption('process-sentinel')) {
             $output->writeln('Reading private sentinel from storage...');
             $content = $this->storage->read(self::SOURCE_PATH);
-            if ($content !== self::SENTINEL_CONTENT) {
+            if (self::SENTINEL_CONTENT !== $content) {
                 $output->writeln(\sprintf('<error>Sentinel content mismatch! Expected "%s", got "%s"</error>', self::SENTINEL_CONTENT, $content));
+
                 return Command::FAILURE;
             }
             $output->writeln('Private sentinel content verified. Writing public variant...');
             $this->storage->write(self::VARIANT_PATH, self::VARIANT_CONTENT);
             $output->writeln('Public variant written successfully.');
+
             return Command::SUCCESS;
         }
 
         if ($input->getOption('verify-sentinel')) {
             $output->writeln('Reading public variant from storage...');
             $content = $this->storage->read(self::VARIANT_PATH);
-            if ($content !== self::VARIANT_CONTENT) {
+            if (self::VARIANT_CONTENT !== $content) {
                 $output->writeln(\sprintf('<error>Variant content mismatch! Expected "%s", got "%s"</error>', self::VARIANT_CONTENT, $content));
+
                 return Command::FAILURE;
             }
             $output->writeln('Public variant content verified successfully.');
+
             return Command::SUCCESS;
         }
 
         $output->writeln('Please specify one of the options: --write-sentinel, --process-sentinel, or --verify-sentinel');
+
         return Command::FAILURE;
     }
 }

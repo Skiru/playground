@@ -44,7 +44,7 @@ final readonly class ProcessPhotoFailureSubscriber implements EventSubscriberInt
                     $place = $this->places->get((string) $placeId);
                     foreach ($place->photos() as $photo) {
                         if ($photo->id()->toRfc4122() === $photoId) {
-                            if ($photo->status() !== PlacePhotoStatus::COMPLETED && $photo->status() !== PlacePhotoStatus::DELETING) {
+                            if (PlacePhotoStatus::COMPLETED !== $photo->status() && PlacePhotoStatus::DELETING !== $photo->status()) {
                                 $photo->markFailed($photo->processingGeneration(), 'PROCESSING_RETRY_EXHAUSTED', $this->clock->now());
                                 $this->places->save($place, $place->version());
                             }

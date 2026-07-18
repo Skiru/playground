@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Shared\Infrastructure\Storage;
 
 use App\Shared\Infrastructure\Storage\S3StorageAdapter;
-use Aws\S3\S3Client;
 use PHPUnit\Framework\TestCase;
 
 final class S3StorageAdapterTest extends TestCase

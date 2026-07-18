@@ -25,7 +25,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Uid\Uuid;
 
 #[Route('/admin/places')]
 #[IsGranted('ROLE_ADMIN')]
@@ -130,12 +129,10 @@ final class PlaceAdminController extends AbstractController
 
         $uploadedFiles = $request->files->get('photos');
         if ($uploadedFiles) {
-            if (!\is_array($uploadedFiles)) {
-                $uploadedFiles = [$uploadedFiles];
-            }
+            $files = \is_array($uploadedFiles) ? array_values($uploadedFiles) : [$uploadedFiles];
 
             try {
-                $this->commands->uploadPhotos(new \App\Places\Application\Command\UploadPlacePhotos($id, $uploadedFiles));
+                $this->commands->uploadPhotos(new \App\Places\Application\Command\UploadPlacePhotos($id, $files));
                 $this->addFlash('success', 'Photos uploaded successfully and queued for processing.');
             } catch (\InvalidArgumentException|\DomainException $exception) {
                 $this->addFlash('error', $exception->getMessage());
@@ -210,7 +207,7 @@ final class PlaceAdminController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        $photoIds = $request->request->all('photo_ids');
+        $photoIds = array_values($request->request->all('photo_ids'));
         try {
             $this->commands->reorderPlacePhotos(new \App\Places\Application\Command\ReorderPlacePhotos($id, $photoIds));
             $this->addFlash('success', 'Photos reordered successfully.');

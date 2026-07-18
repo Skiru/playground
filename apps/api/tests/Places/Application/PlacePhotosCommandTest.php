@@ -4,24 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Places\Application;
 
-use App\Places\Application\Command\UploadPlacePhotos;
-use App\Places\Application\Command\SetMainPlacePhoto;
-use App\Places\Application\Command\UpdatePlacePhotoMetadata;
 use App\Places\Application\Command\ReorderPlacePhotos;
-use App\Places\Application\Command\RequestPlacePhotoReprocessing;
-use App\Places\Application\Command\DeletePlacePhoto;
-use App\Places\Application\Command\CompletePlacePhotoProcessing;
-use App\Places\Application\Command\FailPlacePhotoProcessing;
+use App\Places\Application\Command\SetMainPlacePhoto;
+use App\Places\Application\Command\UploadPlacePhotos;
 use App\Places\Application\PlaceCommandHandler;
 use App\Places\Application\PlaceRepository;
-use App\Places\Domain\PlacePhotoStatus;
-use App\Shared\Application\Clock;
 use App\Shared\Application\Storage\StorageInterface;
-use App\Shared\Application\TransactionManager;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Uid\Uuid;
 
 final class PlacePhotosCommandTest extends KernelTestCase
 {
@@ -79,7 +69,7 @@ final class PlacePhotosCommandTest extends KernelTestCase
     {
         // Set main photo on a non-existing photo should fail
         $placeId = '00000000-0000-7000-8000-000000000400'; // Existing demo-1 place ID
-        
+
         $this->expectException(\InvalidArgumentException::class);
         $this->handler->setMainPhoto(new SetMainPlacePhoto($placeId, '00000000-0000-0000-0000-000000000000'));
     }
@@ -87,7 +77,7 @@ final class PlacePhotosCommandTest extends KernelTestCase
     public function testReorderValidationChecks(): void
     {
         $placeId = '00000000-0000-7000-8000-000000000400';
-        
+
         // Passing duplicate IDs should throw InvalidArgumentException
         $this->expectException(\InvalidArgumentException::class);
         $this->handler->reorderPlacePhotos(new ReorderPlacePhotos($placeId, ['abc', 'abc']));

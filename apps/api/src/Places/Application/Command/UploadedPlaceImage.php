@@ -18,7 +18,7 @@ final readonly class UploadedPlaceImage
     }
 
     /**
-     * @return string|null Error message if invalid, null if valid.
+     * @return string|null error message if invalid, null if valid
      */
     public function validate(): ?string
     {
@@ -33,14 +33,14 @@ final readonly class UploadedPlaceImage
 
         // Server-side MIME detection
         $pathname = $this->file->getPathname();
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $finfo = finfo_open(\FILEINFO_MIME_TYPE);
         if (false === $finfo) {
             return 'Failed to open fileinfo database.';
         }
         $mime = finfo_file($finfo, $pathname);
 
         $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!in_array($mime, $allowedMimes, true)) {
+        if (!\in_array($mime, $allowedMimes, true)) {
             return \sprintf('Unsupported file type: %s. Allowed types are JPEG, PNG, and WebP.', $mime);
         }
 
@@ -53,16 +53,16 @@ final readonly class UploadedPlaceImage
         [$width, $height, $type] = $imageSize;
 
         // Reject SVG, GIF, HTML, PDF and polyglots
-        if (defined('IMAGETYPE_GIF') && $type === IMAGETYPE_GIF) {
+        if (\defined('IMAGETYPE_GIF') && \IMAGETYPE_GIF === $type) {
             return 'GIF format is not allowed.';
         }
-        
-        $allowedTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG];
-        if (defined('IMAGETYPE_WEBP')) {
-            $allowedTypes[] = IMAGETYPE_WEBP;
+
+        $allowedTypes = [\IMAGETYPE_JPEG, \IMAGETYPE_PNG];
+        if (\defined('IMAGETYPE_WEBP')) {
+            $allowedTypes[] = \IMAGETYPE_WEBP;
         }
 
-        if (!in_array($type, $allowedTypes, true)) {
+        if (!\in_array($type, $allowedTypes, true)) {
             return 'Unsupported image format.';
         }
 
@@ -77,7 +77,7 @@ final readonly class UploadedPlaceImage
         }
 
         // Double check against potential polyglots by reading first 2KB for signatures
-        $handle = fopen($pathname, 'rb');
+        $handle = fopen($pathname, 'r');
         if ($handle) {
             $chunk = fread($handle, 2048);
             fclose($handle);

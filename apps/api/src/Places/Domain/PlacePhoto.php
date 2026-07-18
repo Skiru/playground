@@ -14,7 +14,7 @@ final class PlacePhoto
     private int $displayOrder = 0;
     private ?string $altText = null;
     private ?string $caption = null;
-    /** @var array<string, string>|null */
+    /** @var array<string, array<string, mixed>>|null */
     private ?array $variants = null;
     private int $processingGeneration = 1;
     private ?string $failureCode = null;
@@ -33,7 +33,7 @@ final class PlacePhoto
     }
 
     /**
-     * @param array<string, string>|null $variants
+     * @param array<string, array<string, mixed>>|null $variants
      */
     public static function reconstitute(
         Uuid $id,
@@ -113,7 +113,7 @@ final class PlacePhoto
         return $this->caption;
     }
 
-    /** @return array<string, string>|null */
+    /** @return array<string, array<string, mixed>>|null */
     public function variants(): ?array
     {
         return $this->variants;
@@ -151,7 +151,7 @@ final class PlacePhoto
         $this->updatedAt = $now;
     }
 
-    /** @param array<string, string> $variants */
+    /** @param array<string, array<string, mixed>> $variants */
     public function markCompleted(int $generation, array $variants, \DateTimeImmutable $now): void
     {
         $this->status = PlacePhotoStatus::COMPLETED;
@@ -179,7 +179,7 @@ final class PlacePhoto
     public function incrementGeneration(\DateTimeImmutable $now): void
     {
         $this->status = PlacePhotoStatus::QUEUED;
-        $this->processingGeneration++;
+        ++$this->processingGeneration;
         $this->failureCode = null;
         $this->updatedAt = $now;
     }

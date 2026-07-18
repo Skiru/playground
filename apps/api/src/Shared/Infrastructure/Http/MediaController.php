@@ -20,13 +20,13 @@ final readonly class MediaController
     {
         try {
             $key = new StorageObjectKey($path);
-            
+
             if (!str_contains($key->toString(), '/variants/')) {
                 return new Response('Access denied to private source.', 403);
             }
 
             $contents = $this->storage->read($key->toString());
-            
+
             return new Response($contents, 200, [
                 'Content-Type' => 'image/webp',
                 'Cache-Control' => 'public, max-age=31536000, immutable',
