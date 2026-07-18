@@ -6,6 +6,10 @@ namespace App\Shared\Infrastructure\Storage;
 
 use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageObjectKey;
+use App\Shared\Application\Storage\StorageException;
+use App\Shared\Application\Storage\TransientStorageException;
+use App\Shared\Application\Storage\StorageObjectNotFoundException;
+use App\Shared\Application\Storage\StorageConfigurationException;
 use Aws\S3\S3Client;
 
 final class S3StorageAdapter implements StorageInterface
@@ -27,10 +31,10 @@ final class S3StorageAdapter implements StorageInterface
     {
         if (null === $this->s3Client) {
             if (empty($this->bucket)) {
-                throw new \InvalidArgumentException('S3 bucket name is required.');
+                throw new StorageConfigurationException('S3 bucket name is required.');
             }
             if (empty($this->region)) {
-                throw new \InvalidArgumentException('S3 region is required.');
+                throw new StorageConfigurationException('S3 region is required.');
             }
 
             $config = [
@@ -56,6 +60,33 @@ final class S3StorageAdapter implements StorageInterface
         return $this->s3Client;
     }
 
+    private function executeS3Call(callable $callback, string $path): mixed
+    {
+        try {
+            return $callback($this->getClient());
+        } catch (\Aws\S3\Exception\S3Exception $e) {
+            $statusCode = $e->getStatusCode();
+            $errorCode = $e->getAwsErrorCode();
+            if (404 === $statusCode || 'NoSuchKey' === $errorCode) {
+                throw new StorageObjectNotFoundException(\sprintf('File "%s" not found in S3.', $path), 0, $e);
+            }
+            if (429 === $statusCode || ($statusCode >= 500 && $statusCode < 600) || 'RequestTimeout' === $errorCode || 'SlowDown' === $errorCode) {
+                throw new TransientStorageException('Transient S3 storage error: ' . $e->getMessage(), 0, $e);
+            }
+            if (403 === $statusCode || 'InvalidAccessKeyId' === $errorCode || 'SignatureDoesNotMatch' === $errorCode) {
+                throw new StorageConfigurationException('S3 configuration or credential error: ' . $e->getMessage(), 0, $e);
+            }
+            throw new StorageException('S3 storage error: ' . $e->getMessage(), 0, $e);
+        } catch (\GuzzleHttp\Exception\ConnectException | \GuzzleHttp\Exception\RequestException | \Aws\Exception\CredentialsException $e) {
+            throw new TransientStorageException('Transient S3 connection error: ' . $e->getMessage(), 0, $e);
+        } catch (\Throwable $e) {
+            if ($e instanceof StorageException) {
+                throw $e;
+            }
+            throw new StorageException('Unexpected S3 error: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
     public function write(string $path, string $contents): void
     {
         $key = new StorageObjectKey($path);
@@ -71,29 +102,41 @@ final class S3StorageAdapter implements StorageInterface
             $params['CacheControl'] = 'max-age=31536000, public, immutable';
         }
 
-        $this->getClient()->putObject($params);
+        $this->executeS3Call(function (S3Client $client) use ($params) {
+            $client->putObject($params);
+        }, $path);
     }
 
     public function delete(string $path): void
     {
         try {
             $key = new StorageObjectKey($path);
-            $this->getClient()->deleteObject([
+            $params = [
                 'Bucket' => $this->bucket,
                 'Key' => $key->toString(),
-            ]);
+            ];
+
+            $this->executeS3Call(function (S3Client $client) use ($params) {
+                $client->deleteObject($params);
+            }, $path);
         } catch (\InvalidArgumentException) {
             // Idempotent delete for invalid formats
+        } catch (StorageObjectNotFoundException) {
+            // Missing source on delete is success/no-op
         }
     }
 
     public function read(string $path): string
     {
         $key = new StorageObjectKey($path);
-        $result = $this->getClient()->getObject([
+        $params = [
             'Bucket' => $this->bucket,
             'Key' => $key->toString(),
-        ]);
+        ];
+
+        $result = $this->executeS3Call(function (S3Client $client) use ($params) {
+            return $client->getObject($params);
+        }, $path);
 
         return (string) $result['Body'];
     }
@@ -109,6 +152,8 @@ final class S3StorageAdapter implements StorageInterface
             return rtrim($this->publicUrl, '/').'/'.ltrim($key->toString(), '/');
         }
 
-        return $this->getClient()->getObjectUrl($this->bucket ?? '', $key->toString());
+        return $this->executeS3Call(function (S3Client $client) use ($key) {
+            return $client->getObjectUrl($this->bucket ?? '', $key->toString());
+        }, $path);
     }
 }

@@ -10,6 +10,12 @@ use App\Shared\Application\Clock;
 use App\Shared\Application\Storage\ImageProcessor;
 use App\Shared\Application\Storage\StorageInterface;
 use App\Shared\Application\Storage\StorageObjectKey;
+use App\Shared\Application\Storage\PermanentImageProcessingException;
+use App\Shared\Application\Storage\UnsupportedImageException;
+use App\Shared\Application\Storage\CorruptImageException;
+use App\Shared\Application\Storage\StorageObjectNotFoundException;
+use App\Shared\Application\Storage\TransientStorageException;
+use App\Shared\Application\Storage\StorageConfigurationException;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -95,9 +101,12 @@ final readonly class ProcessPhotoHandler
                 $this->storage->write($variantKey->toString(), $resizedBytes);
                 $writtenKeys[] = $variantKey->toString();
 
-                $info = @getimagesizefromstring($resizedBytes);
-                $w = $info ? $info[0] : $width;
-                $h = $info ? $info[1] : 0;
+                $info = getimagesizefromstring($resizedBytes);
+                if (false === $info) {
+                    throw new CorruptImageException('Failed to get dimensions of resized image variant.');
+                }
+                $w = $info[0];
+                $h = $info[1];
 
                 $variants[$name] = [
                     'key' => $variantKey->toString(),
@@ -137,21 +146,43 @@ final readonly class ProcessPhotoHandler
         } catch (\Throwable $exception) {
             // Clean up any partially written variants
             foreach ($writtenKeys as $key) {
-                $this->storage->delete($key);
+                try {
+                    $this->storage->delete($key);
+                } catch (\Throwable) {
+                    // Ignore failures during cleanup
+                }
             }
 
-            // Classify errors: standard PHP built-in exceptions like invalid images/corrupt files are permanent
-            if ($exception instanceof \InvalidArgumentException || $exception instanceof \RuntimeException) {
-                $this->logger->error('Permanent processing failure.', [
-                    'photo_id' => $photoId,
-                    'error' => $exception->getMessage(),
-                ]);
+            // Determine failureCode and isPermanent
+            $isPermanent = false;
+            $failureCode = 'UNKNOWN_FAILURE';
 
-                // Update photo status to FAILED in database
+            if ($exception instanceof CorruptImageException) {
+                $isPermanent = true;
+                $failureCode = 'CORRUPT_IMAGE';
+            } elseif ($exception instanceof UnsupportedImageException) {
+                $isPermanent = true;
+                $failureCode = 'UNSUPPORTED_IMAGE';
+            } elseif ($exception instanceof StorageObjectNotFoundException) {
+                $isPermanent = true;
+                $failureCode = 'SOURCE_NOT_FOUND';
+            }
+
+            // Log details as per section 5.3
+            $this->logger->error('Processing failure.', [
+                'photo_id' => $photoId,
+                'place_id' => (string) $placeId,
+                'generation' => $generation,
+                'failure_code' => $failureCode,
+                'exception_class' => \get_class($exception),
+            ]);
+
+            // If permanent processing failure, mark FAILED and don't retry
+            if ($isPermanent) {
                 $place = $this->places->get((string) $placeId);
                 foreach ($place->photos() as $p) {
                     if ($p->id()->toRfc4122() === $photoId) {
-                        $p->markFailed($generation, 'PERMANENT_CORRUPT_IMAGE', $this->clock->now());
+                        $p->markFailed($generation, $failureCode, $this->clock->now());
                         break;
                     }
                 }
@@ -161,10 +192,6 @@ final readonly class ProcessPhotoHandler
             }
 
             // Rethrow unexpected/retryable failures for Messenger retry
-            $this->logger->error('Retryable processing failure.', [
-                'photo_id' => $photoId,
-                'error' => $exception->getMessage(),
-            ]);
             throw $exception;
         }
     }

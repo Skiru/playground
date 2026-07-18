@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Places\Application\Command;
 
-use App\Places\Application\PlaceRepository;
-use App\Places\Domain\PlacePhotoStatus;
-use App\Shared\Application\Clock;
+use App\Places\Application\PlaceCommandHandler;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
@@ -15,8 +13,7 @@ final readonly class ProcessPhotoFailureSubscriber implements EventSubscriberInt
 {
     public function __construct(
         private Connection $connection,
-        private PlaceRepository $places,
-        private Clock $clock,
+        private PlaceCommandHandler $commandHandler,
     ) {
     }
 
@@ -40,17 +37,14 @@ final readonly class ProcessPhotoFailureSubscriber implements EventSubscriberInt
             $photoId = $message->photoId;
             try {
                 $placeId = $this->connection->fetchOne('SELECT place_id FROM place_photos WHERE id = :id', ['id' => $photoId]);
-                if (false !== $placeId) {
-                    $place = $this->places->get((string) $placeId);
-                    foreach ($place->photos() as $photo) {
-                        if ($photo->id()->toRfc4122() === $photoId) {
-                            if (PlacePhotoStatus::COMPLETED !== $photo->status() && PlacePhotoStatus::DELETING !== $photo->status()) {
-                                $photo->markFailed($photo->processingGeneration(), 'PROCESSING_RETRY_EXHAUSTED', $this->clock->now());
-                                $this->places->save($place, $place->version());
-                            }
-                            break;
-                        }
-                    }
+                $generation = $this->connection->fetchOne('SELECT processing_generation FROM place_photos WHERE id = :id', ['id' => $photoId]);
+                if (false !== $placeId && false !== $generation) {
+                    $this->commandHandler->failPhotoProcessing(new FailPlacePhotoProcessing(
+                        (string) $placeId,
+                        $photoId,
+                        (int) $generation,
+                        'PROCESSING_RETRIES_EXHAUSTED'
+                    ));
                 }
             } catch (\Throwable) {
                 // Prevent breaking failure queue/transport if anything fails

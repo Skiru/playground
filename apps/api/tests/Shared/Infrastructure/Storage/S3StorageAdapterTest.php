@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Shared\Infrastructure\Storage;
 
 use App\Shared\Infrastructure\Storage\S3StorageAdapter;
+use App\Shared\Application\Storage\StorageConfigurationException;
 use PHPUnit\Framework\TestCase;
 
 final class S3StorageAdapterTest extends TestCase
@@ -19,7 +20,7 @@ final class S3StorageAdapterTest extends TestCase
             region: 'us-east-1'
         );
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(StorageConfigurationException::class);
         $this->expectExceptionMessage('S3 bucket name is required.');
 
         // Trigger client creation
@@ -36,7 +37,7 @@ final class S3StorageAdapterTest extends TestCase
             region: ''
         );
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(StorageConfigurationException::class);
         $this->expectExceptionMessage('S3 region is required.');
 
         // Trigger client creation

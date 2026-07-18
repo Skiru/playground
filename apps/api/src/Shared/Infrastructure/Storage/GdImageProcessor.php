@@ -5,14 +5,31 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Storage;
 
 use App\Shared\Application\Storage\ImageProcessor;
+use App\Shared\Application\Storage\UnsupportedImageException;
+use App\Shared\Application\Storage\CorruptImageException;
 
 final class GdImageProcessor implements ImageProcessor
 {
     public function resizeToWebp(string $imageBytes, int $targetWidth, int $quality = 80): string
     {
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($imageBytes);
+
+        $supportedMimes = [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+            'image/avif',
+        ];
+
+        if (!\in_array($mime, $supportedMimes, true)) {
+            throw new UnsupportedImageException(\sprintf('Unsupported image format: %s', $mime));
+        }
+
         $image = imagecreatefromstring($imageBytes);
         if (false === $image) {
-            throw new \RuntimeException('Failed to parse image from bytes.');
+            throw new CorruptImageException('Failed to parse corrupt image from bytes.');
         }
 
         $width = imagesx($image);
