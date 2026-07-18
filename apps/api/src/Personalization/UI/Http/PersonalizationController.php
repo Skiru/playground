@@ -487,7 +487,8 @@ final class PersonalizationController
                 COALESCE((SELECT json_agg(json_build_object(\'slug\', cat.slug, \'name\', cat.name) ORDER BY cat.display_order) FROM place_categories pc JOIN categories cat ON cat.id = pc.category_id WHERE pc.place_id = p.id), \'[]\'::json) AS categories,
                 (SELECT MIN(min_age_months) FROM place_age_zones paz WHERE paz.place_id = p.id) AS min_age_months,
                 (SELECT MAX(max_age_months) FROM place_age_zones paz WHERE paz.place_id = p.id) AS max_age_months,
-                p.longitude, p.latitude
+                p.longitude, p.latitude,
+                (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'completed\' LIMIT 1) AS main_photo_variants
             FROM places p JOIN cities c ON c.id = p.city_id
             WHERE p.id IN (:place_ids)';
 
@@ -513,6 +514,11 @@ final class PersonalizationController
                 }
             }
 
+            $mainPhoto = null;
+            if (isset($row['main_photo_variants']) && \is_string($row['main_photo_variants'])) {
+                $mainPhoto = json_decode($row['main_photo_variants'], true);
+            }
+
             $details[$row['id']] = [
                 'id' => $row['id'],
                 'slug' => $row['slug'],
@@ -526,6 +532,7 @@ final class PersonalizationController
                     'latitude' => (float) $row['latitude'],
                 ],
                 'published' => 'published' === $row['status'],
+                'main_photo' => $mainPhoto,
             ];
         }
 

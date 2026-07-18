@@ -246,11 +246,21 @@ export function HomeView({
                 {featuredPlaces.map((place) => (
                   <Card key={place.id} className="group overflow-hidden rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300">
                     <div className="relative aspect-video overflow-hidden bg-muted">
-                      <img
-                        src={brand.placePlaceholder.path}
-                        alt={brand.placePlaceholder.alt}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      {place.main_photo ? (
+                        <img
+                          src={place.main_photo.thumbnail}
+                          srcSet={`${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w`}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 384px"
+                          alt={place.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <img
+                          src={brand.placePlaceholder.path}
+                          alt={brand.placePlaceholder.alt}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )}
                       <Badge className="absolute top-3 left-3 bg-primary text-white font-mono text-xs py-1 px-2.5 font-bold rounded-md">
                         {place.indoor ? content.places.indoor : content.places.outdoor}
                       </Badge>

@@ -6,7 +6,7 @@ RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --pr
 
 FROM dunglas/frankenphp:php8.5-bookworm@sha256:cd7a5db256e74255bb50edf57b19e1bc6f57f91557d7bb864cd76e89543b6727 AS base
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-RUN install-php-extensions pdo_pgsql pgsql intl opcache zip
+RUN install-php-extensions pdo_pgsql pgsql intl opcache zip gd
 WORKDIR /app
 COPY infra/caddy/Caddyfile /etc/frankenphp/Caddyfile
 

@@ -61,11 +61,21 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
 
       {/* Place Hero */}
       <div className="relative rounded-2xl overflow-hidden bg-muted aspect-video md:aspect-[3/1] border shadow-sm">
-        <img
-          src={brand.placePlaceholder.path}
-          alt={place.name}
-          className="h-full w-full object-cover"
-        />
+        {place.main_photo ? (
+          <img
+            src={place.main_photo.hero}
+            srcSet={`${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original} 1920w`}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+            alt={place.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <img
+            src={brand.placePlaceholder.path}
+            alt={place.name}
+            className="h-full w-full object-cover"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
         <div className="absolute bottom-6 left-6 right-6 z-20 text-white flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -166,6 +176,36 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
               )}
             </CardContent>
           </Card>
+
+          {/* Photo Gallery */}
+          {place.photos && place.photos.length > 0 && (
+            <Card className="border shadow-2xs bg-card">
+              <CardContent className="p-6 flex flex-col gap-4">
+                <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground pb-2 border-b">
+                  Galeria zdjęć
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" aria-label="Galeria zdjęć">
+                  {place.photos.map((photo) => (
+                    <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted cursor-pointer hover:border-primary/50 transition-all duration-300">
+                      <img
+                        src={photo.variants?.thumbnail}
+                        srcSet={`${photo.variants?.thumbnail_mini} 150w, ${photo.variants?.thumbnail} 400w, ${photo.variants?.card} 800w`}
+                        sizes="(max-width: 640px) 50vw, 150px"
+                        alt={photo.alt_text || "Zdjęcie galerii"}
+                        title={photo.caption || undefined}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {photo.caption && (
+                        <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1.5 text-center text-white text-4xs font-mono font-medium line-clamp-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {photo.caption}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar details */}
