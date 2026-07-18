@@ -120,6 +120,12 @@ final class DashboardController extends AbstractDashboardController
     {
         $page = $request->query->getInt('page', 1);
         $pageSize = $request->query->getInt('pageSize', 20);
+        if ($pageSize < 10) {
+            $pageSize = 10;
+        } elseif ($pageSize > 100) {
+            $pageSize = 100;
+        }
+        $request->query->set('pageSize', $pageSize);
         $search = $request->query->get('search');
         $status = $request->query->get('status');
         $city = $request->query->get('city');
