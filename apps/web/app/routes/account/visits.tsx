@@ -177,7 +177,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
                 const isPublished = place.published !== false
 
                 return (
-                  <Card key={item.id} className={`bg-card border shadow-2xs hover:shadow-sm transition-all ${!isPublished ? "opacity-95 border-amber-200/60 bg-amber-50/10" : ""}`}>
+                  <Card key={item.id} className={`bg-card border shadow-2xs hover:shadow-sm transition-all scroll-mt-20 ${!isPublished ? "opacity-95 border-amber-200/60 bg-amber-50/10" : ""}`}>
                     <CardContent className="p-5 flex flex-col gap-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>

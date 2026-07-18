@@ -1,0 +1,42 @@
+{
+  "testMatrix": {
+    "projects": {
+      "chromium-desktop": {
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "retries": 0
+      },
+      "chromium-mobile": {
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "retries": 0
+      }
+    },
+    "specs": {
+      "c3r-personalization.spec.ts": {
+        "tests": 2,
+        "status": "PASS"
+      },
+      "public.spec.ts": {
+        "tests": 8,
+        "status": "PASS"
+      },
+      "accessibility.spec.ts": {
+        "tests": 8,
+        "status": "PASS"
+      },
+      "admin.spec.ts": {
+        "tests": 2,
+        "status": "PASS"
+      }
+    },
+    "totalTests": 20,
+    "totalPassed": 20,
+    "totalFailed": 0,
+    "totalFlaky": 0
+  }
+}

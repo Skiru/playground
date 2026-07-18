@@ -87,7 +87,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
       </div>
 
       {/* Place Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 border rounded-xl bg-card shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 border rounded-xl bg-card shadow-2xs scroll-mt-20">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild className="font-semibold text-xs">
             <Link to="/miejsca" className="flex items-center gap-1.5">

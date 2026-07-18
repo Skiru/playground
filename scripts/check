@@ -10,4 +10,4 @@ docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console 
 docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/php-cs-fixer check --diff
 docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/deptrac analyse
-docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$repo_dir:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/api-client build && corepack pnpm --filter @family-places/web lint && corepack pnpm --filter @family-places/web typecheck && corepack pnpm --filter @family-places/web build'
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e CI=true -v "$repo_dir:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/api-client build && corepack pnpm --filter @family-places/web lint && corepack pnpm --filter @family-places/web typecheck && corepack pnpm --filter @family-places/web build'

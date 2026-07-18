@@ -101,7 +101,7 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
                 const isPublished = place.published !== false
 
                 return (
-                  <Card key={item.id} className={`group overflow-hidden bg-card border hover:border-primary/50 hover:shadow-md transition-all duration-300 ${!isPublished ? "opacity-90 border-amber-200/60 bg-amber-50/10" : ""}`}>
+                  <Card key={item.id} className={`group overflow-hidden bg-card border hover:border-primary/50 hover:shadow-md transition-all duration-300 scroll-mt-20 ${!isPublished ? "opacity-90 border-amber-200/60 bg-amber-50/10" : ""}`}>
                     <CardContent className="p-5 flex flex-col sm:flex-row gap-5">
                       <div className="relative w-full sm:w-36 aspect-video sm:aspect-square rounded-lg overflow-hidden bg-muted flex-shrink-0">
                         <img
