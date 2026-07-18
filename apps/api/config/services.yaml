@@ -10,6 +10,8 @@ parameters:
     env(DEV_AUTH_ENABLED): '0'
     env(STORAGE_DRIVER): 'local'
     env(STORAGE_BASE_URL): '/uploads'
+    env(STORAGE_LOCAL_DIR): '/data/familyplaces-media'
+    env(MEDIA_PUBLIC_BASE_URL): 'http://localhost:8080/media'
     env(STORAGE_S3_ENDPOINT): ''
     env(STORAGE_S3_KEY): ''
     env(STORAGE_S3_SECRET): ''
@@ -98,8 +100,8 @@ services:
     # Storage Configuration
     App\Shared\Infrastructure\Storage\LocalStorageAdapter:
         arguments:
-            $projectDir: '%kernel.project_dir%'
-            $baseUrl: '%env(STORAGE_BASE_URL)%'
+            $storageDir: '%env(resolve:STORAGE_LOCAL_DIR)%'
+            $baseUrl: '%env(resolve:MEDIA_PUBLIC_BASE_URL)%'
 
     App\Shared\Infrastructure\Storage\S3StorageAdapter:
         arguments:

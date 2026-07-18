@@ -12,6 +12,7 @@ services:
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
     volumes:
       - ./apps/api:/app
+      - media-data:/data/familyplaces-media
   worker:
     build:
       target: development
@@ -23,6 +24,7 @@ services:
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places?serverVersion=18&charset=utf8
     volumes:
       - ./apps/api:/app
+      - media-data:/data/familyplaces-media
   web:
     build:
       target: build

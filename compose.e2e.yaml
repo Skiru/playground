@@ -9,12 +9,16 @@ services:
       DEV_AUTH_ENABLED: "true"
     ports:
       - "127.0.0.1:8080:80"
+    volumes:
+      - media-data:/data/familyplaces-media
   worker:
     environment:
       APP_ENV: prod
       APP_DEBUG: 0
       APP_SECRET: deterministic-e2e-secret
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
+    volumes:
+      - media-data:/data/familyplaces-media
   web:
     environment:
       NODE_ENV: production

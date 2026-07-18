@@ -9,6 +9,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: "false"
+    volumes:
+      - media-data:/data/familyplaces-media
   worker:
     image: family-places-worker:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50
     restart: unless-stopped
@@ -17,6 +19,8 @@ services:
       APP_DEBUG: 0
       APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+    volumes:
+      - media-data:/data/familyplaces-media
   web:
     image: family-places-web:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50
     restart: unless-stopped

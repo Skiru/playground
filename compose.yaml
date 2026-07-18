@@ -24,6 +24,8 @@ services:
       timeout: 3s
       retries: 10
     networks: [edge, internal]
+    volumes:
+      - media-data:/data/familyplaces-media
 
   worker:
     build:
@@ -44,6 +46,8 @@ services:
     healthcheck:
       disable: true
     networks: [internal]
+    volumes:
+      - media-data:/data/familyplaces-media
 
   web:
     build:
@@ -102,6 +106,7 @@ services:
 volumes:
   database-data:
   pnpm-store:
+  media-data:
 
 networks:
   edge:

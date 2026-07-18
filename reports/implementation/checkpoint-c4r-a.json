@@ -1,0 +1,16 @@
+{
+  "taskId": "PLAYGROUND_FAMILY_PLACES_C4R_MEDIA_PIPELINE_PRODUCT_CLOSURE",
+  "checkpoint": "C4R-A",
+  "status": "PASS",
+  "checkedAt": "2026-07-18T15:17:00+02:00",
+  "secureUpload": "PASS",
+  "privateOriginal": "PASS",
+  "sharedLocalStorage": "PASS",
+  "s3Storage": "PASS",
+  "mediaPublicRouting": "PASS",
+  "localStorageAdapter": "PASS",
+  "tests": {
+    "passed": 16,
+    "assertions": 33
+  }
+}
