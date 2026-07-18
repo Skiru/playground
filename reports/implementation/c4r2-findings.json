@@ -1,0 +1,44 @@
+[
+  {
+    "id": "C4R2-P1-001",
+    "severity": "P1",
+    "description": "The worker classified all RuntimeExceptions as permanent, incorrectly failing transient storage/network errors instead of retrying.",
+    "fix": "Introduced typed exception taxonomy (StorageException, TransientStorageException, CorruptImageException, etc.) and wrapped processing logic to retry transient storage errors while failing permanent corrupt/unsupported images.",
+    "status": "FIXED"
+  },
+  {
+    "id": "C4R2-P1-002",
+    "severity": "P1",
+    "description": "Production media public URLs could default to localhost/127.0.0.1 or invalid schemes.",
+    "fix": "Added strict scheme and host validation to StorageService constructor which fails container boot fast in production if localhost, 127.0.0.1, or non-https is used.",
+    "status": "FIXED"
+  },
+  {
+    "id": "C4R2-P1-003",
+    "severity": "P1",
+    "description": "Photo deletion happened synchronously in the administration request thread, making it non-recoverable on transient failures and leaving state in DELETING.",
+    "fix": "Refactored deletion to mark status DELETING in a transaction and dispatch an asynchronous, idempotent CleanupPlacePhotoFiles command. The handler deletes files safely and is fully retryable.",
+    "status": "FIXED"
+  },
+  {
+    "id": "C4R2-P2-001",
+    "severity": "P2",
+    "description": "S3 adapter lacks a public URL contract where public variants are visible but original source files are private.",
+    "fix": "Enforced public URL contract via STORAGE_S3_PUBLIC_URL configuration parameter, separating private sources from public responsive variants.",
+    "status": "FIXED"
+  },
+  {
+    "id": "C4R2-P2-002",
+    "severity": "P2",
+    "description": "ProcessPhotoHandler used error suppression @getimagesizefromstring and lacked structured worker exception logging.",
+    "fix": "Removed error suppression and added structured logging including photo_id, place_id, generation, stable failure code, and exception class.",
+    "status": "FIXED"
+  },
+  {
+    "id": "C4R2-P2-003",
+    "severity": "P2",
+    "description": "Certification metadata start SHA did not align with latest upstream merge candidate states.",
+    "fix": "Updated preflight and certification manifests with real start SHA and implementation branch tree.",
+    "status": "FIXED"
+  }
+]
