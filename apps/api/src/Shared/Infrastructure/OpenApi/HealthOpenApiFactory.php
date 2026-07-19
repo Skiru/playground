@@ -9,6 +9,7 @@ use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Response;
+use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
@@ -250,6 +251,114 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             )
         ));
 
+        // 9. GET & POST /api/v1/places/{placeId}/reviews
+        $openApi->getPaths()->addPath('/api/v1/places/{placeId}/reviews', new PathItem(
+            get: new Operation(
+                operationId: 'listReviews',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer', 'minimum' => 1]),
+                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                    new Parameter('sort', 'query', 'Sort parameter.', false, schema: ['type' => 'string', 'enum' => ['newest', 'highest', 'lowest']]),
+                ],
+                responses: [
+                    '200' => new Response('List of reviews.', new \ArrayObject(['application/json' => ['schema' => [
+                        'type' => 'object',
+                        'required' => ['summary', 'items', 'pagination'],
+                        'properties' => [
+                            'summary' => ['type' => 'object', 'required' => ['averageRating', 'totalReviews', 'histogram'], 'properties' => [
+                                'averageRating' => ['type' => 'number'],
+                                'totalReviews' => ['type' => 'integer'],
+                                'histogram' => ['type' => 'object'],
+                            ]],
+                            'items' => ['type' => 'array', 'items' => ['type' => 'object']],
+                            'pagination' => ['type' => 'object'],
+                        ]
+                    ]]])),
+                ],
+                summary: 'Get reviews for a place',
+            ),
+            post: new Operation(
+                operationId: 'addReview',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Review body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['rating', 'body'],
+                    'properties' => [
+                        'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
+                        'body' => ['type' => 'string', 'minLength' => 20, 'maxLength' => 5000],
+                        'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
+                    ]
+                ]]])),
+                responses: [
+                    '201' => new Response('Review created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Add review for a place',
+            )
+        ));
+
+        // 10. PATCH & DELETE /api/v1/me/reviews/{reviewId}
+        $openApi->getPaths()->addPath('/api/v1/me/reviews/{reviewId}', new PathItem(
+            patch: new Operation(
+                operationId: 'updateReview',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('reviewId', 'path', 'Review UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Update review body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['version'],
+                    'properties' => [
+                        'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
+                        'body' => ['type' => 'string', 'minLength' => 20, 'maxLength' => 5000],
+                        'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
+                        'version' => ['type' => 'integer'],
+                    ]
+                ]]])),
+                responses: [
+                    '200' => new Response('Review updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Update review',
+            ),
+            delete: new Operation(
+                operationId: 'deleteReview',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('reviewId', 'path', 'Review UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Delete review',
+            )
+        ));
+
+        // 11. GET /api/v1/me/reviews
+        $openApi->getPaths()->addPath('/api/v1/me/reviews', new PathItem(
+            get: new Operation(
+                operationId: 'myReviews',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer', 'minimum' => 1]),
+                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                ],
+                responses: [
+                    '200' => new Response('My reviews list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Get my reviews',
+            )
+        ));
+
         return $openApi;
     }
 
@@ -314,7 +423,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     /** @return array<string, mixed> */
     private static function listItemSchema(): array
     {
-        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'city', 'categories', 'min_age_months', 'max_age_months', 'indoor', 'outdoor', 'free_entry', 'verification_status', 'amenities', 'distance_meters', 'longitude', 'latitude', 'is_open_now', 'complete', 'relevance_score'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'city' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'min_age_months' => ['type' => 'integer'], 'max_age_months' => ['type' => ['integer', 'null']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'verification_status' => ['type' => 'string'], 'amenities' => self::namedItemsSchema(), 'distance_meters' => ['type' => ['number', 'null']], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'is_open_now' => ['type' => ['boolean', 'null']], 'complete' => ['type' => 'boolean'], 'relevance_score' => ['type' => 'number'], 'main_photo' => ['type' => ['object', 'null'], 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]]]];
+        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'city', 'categories', 'min_age_months', 'max_age_months', 'indoor', 'outdoor', 'free_entry', 'verification_status', 'amenities', 'distance_meters', 'longitude', 'latitude', 'is_open_now', 'complete', 'relevance_score', 'average_rating', 'total_reviews'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'city' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'min_age_months' => ['type' => 'integer'], 'max_age_months' => ['type' => ['integer', 'null']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'verification_status' => ['type' => 'string'], 'amenities' => self::namedItemsSchema(), 'distance_meters' => ['type' => ['number', 'null']], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'is_open_now' => ['type' => ['boolean', 'null']], 'complete' => ['type' => 'boolean'], 'relevance_score' => ['type' => 'number'], 'average_rating' => ['type' => 'number'], 'total_reviews' => ['type' => 'integer'], 'main_photo' => ['type' => ['object', 'null'], 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]]]];
     }
 
     /** @return array<string, mixed> */

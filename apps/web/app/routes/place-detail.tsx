@@ -8,6 +8,7 @@ import { PageContainer } from "../components/layout/PageContainer"
 import { FavoriteButton } from "~/components/places/FavoriteButton"
 import { VisitButton } from "~/components/places/VisitButton"
 import { loadPlace } from "../lib/api.server"
+import { fetchSession } from "../lib/api-session.server"
 import { content } from "../content"
 import { brand } from "../brand/default-brand"
 import type { Route } from "./+types/place-detail"
@@ -18,9 +19,10 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Badge } from "~/components/ui/badge"
 import { Separator } from "~/components/ui/separator"
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
   if (!params.slug) throw new Response("Not found", { status: 404 })
-  return { place: await loadPlace(params.slug) }
+  const { data: session } = await fetchSession(request.headers)
+  return { place: await loadPlace(params.slug), session }
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -37,7 +39,119 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ]
 }
 
-export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
+export function PlaceDetailView({ place, session }: { place: GetPlaceBySlugResponse, session: any }) {
+  const [reviews, setReviews] = React.useState<any[]>([])
+  const [summary, setSummary] = React.useState<any>({ averageRating: 0, totalReviews: 0, histogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } })
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [page, setPage] = React.useState(1)
+  const [totalPages, setTotalPages] = React.useState(1)
+  const [sort, setSort] = React.useState("newest")
+  const [showForm, setShowForm] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [formRating, setFormRating] = React.useState(5)
+  const [formBody, setFormBody] = React.useState("")
+  const [formVisitedOn, setFormVisitedOn] = React.useState("")
+  const [editingReviewId, setEditingReviewId] = React.useState<string | null>(null)
+  const [formError, setFormError] = React.useState<string | null>(null)
+
+  const loadReviews = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/v1/places/${place.id}/reviews?page=${page}&sort=${sort}`)
+      if (!res.ok) throw new Error("Failed to load reviews")
+      const data = await res.json()
+      setReviews(data.items || [])
+      setSummary(data.summary || { averageRating: 0, totalReviews: 0, histogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } })
+      setTotalPages(data.pagination?.totalPages || 1)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    loadReviews()
+  }, [page, sort])
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setFormError(null)
+
+    const payload: any = {
+      rating: formRating,
+      body: formBody,
+      visitedOn: formVisitedOn || null,
+    }
+
+    const headers: any = {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": session?.csrfToken || "",
+    }
+
+    try {
+      let url = `/api/v1/places/${place.id}/reviews`
+      let method = "POST"
+
+      if (editingReviewId) {
+        url = `/api/v1/me/reviews/${editingReviewId}`
+        method = "PATCH"
+        const currentRev = reviews.find(r => r.id === editingReviewId)
+        payload.version = currentRev ? currentRev.version : 1
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || "Validation or network error.")
+      }
+
+      setShowForm(false)
+      setFormBody("")
+      setFormRating(5)
+      setFormVisitedOn("")
+      setEditingReviewId(null)
+      loadReviews()
+    } catch (err: any) {
+      setFormError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!confirm("Czy na pewno chcesz usunąć tę opinię?")) return
+
+    try {
+      const res = await fetch(`/api/v1/me/reviews/${reviewId}`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": session?.csrfToken || "",
+        }
+      })
+      if (!res.ok) throw new Error("Failed to delete review")
+      loadReviews()
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex text-amber-500 font-bold" aria-label={`Ocena: ${rating} na 5`}>
+        {"★".repeat(rating)}{"☆".repeat(5 - rating)}
+      </div>
+    )
+  }
+
   return (
     <article className="flex flex-col gap-8 pb-16">
       {/* Breadcrumbs */}
@@ -202,6 +316,284 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
               </CardContent>
             </Card>
           )}
+
+          {/* Reviews Section */}
+          <Card className="border shadow-2xs bg-card">
+            <CardContent className="p-6 sm:p-8 flex flex-col gap-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+                <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground">
+                  Opinie i oceny rodziców
+                </h2>
+                {!showForm && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="font-semibold text-xs"
+                    onClick={() => {
+                      if (!session?.authenticated) {
+                        alert("Zaloguj się, aby dodać opinię.");
+                        return;
+                      }
+                      setEditingReviewId(null);
+                      setFormRating(5);
+                      setFormBody("");
+                      setFormVisitedOn("");
+                      setShowForm(true);
+                    }}
+                  >
+                    Dodaj opinię
+                  </Button>
+                )}
+              </div>
+
+              {/* Form to Add/Edit Review */}
+              {showForm && (
+                <form onSubmit={handleSubmitReview} className="border p-4 rounded-lg bg-muted/30 flex flex-col gap-4">
+                  <h3 className="font-semibold text-sm">
+                    {editingReviewId ? "Edytuj swoją opinię" : "Napisz nową opinię"}
+                  </h3>
+                  {formError && (
+                    <p className="text-xs text-destructive font-medium bg-destructive/10 p-2 rounded">
+                      {formError}
+                    </p>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Twoja ocena (1-5 gwiazdek) *
+                    </label>
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4, 5].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          className={`text-xl ${val <= formRating ? "text-amber-500" : "text-muted-foreground/30"}`}
+                          onClick={() => setFormRating(val)}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="review-body" className="text-xs font-semibold text-muted-foreground">
+                      Treść opinii * (minimum 20 znaków)
+                    </label>
+                    <textarea
+                      id="review-body"
+                      rows={4}
+                      className="w-full border rounded-md p-2 bg-background text-sm"
+                      placeholder="Co najbardziej podobało się Twoim dzieciom? Jak oceniasz obsługę i czystość?"
+                      value={formBody}
+                      onChange={(e) => setFormBody(e.target.value)}
+                      required
+                    />
+                    <p className="text-3xs text-muted-foreground text-right">
+                      {formBody.length}/5000 znaków (min. 20)
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="review-visited-on" className="text-xs font-semibold text-muted-foreground">
+                      Kiedy tam byłeś? (Opcjonalnie)
+                    </label>
+                    <input
+                      id="review-visited-on"
+                      type="date"
+                      className="border rounded-md p-2 bg-background text-sm max-w-xs"
+                      value={formVisitedOn}
+                      onChange={(e) => setFormVisitedOn(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex gap-3 justify-end mt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs font-semibold"
+                      onClick={() => {
+                        setShowForm(false);
+                        setEditingReviewId(null);
+                        setFormError(null);
+                      }}
+                    >
+                      Anuluj
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="text-xs font-semibold"
+                      disabled={submitting || formBody.trim().length < 20}
+                    >
+                      {submitting ? "Zapisywanie..." : "Zapisz opinię"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Summary and Histogram */}
+              {summary.totalReviews > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6 p-4 rounded-xl border bg-muted/10">
+                  <div className="flex flex-col items-center justify-center gap-1.5 border-r md:pr-6">
+                    <span className="font-serif text-4xl sm:text-5xl font-semibold text-foreground">
+                      {summary.averageRating.toFixed(1)}
+                    </span>
+                    {renderStars(Math.round(summary.averageRating))}
+                    <span className="text-2xs text-muted-foreground">
+                      na podstawie {summary.totalReviews} {summary.totalReviews === 1 ? "opinii" : summary.totalReviews % 10 >= 2 && summary.totalReviews % 10 <= 4 && (summary.totalReviews % 100 < 10 || summary.totalReviews % 100 >= 20) ? "opinie" : "opinii"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2 justify-center">
+                    {[5, 4, 3, 2, 1].map((stars) => {
+                      const count = summary.histogram[stars] || 0;
+                      const percentage = summary.totalReviews > 0 ? (count / summary.totalReviews) * 100 : 0;
+                      return (
+                        <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="w-3 text-right">{stars}</span>
+                          <span className="text-amber-500">★</span>
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-amber-500 rounded-full"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="w-8 text-right font-mono">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center p-6 border border-dashed rounded-lg">
+                  <p className="text-sm text-muted-foreground italic">
+                    Brak opinii dla tego miejsca. Bądź pierwszym, który doda opinię!
+                  </p>
+                </div>
+              )}
+
+              {/* Reviews List */}
+              {summary.totalReviews > 0 && (
+                <div className="flex flex-col gap-4 mt-2">
+                  <div className="flex items-center justify-between gap-4 border-b pb-2">
+                    <h3 className="font-semibold text-sm">
+                      Lista opinii
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>Sortuj:</span>
+                      <select
+                        className="bg-background border rounded px-1.5 py-0.5"
+                        value={sort}
+                        onChange={(e) => {
+                          setSort(e.target.value);
+                          setPage(1);
+                        }}
+                      >
+                        <option value="newest">Najnowsze</option>
+                        <option value="highest">Najwyższe</option>
+                        <option value="lowest">Najniższe</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {loading ? (
+                    <div className="text-center py-6 text-xs text-muted-foreground italic">
+                      Ładowanie opinii...
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4 divide-y">
+                      {reviews.map((rev) => {
+                        const isOwn = session?.authenticated && session?.user?.id === rev.authorId;
+                        return (
+                          <div key={rev.id} className="pt-4 first:pt-0 flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-full bg-primary/10 text-primary text-xs font-mono font-bold w-7 h-7 flex items-center justify-center">
+                                  {rev.author?.initials || "U"}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-xs text-foreground leading-none">
+                                    {rev.author?.displayName || "Użytkownik"}
+                                  </p>
+                                  <p className="text-4xs text-muted-foreground font-mono uppercase tracking-wider mt-0.5">
+                                    Dodano: {new Date(rev.createdAt).toLocaleDateString("pl-PL")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                {renderStars(rev.rating)}
+                                {rev.visitedOn && (
+                                  <span className="text-4xs font-mono text-muted-foreground">
+                                    Wizyta: {rev.visitedOn}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-wrap pl-9">
+                              {rev.body}
+                            </p>
+                            {isOwn && (
+                              <div className="flex gap-2 justify-end pl-9">
+                                <button
+                                  type="button"
+                                  className="text-4xs font-semibold text-muted-foreground hover:text-primary"
+                                  onClick={() => {
+                                    setEditingReviewId(rev.id);
+                                    setFormRating(rev.rating);
+                                    setFormBody(rev.body);
+                                    setFormVisitedOn(rev.visitedOn || "");
+                                    setShowForm(true);
+                                  }}
+                                >
+                                  Edytuj
+                                </button>
+                                <span className="text-4xs text-muted-foreground/30">|</span>
+                                <button
+                                  type="button"
+                                  className="text-4xs font-semibold text-destructive/80 hover:text-destructive"
+                                  onClick={() => handleDeleteReview(rev.id)}
+                                >
+                                  Usuń
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center gap-4 border-t pt-4">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="text-2xs"
+                        disabled={page === 1}
+                        onClick={() => setPage(page - 1)}
+                      >
+                        Poprzednia
+                      </Button>
+                      <span className="text-xs text-muted-foreground font-mono mt-1">
+                        Strona {page} z {totalPages}
+                      </span>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="text-2xs"
+                        disabled={page === totalPages}
+                        onClick={() => setPage(page + 1)}
+                      >
+                        Następna
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar details */}
@@ -335,7 +727,7 @@ export default function PlaceDetail({ loaderData }: Route.ComponentProps) {
   return (
     <AppShell>
       <PageContainer className="py-6">
-        <PlaceDetailView place={loaderData.place} />
+        <PlaceDetailView place={loaderData.place} session={loaderData.session} />
       </PageContainer>
     </AppShell>
   )

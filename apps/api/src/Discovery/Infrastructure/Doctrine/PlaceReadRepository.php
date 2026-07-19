@@ -54,6 +54,8 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                 '.$distance.' AS distance_meters, p.longitude, p.latitude,
                 '.self::openExpression().' AS is_open_now,
                 true AS complete, '.$score.' AS relevance_score,
+                COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.place_id = p.id AND r.status = \'PUBLISHED\'), 0.0) as average_rating,
+                (SELECT COUNT(*) FROM reviews r WHERE r.place_id = p.id AND r.status = \'PUBLISHED\') as total_reviews,
                 (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'COMPLETED\' LIMIT 1) AS main_photo_variants
             FROM places p JOIN cities c ON c.id = p.city_id
             WHERE '.implode(' AND ', $where).'
@@ -199,7 +201,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             }
         }
 
-        return new PlaceListItem((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['city'], self::namedItems($row['categories']), new AgeSummary((int) $row['min_age_months'], null === $row['max_age_months'] ? null : (int) $row['max_age_months']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], (string) $row['verification_status'], self::namedItems($row['amenities']), null === $row['distance_meters'] ? null : (float) $row['distance_meters'], (float) $row['longitude'], (float) $row['latitude'], new OpeningStatus(null === $row['is_open_now'] ? null : (bool) $row['is_open_now']), (bool) $row['complete'], (float) $row['relevance_score'], $mainPhoto);
+        return new PlaceListItem((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['city'], self::namedItems($row['categories']), new AgeSummary((int) $row['min_age_months'], null === $row['max_age_months'] ? null : (int) $row['max_age_months']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], (string) $row['verification_status'], self::namedItems($row['amenities']), null === $row['distance_meters'] ? null : (float) $row['distance_meters'], (float) $row['longitude'], (float) $row['latitude'], new OpeningStatus(null === $row['is_open_now'] ? null : (bool) $row['is_open_now']), (bool) $row['complete'], (float) $row['relevance_score'], (float) ($row['average_rating'] ?? 0.0), (int) ($row['total_reviews'] ?? 0), $mainPhoto);
     }
 
     /** @param array<string, mixed> $row */

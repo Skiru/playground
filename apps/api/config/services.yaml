@@ -74,6 +74,15 @@ services:
     App\Discovery\UI\:
         resource: '../src/Discovery/UI/'
 
+    App\Community\Application\:
+        resource: '../src/Community/Application/'
+
+    App\Community\Infrastructure\:
+        resource: '../src/Community/Infrastructure/'
+
+    App\Community\UI\:
+        resource: '../src/Community/UI/'
+
     App\Administration\Infrastructure\:
         resource: '../src/Administration/Infrastructure/'
 
@@ -97,12 +106,18 @@ services:
     App\Personalization\Application\VisitRepository: '@App\Personalization\Infrastructure\Doctrine\VisitRepository'
     App\Personalization\Domain\PublishedPlaceLookup: '@App\Personalization\Infrastructure\PublishedPlaceDbalLookup'
 
+    App\Community\Application\Port\PublishedPlaceLookup: '@App\Community\Infrastructure\Port\PublishedPlaceDbalLookup'
+    App\Community\Application\Port\ActiveCommunityUserLookup: '@App\Community\Infrastructure\Port\ActiveCommunityUserDbalLookup'
+    App\Community\Application\Port\PublicAuthorProfileLookup: '@App\Community\Infrastructure\Port\PublicAuthorProfileDbalLookup'
+
     App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier:
         arguments:
             $clientId: '%env(resolve:GOOGLE_CLIENT_ID)%'
 
     App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
+    App\Community\Domain\Review\ReviewRepository: '@App\Community\Infrastructure\Review\DbalReviewRepository'
+    App\Community\Application\Review\RatingSummaryLookup: '@App\Community\Infrastructure\Review\DbalRatingSummaryLookup'
 
     # Storage Configuration
     App\Shared\Infrastructure\Storage\LocalStorageAdapter:

@@ -86,6 +86,7 @@ export interface ContentCatalog {
     suitabilitySub: string;
     noAmenities: string;
     noConfirmedInformation: string;
+    noReviews: string;
     openingHoursHeading: string;
     weekdaysLabel: string;
     saturdayLabel: string;
