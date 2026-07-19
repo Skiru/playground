@@ -26,14 +26,7 @@ test("admin login and edit have no serious or critical axe violations", async ({
 async function assertAccessible(page: Page) {
   await page.addScriptTag({ path: axePath });
   const violations = await page.evaluate(async () => {
-    const isAdmin = window.location.pathname.includes('/admin');
-    const options = isAdmin ? {
-      rules: {
-        'color-contrast': { enabled: false },
-        'link-name': { enabled: false }
-      }
-    } : {};
-    const result = await (window as any).axe.run(options);
+    const result = await (window as any).axe.run();
     return result.violations.filter((violation: any) => violation.impact === "critical" || violation.impact === "serious");
   });
   expect(violations).toEqual([]);

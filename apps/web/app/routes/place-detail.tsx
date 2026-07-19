@@ -1,6 +1,7 @@
 import type { GetPlaceBySlugResponse } from "@family-places/api-client"
 import { Link } from "react-router"
 import { MapPin, Baby, ShieldCheck, Compass, Check, ArrowLeft, ExternalLink, Navigation, Clock } from "lucide-react"
+import * as React from "react"
 
 import { AppShell } from "../components/layout/AppShell"
 import { PageContainer } from "../components/layout/PageContainer"
@@ -37,17 +38,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
-  // Suitability calculation based on mock / description, or we can just list ages
-  const suitableAges = []
-  if (place.description?.toLowerCase().includes("maluch") || place.short_description?.toLowerCase().includes("maluch") || place.short_description?.toLowerCase().includes("najmłodsz")) {
-    suitableAges.push(content.home.ageOptionUnder2)
-  }
-  if (suitableAges.length === 0) {
-    // default/fallback
-    suitableAges.push(content.home.ageOption3to5)
-    suitableAges.push(content.home.ageOption6to9)
-  }
-
   return (
     <article className="flex flex-col gap-8 pb-16">
       {/* Breadcrumbs */}
@@ -135,18 +125,24 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
             <CardContent className="p-6 flex flex-col gap-4">
               <h2 className="font-serif text-lg font-bold text-foreground flex items-center">
                 <Baby className="size-5 mr-2 text-primary" />
-                Dla jakiego wieku?
+                {content.places.suitabilityHeading}
               </h2>
               <p className="text-xs text-muted-foreground">
-                To miejsce jest szczególnie polecane dla dzieci w wieku:
+                {content.places.suitabilitySub}
               </p>
-              <div className="flex flex-wrap gap-2">
-                {suitableAges.map((age) => (
-                  <Badge key={age} variant="secondary" className="bg-primary/5 text-primary hover:bg-primary/10 border-primary/20 text-xs py-1 px-3 rounded-full font-bold">
-                    {age}
-                  </Badge>
-                ))}
-              </div>
+              {place.ageZones && place.ageZones.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {place.ageZones.map((zone, index) => (
+                    <Badge key={index} variant="secondary" className="bg-primary/5 text-primary hover:bg-primary/10 border-primary/20 text-xs py-1 px-3 rounded-full font-bold">
+                      {zone.label}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  {content.places.noConfirmedInformation}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -261,22 +257,72 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
             </CardContent>
           </Card>
 
-          {/* Opening Hours Mock Card */}
+          {/* Opening Hours Card */}
           <Card className="border shadow-2xs bg-card/60 backdrop-blur-sm">
             <CardContent className="p-6 flex flex-col gap-4">
               <h2 className="font-serif text-base font-bold text-foreground flex items-center gap-1.5">
                 <Clock className="size-4.5 text-primary" />
-                Godziny otwarcia
+                {content.places.openingHoursHeading}
               </h2>
               <Separator />
-              <dl className="grid grid-cols-[100px_1fr] gap-2 text-xs text-muted-foreground">
-                <dt className="font-semibold">Pon - Pt:</dt>
-                <dd className="text-foreground font-mono">09:00 - 18:00</dd>
-                <dt className="font-semibold">Sobota:</dt>
-                <dd className="text-foreground font-mono">10:00 - 16:00</dd>
-                <dt className="font-semibold">Niedziela:</dt>
-                <dd className="text-foreground font-mono">Zamknięte</dd>
-              </dl>
+              {place.openingSchedule && place.openingSchedule.some(day => !day.closed) ? (
+                <dl className="grid grid-cols-[100px_1fr] gap-2 text-xs text-muted-foreground">
+                  {place.openingSchedule.map((day) => {
+                    const dayNames = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"];
+                    const name = dayNames[day.dayOfWeek - 1] || `Dzień ${day.dayOfWeek}`;
+                    return (
+                      <React.Fragment key={day.dayOfWeek}>
+                        <dt className="font-semibold">{name}:</dt>
+                        <dd className="text-foreground font-mono">
+                          {day.closed ? (
+                            content.places.closedLabel
+                          ) : (
+                            day.periods.map((p, i) => (
+                              <span key={i}>
+                                {i > 0 ? ", " : ""}
+                                {p.opensAt} - {p.closesAt}
+                                {p.closesNextDay ? " (następnego dnia)" : ""}
+                              </span>
+                            ))
+                          )}
+                        </dd>
+                      </React.Fragment>
+                    );
+                  })}
+                </dl>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  {content.places.noConfirmedInformation}
+                </p>
+              )}
+
+              {place.specialOpeningDays && place.specialOpeningDays.length > 0 && (
+                <>
+                  <Separator className="my-2" />
+                  <h3 className="font-mono text-3xs uppercase tracking-wider text-muted-foreground font-bold">
+                    Wyjątki / Dni specjalne
+                  </h3>
+                  <ul className="flex flex-col gap-2 text-xs text-muted-foreground">
+                    {place.specialOpeningDays.map((special, i) => (
+                      <li key={i} className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-foreground">{special.date}</span>
+                        <span className="font-mono">
+                          {special.mode === "closed" && "Zamknięte"}
+                          {special.mode === "open_24_hours" && "Otwarte całą dobę"}
+                          {special.mode === "custom" && special.periods.map((p, pi) => (
+                            <span key={pi}>
+                              {pi > 0 ? ", " : ""}
+                              {p.opensAt} - {p.closesAt}
+                              {p.closesNextDay ? " (następnego dnia)" : ""}
+                            </span>
+                          ))}
+                          {special.note && <span className="text-3xs italic text-muted-foreground block">({special.note})</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

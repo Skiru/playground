@@ -59,6 +59,7 @@ export const places = {
   suitabilityHeading: "Dla jakiego wieku?",
   suitabilitySub: "To miejsce jest szczególnie polecane dla dzieci w wieku:",
   noAmenities: "Brak przypisanych udogodnień.",
+  noConfirmedInformation: "Brak potwierdzonych informacji",
   openingHoursHeading: "Godziny otwarcia",
   weekdaysLabel: "Pon - Pt:",
   saturdayLabel: "Sobota:",

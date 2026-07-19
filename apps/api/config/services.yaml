@@ -19,6 +19,8 @@ parameters:
     env(STORAGE_S3_REGION): 'us-east-1'
     env(STORAGE_S3_PUBLIC_URL): ''
     env(MEDIA_E2E_MODE): 'false'
+    env(APP_PUBLIC_ORIGIN): 'http://localhost:5173'
+    env(TRUSTED_AUTH_ORIGINS): 'http://localhost:5173'
 
 services:
     # default configuration for services in *this* file
@@ -119,6 +121,11 @@ services:
 
     App\Shared\Application\Storage\StorageInterface: '@App\Shared\Infrastructure\Storage\StorageService'
     App\Shared\Application\Storage\ImageProcessor: '@App\Shared\Infrastructure\Storage\GdImageProcessor'
+
+    App\Identity\UI\Security\GoogleCredentialAuthenticator:
+        arguments:
+            $publicOrigin: '%env(resolve:APP_PUBLIC_ORIGIN)%'
+            $trustedOrigins: '%env(resolve:TRUSTED_AUTH_ORIGINS)%'
 
     Jsor\Doctrine\PostGIS\Event\ORMSchemaEventListener:
         tags: [{ name: doctrine.event_listener, event: postGenerateSchemaTable, connection: default }]

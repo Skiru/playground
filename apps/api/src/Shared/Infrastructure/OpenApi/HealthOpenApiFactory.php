@@ -320,7 +320,140 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     /** @return array<string, mixed> */
     private static function placeSchema(): array
     {
-        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'description', 'city_name', 'city_slug', 'address_line1', 'address_line2', 'postal_code', 'country_code', 'categories', 'amenities', 'age_zones', 'weekly_opening', 'special_opening', 'indoor', 'outdoor', 'free_entry', 'price_description', 'website_url', 'phone', 'verification_status', 'longitude', 'latitude'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'description' => ['type' => 'string'], 'city_name' => ['type' => 'string'], 'city_slug' => ['type' => 'string'], 'address_line1' => ['type' => 'string'], 'address_line2' => ['type' => ['string', 'null']], 'postal_code' => ['type' => 'string'], 'country_code' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'amenities' => self::namedItemsSchema(), 'age_zones' => ['type' => 'array', 'items' => ['type' => 'object']], 'weekly_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'special_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'price_description' => ['type' => ['string', 'null']], 'website_url' => ['type' => ['string', 'null']], 'phone' => ['type' => ['string', 'null']], 'verification_status' => ['type' => 'string'], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'main_photo' => ['type' => ['object', 'null'], 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]], 'photos' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'is_main' => ['type' => 'boolean'], 'alt_text' => ['type' => ['string', 'null']], 'caption' => ['type' => ['string', 'null']], 'variants' => ['type' => 'object', 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]]]]]]];
+        return [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'required' => [
+                'id', 'slug', 'name', 'short_description', 'description', 'city_name', 'city_slug',
+                'address_line1', 'address_line2', 'postal_code', 'country_code', 'categories', 'amenities',
+                'age_zones', 'weekly_opening', 'special_opening', 'indoor', 'outdoor', 'free_entry',
+                'price_description', 'website_url', 'phone', 'verification_status', 'longitude', 'latitude',
+                'ageZones', 'openingSchedule', 'specialOpeningDays'
+            ],
+            'properties' => [
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'slug' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+                'short_description' => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+                'city_name' => ['type' => 'string'],
+                'city_slug' => ['type' => 'string'],
+                'address_line1' => ['type' => 'string'],
+                'address_line2' => ['type' => ['string', 'null']],
+                'postal_code' => ['type' => 'string'],
+                'country_code' => ['type' => 'string'],
+                'categories' => self::namedItemsSchema(),
+                'amenities' => self::namedItemsSchema(),
+                'age_zones' => ['type' => 'array', 'items' => ['type' => 'object']],
+                'weekly_opening' => ['type' => 'array', 'items' => ['type' => 'object']],
+                'special_opening' => ['type' => 'array', 'items' => ['type' => 'object']],
+                'ageZones' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'required' => ['minAgeMonths', 'maxAgeMonths', 'label'],
+                        'properties' => [
+                            'minAgeMonths' => ['type' => 'integer'],
+                            'maxAgeMonths' => ['type' => ['integer', 'null']],
+                            'label' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
+                'openingSchedule' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'required' => ['dayOfWeek', 'periods', 'closed'],
+                        'properties' => [
+                            'dayOfWeek' => ['type' => 'integer'],
+                            'closed' => ['type' => 'boolean'],
+                            'periods' => [
+                                'type' => 'array',
+                                'items' => [
+                                    'type' => 'object',
+                                    'additionalProperties' => false,
+                                    'required' => ['opensAt', 'closesAt', 'closesNextDay'],
+                                    'properties' => [
+                                        'opensAt' => ['type' => 'string'],
+                                        'closesAt' => ['type' => 'string'],
+                                        'closesNextDay' => ['type' => 'boolean'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'specialOpeningDays' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'required' => ['date', 'mode', 'periods', 'note'],
+                        'properties' => [
+                            'date' => ['type' => 'string'],
+                            'mode' => ['type' => 'string'],
+                            'note' => ['type' => ['string', 'null']],
+                            'periods' => [
+                                'type' => 'array',
+                                'items' => [
+                                    'type' => 'object',
+                                    'additionalProperties' => false,
+                                    'required' => ['opensAt', 'closesAt', 'closesNextDay'],
+                                    'properties' => [
+                                        'opensAt' => ['type' => 'string'],
+                                        'closesAt' => ['type' => 'string'],
+                                        'closesNextDay' => ['type' => 'boolean'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'indoor' => ['type' => 'boolean'],
+                'outdoor' => ['type' => 'boolean'],
+                'free_entry' => ['type' => 'boolean'],
+                'price_description' => ['type' => ['string', 'null']],
+                'website_url' => ['type' => ['string', 'null']],
+                'phone' => ['type' => ['string', 'null']],
+                'verification_status' => ['type' => 'string'],
+                'longitude' => ['type' => 'number'],
+                'latitude' => ['type' => 'number'],
+                'main_photo' => [
+                    'type' => ['object', 'null'],
+                    'properties' => [
+                        'thumbnail_mini' => ['type' => 'string'],
+                        'thumbnail' => ['type' => 'string'],
+                        'card' => ['type' => 'string'],
+                        'hero' => ['type' => 'string'],
+                        'original_max' => ['type' => 'string'],
+                    ],
+                ],
+                'photos' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'string', 'format' => 'uuid'],
+                            'is_main' => ['type' => 'boolean'],
+                            'alt_text' => ['type' => ['string', 'null']],
+                            'caption' => ['type' => ['string', 'null']],
+                            'variants' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'thumbnail_mini' => ['type' => 'string'],
+                                    'thumbnail' => ['type' => 'string'],
+                                    'card' => ['type' => 'string'],
+                                    'hero' => ['type' => 'string'],
+                                    'original_max' => ['type' => 'string'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
     }
 
     /** @return array<string, mixed> */

@@ -43,7 +43,7 @@ final class PersonalizationControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $sessionData = json_decode($client->getResponse()->getContent(), true);
         $csrfToken = $sessionData['csrfToken'];
-        $csrfHeaders = ['HTTP_X-CSRF-Token' => $csrfToken];
+        $csrfHeaders = ['HTTP_X-CSRF-Token' => $csrfToken, 'CONTENT_TYPE' => 'application/json'];
 
         // 1. Add place to favorites
         $client->request('PUT', \sprintf('/api/v1/places/%s/favorite', $placeId), [], [], $csrfHeaders);

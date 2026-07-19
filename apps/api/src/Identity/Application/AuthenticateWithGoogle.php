@@ -45,7 +45,7 @@ final class AuthenticateWithGoogle
             if (null !== $identity) {
                 $user = $identity->getUser();
                 if (UserStatus::ACTIVE !== $user->status()) {
-                    throw new \RuntimeException('User account is not active.');
+                    throw new \App\Identity\Application\Exception\AccountInactiveException('User account is not active.');
                 }
 
                 return $user;
@@ -68,7 +68,7 @@ final class AuthenticateWithGoogle
         if (null !== $identity) {
             $user = $identity->getUser();
             if (UserStatus::ACTIVE !== $user->status()) {
-                throw new \RuntimeException('User account is not active.');
+                throw new \App\Identity\Application\Exception\AccountInactiveException('User account is not active.');
             }
 
             $identity->recordUse($now);

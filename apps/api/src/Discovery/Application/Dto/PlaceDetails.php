@@ -12,6 +12,9 @@ final readonly class PlaceDetails implements \JsonSerializable
      * @param list<array{name: string, minAgeMonths: int, maxAgeMonths: ?int, notes: ?string}>                             $ageZones
      * @param list<array{weekday: int, sequence: int, opensAt: string, closesAt: string, closesNextDay: bool}>             $weeklyOpening
      * @param list<array{localDate: string, closed: bool, note: ?string}>                                                  $specialOpening
+     * @param list<array{minAgeMonths: int, maxAgeMonths: ?int, label: string}>                                            $ageZonesCamel
+     * @param list<array{dayOfWeek: int, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, closed: bool}> $openingSchedule
+     * @param list<array{date: string, mode: string, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, note: ?string}> $specialOpeningDays
      * @param array<string, string>|null                                                                                   $mainPhoto
      * @param list<array{id: string, is_main: bool, alt_text: ?string, caption: ?string, variants: array<string, string>}> $photos
      */
@@ -32,6 +35,9 @@ final readonly class PlaceDetails implements \JsonSerializable
         public array $ageZones,
         public array $weeklyOpening,
         public array $specialOpening,
+        public array $ageZonesCamel,
+        public array $openingSchedule,
+        public array $specialOpeningDays,
         public bool $indoor,
         public bool $outdoor,
         public bool $freeEntry,
@@ -49,6 +55,37 @@ final readonly class PlaceDetails implements \JsonSerializable
     /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
-        return ['id' => $this->id, 'slug' => $this->slug, 'name' => $this->name, 'short_description' => $this->shortDescription, 'description' => $this->description, 'city_name' => $this->cityName, 'city_slug' => $this->citySlug, 'address_line1' => $this->addressLine1, 'address_line2' => $this->addressLine2, 'postal_code' => $this->postalCode, 'country_code' => $this->countryCode, 'categories' => $this->categories, 'amenities' => $this->amenities, 'age_zones' => $this->ageZones, 'weekly_opening' => $this->weeklyOpening, 'special_opening' => $this->specialOpening, 'indoor' => $this->indoor, 'outdoor' => $this->outdoor, 'free_entry' => $this->freeEntry, 'price_description' => $this->priceDescription, 'website_url' => $this->websiteUrl, 'phone' => $this->phone, 'verification_status' => $this->verificationStatus, 'longitude' => $this->longitude, 'latitude' => $this->latitude, 'main_photo' => $this->mainPhoto, 'photos' => $this->photos];
+        return [
+            'id' => $this->id,
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'short_description' => $this->shortDescription,
+            'description' => $this->description,
+            'city_name' => $this->cityName,
+            'city_slug' => $this->citySlug,
+            'address_line1' => $this->addressLine1,
+            'address_line2' => $this->addressLine2,
+            'postal_code' => $this->postalCode,
+            'country_code' => $this->countryCode,
+            'categories' => $this->categories,
+            'amenities' => $this->amenities,
+            'age_zones' => $this->ageZones,
+            'weekly_opening' => $this->weeklyOpening,
+            'special_opening' => $this->specialOpening,
+            'ageZones' => $this->ageZonesCamel,
+            'openingSchedule' => $this->openingSchedule,
+            'specialOpeningDays' => $this->specialOpeningDays,
+            'indoor' => $this->indoor,
+            'outdoor' => $this->outdoor,
+            'free_entry' => $this->freeEntry,
+            'price_description' => $this->priceDescription,
+            'website_url' => $this->websiteUrl,
+            'phone' => $this->phone,
+            'verification_status' => $this->verificationStatus,
+            'longitude' => $this->longitude,
+            'latitude' => $this->latitude,
+            'main_photo' => $this->mainPhoto,
+            'photos' => $this->photos,
+        ];
     }
 }

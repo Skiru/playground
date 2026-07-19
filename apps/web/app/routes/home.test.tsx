@@ -53,7 +53,7 @@ describe("home route", () => {
         </SessionProvider>
       </MemoryRouter>
     );
-    const result = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const result = await axe.run(container);
     expect(result.violations.map((violation) => violation.id)).toEqual([]);
   });
 });

@@ -28,6 +28,8 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         private readonly LoggerInterface $logger,
         #[Autowire(service: 'limiter.google_login')]
         private readonly RateLimiterFactory $googleLoginLimiter,
+        private readonly string $publicOrigin = '',
+        private readonly string $trustedOrigins = '',
     ) {
     }
 
@@ -44,14 +46,10 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
             throw new BadCredentialsException('AUTH_RATE_LIMITED');
         }
 
-        // 2. Validate Origin / Host for same-origin
+        // 2. Validate Origin exactly
         $origin = $request->headers->get('Origin');
-        $host = $request->headers->get('Host');
-        if (null !== $origin && '' !== $origin) {
-            $originHost = parse_url($origin, \PHP_URL_HOST);
-            if (\is_string($originHost) && \is_string($host) && !str_contains($host, $originHost) && !str_contains($originHost, $host)) {
-                throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
-            }
+        if (!$this->isValidOrigin($origin)) {
+            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
         }
 
         // 3. Request verification (content type, size, format)
@@ -82,15 +80,13 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
             $user = $this->authenticateWithGoogle->authenticate($credential);
         } catch (\App\Identity\Application\Exception\AccountLinkRequiredException $e) {
             throw new BadCredentialsException('ACCOUNT_LINK_REQUIRED', 0, $e);
-        } catch (\RuntimeException $e) {
-            if (str_contains($e->getMessage(), 'active')) {
-                throw new BadCredentialsException('ACCOUNT_INACTIVE', 0, $e);
-            }
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID', 0, $e);
-        } catch (\InvalidArgumentException $e) {
-            if (str_contains($e->getMessage(), 'empty')) {
-                throw new BadCredentialsException('GOOGLE_CONFIGURATION_INVALID', 0, $e);
-            }
+        } catch (\App\Identity\Application\Exception\AccountInactiveException $e) {
+            throw new BadCredentialsException('ACCOUNT_INACTIVE', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleConfigurationException $e) {
+            throw new BadCredentialsException('GOOGLE_CONFIGURATION_INVALID', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleProviderUnavailableException $e) {
+            throw new BadCredentialsException('GOOGLE_PROVIDER_UNAVAILABLE', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleCredentialInvalidException $e) {
             throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID', 0, $e);
         } catch (\Throwable $e) {
             throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID', 0, $e);
@@ -158,13 +154,16 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
             $code = 'GOOGLE_CONFIGURATION_INVALID';
             $status = Response::HTTP_INTERNAL_SERVER_ERROR;
             $detail = 'Google integration is misconfigured.';
+        } elseif ('GOOGLE_PROVIDER_UNAVAILABLE' === $message) {
+            $code = 'GOOGLE_PROVIDER_UNAVAILABLE';
+            $status = Response::HTTP_SERVICE_UNAVAILABLE;
+            $detail = 'Google identity provider is currently unavailable.';
         }
 
-        // Log internally without sensitive data like full credentials, claims or session ID
+        // Log internally without sensitive data like full credentials, claims, cookie, session ID or raw SDK messages
         $this->logger->error('Google login failure', [
             'correlationId' => $correlationId,
             'exception_class' => $previous::class,
-            'message' => $previous->getMessage(),
         ]);
 
         $headers = [
@@ -200,5 +199,60 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         $initials = mb_substr($initials, 0, 2);
 
         return '' === $initials ? 'U' : $initials;
+    }
+
+    private function isValidOrigin(?string $origin): bool
+    {
+        if (null === $origin || '' === trim($origin)) {
+            // allowed when absent
+            return true;
+        }
+
+        $normOrigin = $this->normalizeOrigin($origin);
+        if (null === $normOrigin) {
+            return false;
+        }
+
+        $allowedOrigins = [$this->publicOrigin];
+        if ('' !== trim($this->trustedOrigins)) {
+            $allowedOrigins = array_merge(
+                $allowedOrigins,
+                array_map('trim', explode(',', $this->trustedOrigins))
+            );
+        }
+
+        foreach ($allowedOrigins as $allowed) {
+            $normAllowed = $this->normalizeOrigin($allowed);
+            if (null !== $normAllowed) {
+                if ($normOrigin['scheme'] === $normAllowed['scheme'] &&
+                    $normOrigin['host'] === $normAllowed['host'] &&
+                    $normOrigin['port'] === $normAllowed['port']) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeOrigin(string $url): ?array
+    {
+        $parsed = parse_url($url);
+        if (!$parsed || !isset($parsed['scheme'], $parsed['host'])) {
+            return null;
+        }
+        $scheme = strtolower($parsed['scheme']);
+        $host = strtolower($parsed['host']);
+
+        $port = $parsed['port'] ?? null;
+        if (null === $port) {
+            $port = 'https' === $scheme ? 443 : ('http' === $scheme ? 80 : null);
+        }
+
+        return [
+            'scheme' => $scheme,
+            'host' => $host,
+            'port' => (int) $port,
+        ];
     }
 }

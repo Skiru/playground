@@ -141,6 +141,12 @@ test.describe("Real Playwright Image Fallbacks", () => {
     await page.getByRole("button", { name: "Zaloguj się" }).filter({ visible: true }).first().click();
     await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
 
+    // Add a favorite first
+    await page.goto("/miejsca?city=warszawa");
+    const favButton = page.locator(".place-card").first().locator('button[title="Dodaj do ulubionych"]');
+    await expect(favButton).toBeEnabled();
+    await favButton.click();
+
     // Intercept any real media URL and return 404
     await page.route("**/media/**", (route) => {
       route.fulfill({
@@ -150,16 +156,23 @@ test.describe("Real Playwright Image Fallbacks", () => {
       });
     });
 
-    await page.goto("/account/favorites");
+    await page.goto("/konto/ulubione");
     await page.waitForLoadState("networkidle");
+
+    // Confirm cards are present
+    const cardLocators = page.locator(".group.overflow-hidden.bg-card");
+    await expect(cardLocators.first()).toBeVisible();
 
     // Verify favorite cards render fallbacks gracefully
     const favoriteImages = await page.locator("img").all();
+    let checkedAtLeastOne = false;
     for (const img of favoriteImages) {
       const src = await img.getAttribute("src");
       if (src && !src.includes("/brand/wordmark.svg") && !src.includes("/brand/compact-mark.svg") && !src.includes("avatar")) {
         expect(src).toContain("/brand/place-placeholder.svg");
+        checkedAtLeastOne = true;
       }
     }
+    expect(checkedAtLeastOne).toBe(true);
   });
 });
