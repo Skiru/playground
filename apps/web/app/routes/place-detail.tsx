@@ -152,6 +152,102 @@ export function PlaceDetailView({ place, session }: { place: GetPlaceBySlugRespo
     )
   }
 
+  const [comments, setComments] = React.useState<any[]>([])
+  const [commentsLoading, setCommentsLoading] = React.useState(true)
+  const [commentsPage, setCommentsPage] = React.useState(1)
+  const [commentsTotalPages, setCommentsTotalPages] = React.useState(1)
+  const [commentFormBody, setCommentFormBody] = React.useState("")
+  const [replyingToCommentId, setReplyingToCommentId] = React.useState<string | null>(null)
+  const [editingCommentId, setEditingCommentId] = React.useState<string | null>(null)
+  const [commentFormError, setCommentFormError] = React.useState<string | null>(null)
+  const [commentSubmitting, setCommentSubmitting] = React.useState(false)
+
+  const loadComments = async () => {
+    setCommentsLoading(true)
+    try {
+      const res = await fetch(`/api/v1/places/${place.id}/comments?page=${commentsPage}`)
+      if (!res.ok) throw new Error("Failed to load comments")
+      const data = await res.json()
+      setComments(data.items || [])
+      setCommentsTotalPages(data.pagination?.totalPages || 1)
+    } catch (err: any) {
+      console.error(err)
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    loadComments()
+  }, [commentsPage])
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCommentSubmitting(true)
+    setCommentFormError(null)
+
+    const payload: any = {
+      body: commentFormBody,
+    }
+
+    const headers: any = {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": session?.csrfToken || "",
+    }
+
+    try {
+      let url = `/api/v1/places/${place.id}/comments`
+      let method = "POST"
+
+      if (editingCommentId) {
+        url = `/api/v1/me/place-comments/${editingCommentId}`
+        method = "PATCH"
+        const currentComm = comments.find(c => c.id === editingCommentId)
+        payload.version = currentComm ? currentComm.version : 1
+      } else if (replyingToCommentId) {
+        url = `/api/v1/place-comments/${replyingToCommentId}/replies`
+        method = "POST"
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detail || "Validation or network error.")
+      }
+
+      setCommentFormBody("")
+      setEditingCommentId(null)
+      setReplyingToCommentId(null)
+      loadComments()
+    } catch (err: any) {
+      setCommentFormError(err.message)
+    } finally {
+      setCommentSubmitting(false)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("Czy na pewno chcesz usunąć ten komentarz?")) return
+
+    try {
+      const res = await fetch(`/api/v1/me/place-comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": session?.csrfToken || "",
+        }
+      })
+      if (!res.ok) throw new Error("Failed to delete comment")
+      loadComments()
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
   return (
     <article className="flex flex-col gap-8 pb-16">
       {/* Breadcrumbs */}
@@ -590,6 +686,285 @@ export function PlaceDetailView({ place, session }: { place: GetPlaceBySlugRespo
                       </Button>
                     </div>
                   )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Dyskusja (Place Comments & Replies) */}
+          <Card className="border shadow-2xs bg-card mt-6">
+            <CardContent className="p-6 sm:p-8 flex flex-col gap-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+                <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground">
+                  Dyskusja ({comments.length})
+                </h2>
+                {!replyingToCommentId && !editingCommentId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="font-semibold text-xs"
+                    onClick={() => {
+                      if (!session?.authenticated) {
+                        alert("Zaloguj się, aby napisać komentarz.");
+                        return;
+                      }
+                      setEditingCommentId(null);
+                      setReplyingToCommentId(null);
+                      setCommentFormBody("");
+                      setCommentFormError(null);
+                    }}
+                  >
+                    Napisz komentarz
+                  </Button>
+                )}
+              </div>
+
+              {/* Thread Composer Form */}
+              {(session?.authenticated && (editingCommentId || replyingToCommentId || !editingCommentId && !replyingToCommentId)) && (
+                <form onSubmit={handleSubmitComment} className="border p-4 rounded-lg bg-muted/30 flex flex-col gap-3">
+                  <h3 className="font-semibold text-xs">
+                    {editingCommentId
+                      ? "Edytuj swój komentarz"
+                      : replyingToCommentId
+                        ? `Odpowiedź na komentarz`
+                        : "Napisz komentarz do tego miejsca"}
+                  </h3>
+                  {commentFormError && (
+                    <p className="text-xs text-destructive font-medium bg-destructive/10 p-2 rounded">
+                      {commentFormError}
+                    </p>
+                  )}
+                  <textarea
+                    rows={3}
+                    className="w-full border rounded-md p-2 bg-background text-sm"
+                    placeholder={replyingToCommentId ? "Napisz swoją odpowiedź..." : "Zadaj pytanie, podziel się uwagą..."}
+                    value={commentFormBody}
+                    onChange={(e) => setCommentFormBody(e.target.value)}
+                    required
+                  />
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-3xs text-muted-foreground">{commentFormBody.length}/3000 znaków</span>
+                    <div className="flex gap-2">
+                      {(editingCommentId || replyingToCommentId) && (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          className="text-2xs font-semibold"
+                          onClick={() => {
+                            setEditingCommentId(null);
+                            setReplyingToCommentId(null);
+                            setCommentFormBody("");
+                            setCommentFormError(null);
+                          }}
+                        >
+                          Anuluj
+                        </Button>
+                      )}
+                      <Button
+                        type="submit"
+                        size="xs"
+                        className="text-2xs font-semibold"
+                        disabled={commentSubmitting || commentFormBody.trim().length === 0}
+                      >
+                        {commentSubmitting ? "Wysyłanie..." : "Wyślij"}
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              )}
+
+              {/* Comments List */}
+              {commentsLoading ? (
+                <div className="text-center py-6 text-xs text-muted-foreground italic">
+                  Ładowanie komentarzy...
+                </div>
+              ) : comments.length > 0 ? (
+                <div className="flex flex-col gap-6">
+                  {comments.filter(c => c.parentId === null).map((parent) => {
+                    const isParentDeleted = parent.status === "DELETED_BY_AUTHOR";
+                    const isOwnParent = session?.authenticated && session?.user?.id === parent.authorId;
+                    const replies = comments.filter(c => c.parentId === parent.id);
+
+                    return (
+                      <div key={parent.id} className="flex flex-col gap-3 border-l-2 pl-4 border-muted/50">
+                        {/* Parent Comment */}
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <div className="rounded-full bg-muted text-muted-foreground text-xs font-mono font-bold w-6 h-6 flex items-center justify-center">
+                                {isParentDeleted ? "?" : (parent.author?.initials || "U")}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-xs text-foreground">
+                                  {isParentDeleted ? "Usunięty użytkownik" : (parent.author?.displayName || "Ktoś")}
+                                </span>
+                                <span className="text-4xs text-muted-foreground font-mono ml-2">
+                                  {new Date(parent.createdAt).toLocaleDateString("pl-PL")}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className={`text-xs sm:text-sm pl-8 leading-relaxed whitespace-pre-wrap ${isParentDeleted ? "text-muted-foreground italic font-light" : "text-foreground"}`}>
+                            {isParentDeleted ? "Komentarz został usunięty przez autora." : parent.body}
+                          </p>
+
+                          {!isParentDeleted && (
+                            <div className="flex gap-2.5 justify-end text-4xs font-semibold text-muted-foreground pl-8">
+                              {session?.authenticated && (
+                                <button
+                                  type="button"
+                                  className="hover:text-primary"
+                                  onClick={() => {
+                                    setReplyingToCommentId(parent.id);
+                                    setEditingCommentId(null);
+                                    setCommentFormBody("");
+                                    setCommentFormError(null);
+                                  }}
+                                >
+                                  Odpowiedz
+                                </button>
+                              )}
+                              {isOwnParent && (
+                                <>
+                                  <span className="text-muted-foreground/30">|</span>
+                                  <button
+                                    type="button"
+                                    className="hover:text-primary"
+                                    onClick={() => {
+                                      setEditingCommentId(parent.id);
+                                      setReplyingToCommentId(null);
+                                      setCommentFormBody(parent.body);
+                                      setCommentFormError(null);
+                                    }}
+                                  >
+                                    Edytuj
+                                  </button>
+                                  <span className="text-muted-foreground/30">|</span>
+                                  <button
+                                    type="button"
+                                    className="text-destructive/80 hover:text-destructive"
+                                    onClick={() => handleDeleteComment(parent.id)}
+                                  >
+                                    Usuń
+                                  </button>
+                                </>
+                              )}
+                              <span className="text-muted-foreground/30">|</span>
+                              <button
+                                type="button"
+                                className="hover:text-primary text-destructive/60"
+                                onClick={() => alert("Dziękujemy za zgłoszenie. Zostanie ono zweryfikowane przez moderatora.")}
+                              >
+                                Zgłoś
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Child Replies */}
+                        {replies.length > 0 && (
+                          <div className="flex flex-col gap-3 ml-6 mt-1 bg-muted/10 p-3 rounded-lg border">
+                            {replies.map((reply) => {
+                              const isReplyDeleted = reply.status === "DELETED_BY_AUTHOR";
+                              const isOwnReply = session?.authenticated && session?.user?.id === reply.authorId;
+
+                              return (
+                                <div key={reply.id} className="flex flex-col gap-1.5 first:border-0 border-t pt-2 first:pt-0">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="rounded-full bg-muted text-muted-foreground text-4xs font-mono font-bold w-5 h-5 flex items-center justify-center">
+                                        {isReplyDeleted ? "?" : (reply.author?.initials || "U")}
+                                      </div>
+                                      <span className="font-semibold text-2xs text-foreground">
+                                        {isReplyDeleted ? "Usunięty użytkownik" : (reply.author?.displayName || "Ktoś")}
+                                      </span>
+                                      <span className="text-4xs text-muted-foreground font-mono">
+                                        {new Date(reply.createdAt).toLocaleDateString("pl-PL")}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className={`text-xs pl-7 leading-relaxed whitespace-pre-wrap ${isReplyDeleted ? "text-muted-foreground italic font-light" : "text-foreground"}`}>
+                                    {isReplyDeleted ? "Odpowiedź została usunięta przez autora." : reply.body}
+                                  </p>
+
+                                  {!isReplyDeleted && (
+                                    <div className="flex gap-2 justify-end text-4xs font-semibold text-muted-foreground pl-7">
+                                      {isOwnReply && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="hover:text-primary"
+                                            onClick={() => {
+                                              setEditingCommentId(reply.id);
+                                              setReplyingToCommentId(null);
+                                              setCommentFormBody(reply.body);
+                                              setCommentFormError(null);
+                                            }}
+                                          >
+                                            Edytuj
+                                          </button>
+                                          <span className="text-muted-foreground/30">|</span>
+                                          <button
+                                            type="button"
+                                            className="text-destructive/80 hover:text-destructive"
+                                            onClick={() => handleDeleteComment(reply.id)}
+                                          >
+                                            Usuń
+                                          </button>
+                                        </>
+                                      )}
+                                      <span className="text-muted-foreground/30">|</span>
+                                      <button
+                                        type="button"
+                                        className="hover:text-primary text-destructive/60"
+                                        onClick={() => alert("Dziękujemy za zgłoszenie. Zostanie ono zweryfikowane przez moderatora.")}
+                                      >
+                                        Zgłoś
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center p-6 border border-dashed rounded-lg">
+                  <p className="text-sm text-muted-foreground italic">
+                    Brak komentarzy dla tego miejsca. Bądź pierwszym, który rozpocznie dyskusję!
+                  </p>
+                </div>
+              )}
+
+              {/* Comments Pagination */}
+              {commentsTotalPages > 1 && (
+                <div className="flex justify-center gap-4 border-t pt-4">
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="text-2xs"
+                    disabled={commentsPage === 1}
+                    onClick={() => setCommentsPage(commentsPage - 1)}
+                  >
+                    Poprzednia
+                  </Button>
+                  <span className="text-xs text-muted-foreground font-mono mt-1">
+                    Strona {commentsPage} z {commentsTotalPages}
+                  </span>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="text-2xs"
+                    disabled={commentsPage === commentsTotalPages}
+                    onClick={() => setCommentsPage(commentsPage + 1)}
+                  >
+                    Następna
+                  </Button>
                 </div>
               )}
             </CardContent>

@@ -359,6 +359,111 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             )
         ));
 
+        // 12. GET & POST /api/v1/places/{placeId}/comments
+        $openApi->getPaths()->addPath('/api/v1/places/{placeId}/comments', new PathItem(
+            get: new Operation(
+                operationId: 'listComments',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer', 'minimum' => 1]),
+                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                ],
+                responses: [
+                    '200' => new Response('List of comments.', new \ArrayObject(['application/json' => ['schema' => [
+                        'type' => 'object',
+                        'required' => ['items', 'pagination'],
+                        'properties' => [
+                            'items' => ['type' => 'array', 'items' => ['type' => 'object']],
+                            'pagination' => ['type' => 'object'],
+                        ]
+                    ]]])),
+                ],
+                summary: 'Get discussion comments for a place',
+            ),
+            post: new Operation(
+                operationId: 'addComment',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Comment body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
+                    ]
+                ]]])),
+                responses: [
+                    '201' => new Response('Comment created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Add a comment to place discussion',
+            )
+        ));
+
+        // 13. POST /api/v1/place-comments/{commentId}/replies
+        $openApi->getPaths()->addPath('/api/v1/place-comments/{commentId}/replies', new PathItem(
+            post: new Operation(
+                operationId: 'addReply',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('commentId', 'path', 'Parent comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Reply body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
+                    ]
+                ]]])),
+                responses: [
+                    '201' => new Response('Reply created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Reply to a comment',
+            )
+        ));
+
+        // 14. PATCH & DELETE /api/v1/me/place-comments/{commentId}
+        $openApi->getPaths()->addPath('/api/v1/me/place-comments/{commentId}', new PathItem(
+            patch: new Operation(
+                operationId: 'updateComment',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('commentId', 'path', 'Comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Update comment body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['version', 'body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
+                        'version' => ['type' => 'integer'],
+                    ]
+                ]]])),
+                responses: [
+                    '200' => new Response('Comment updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Update comment',
+            ),
+            delete: new Operation(
+                operationId: 'deleteComment',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('commentId', 'path', 'Comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Delete comment',
+            )
+        ));
+
         return $openApi;
     }
 

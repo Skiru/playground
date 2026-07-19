@@ -11,6 +11,9 @@ use App\Community\Application\Review\RatingSummaryLookup;
 use App\Community\Domain\Review\Review;
 use App\Community\Domain\Review\ReviewRepository;
 use App\Community\Domain\Review\ReviewStatus;
+use App\Community\Domain\PlaceDiscussion\PlaceComment;
+use App\Community\Domain\PlaceDiscussion\PlaceCommentRepository;
+use App\Community\Domain\PlaceDiscussion\PlaceCommentStatus;
 use App\Shared\Application\Clock;
 use App\Shared\Application\TransactionManager;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -39,6 +42,7 @@ final class CommunityController
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly Clock $clock,
         private readonly TransactionManager $transactionManager,
+        private readonly PlaceCommentRepository $placeCommentRepository,
     ) {
     }
 
@@ -416,6 +420,339 @@ final class CommunityController
                 'totalPages' => max(1, $totalPages),
             ],
         ]);
+        $this->setPrivateNoCache($response);
+
+        return $response;
+    }
+
+    #[Route('/api/v1/places/{placeId}/comments', name: 'api_places_comments', methods: ['GET'])]
+    public function listComments(string $placeId, Request $request): JsonResponse
+    {
+        try {
+            $placeUuid = Uuid::fromString($placeId);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestHttpException('Invalid place ID format.');
+        }
+
+        $page = $request->query->get('page');
+        $pageSize = $request->query->get('pageSize');
+
+        $pageInt = null !== $page && is_numeric($page) ? max(1, (int) $page) : 1;
+        $pageSizeInt = null !== $pageSize && is_numeric($pageSize) ? min(50, max(1, (int) $pageSize)) : 20;
+
+        $comments = $this->placeCommentRepository->findByPlaceId($placeUuid, $pageInt, $pageSizeInt);
+        $totalItems = $this->placeCommentRepository->countByPlaceId($placeUuid);
+        $totalPages = (int) ceil($totalItems / $pageSizeInt);
+
+        $items = [];
+        foreach ($comments as $comment) {
+            $authorProfile = $this->publicAuthorProfileLookup->getProfile($comment->authorId());
+            $author = $authorProfile ?? [
+                'id' => $comment->authorId()->toString(),
+                'displayName' => 'Usunięty użytkownik',
+                'initials' => 'U',
+            ];
+
+            $items[] = [
+                'id' => $comment->id()->toString(),
+                'placeId' => $comment->placeId()->toString(),
+                'authorId' => $comment->authorId()->toString(),
+                'author' => $author,
+                'parentId' => $comment->parentId()?->toString(),
+                'body' => $comment->body(),
+                'status' => $comment->status()->value,
+                'createdAt' => $comment->createdAt()->format(\DateTimeInterface::ATOM),
+                'updatedAt' => $comment->updatedAt()->format(\DateTimeInterface::ATOM),
+                'version' => $comment->version(),
+            ];
+        }
+
+        return new JsonResponse([
+            'items' => $items,
+            'pagination' => [
+                'page' => $pageInt,
+                'pageSize' => $pageSizeInt,
+                'totalItems' => $totalItems,
+                'totalPages' => max(1, $totalPages),
+            ],
+        ]);
+    }
+
+    #[Route('/api/v1/places/{placeId}/comments', name: 'api_places_add_comment', methods: ['POST'])]
+    public function addComment(string $placeId, Request $request): JsonResponse
+    {
+        $this->validateCsrf($request);
+        $user = $this->getAuthenticatedUser();
+
+        try {
+            $placeUuid = Uuid::fromString($placeId);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestHttpException('Invalid place ID format.');
+        }
+
+        if (!$this->publishedPlaceLookup->isPublished($placeUuid)) {
+            throw new NotFoundHttpException('Place not found or not published.');
+        }
+
+        $contentType = $request->headers->get('Content-Type') ?? '';
+        if (!str_contains($contentType, 'application/json') && 'json' !== $request->getContentTypeFormat()) {
+            throw new BadRequestHttpException('Content-Type must be application/json.');
+        }
+
+        $content = $request->getContent();
+        if (\strlen($content) > 8192) {
+            throw new BadRequestHttpException('Payload too large.');
+        }
+
+        $data = json_decode($content, true);
+        if (JSON_ERROR_NONE !== json_last_error() || !\is_array($data)) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
+
+        // Reject extra fields
+        $allowedFields = ['body'];
+        foreach (array_keys($data) as $key) {
+            if (!\in_array($key, $allowedFields, true)) {
+                throw new BadRequestHttpException(sprintf('Extra field "%s" is not allowed.', $key));
+            }
+        }
+
+        $body = $data['body'] ?? null;
+        if (null === $body || !\is_string($body)) {
+            throw new BadRequestHttpException('Missing or invalid body.');
+        }
+        $bodyStr = trim($body);
+        if (mb_strlen($bodyStr) < 1 || mb_strlen($bodyStr) > 3000) {
+            throw new UnprocessableEntityHttpException('Comment body must be between 1 and 3000 characters.');
+        }
+
+        $now = $this->clock->now();
+        $comment = new PlaceComment(
+            Uuid::v7(),
+            $placeUuid,
+            $user->getId(),
+            null,
+            $bodyStr,
+            PlaceCommentStatus::PUBLISHED,
+            $now,
+            $now
+        );
+
+        $this->placeCommentRepository->save($comment);
+
+        $response = new JsonResponse([
+            'id' => $comment->id()->toString(),
+            'placeId' => $comment->placeId()->toString(),
+            'authorId' => $comment->authorId()->toString(),
+            'parentId' => null,
+            'body' => $comment->body(),
+            'status' => $comment->status()->value,
+            'createdAt' => $comment->createdAt()->format(\DateTimeInterface::ATOM),
+            'updatedAt' => $comment->updatedAt()->format(\DateTimeInterface::ATOM),
+            'version' => $comment->version(),
+        ], Response::HTTP_CREATED);
+        $this->setPrivateNoCache($response);
+
+        return $response;
+    }
+
+    #[Route('/api/v1/place-comments/{commentId}/replies', name: 'api_place_comments_add_reply', methods: ['POST'])]
+    public function addReply(string $commentId, Request $request): JsonResponse
+    {
+        $this->validateCsrf($request);
+        $user = $this->getAuthenticatedUser();
+
+        try {
+            $parentUuid = Uuid::fromString($commentId);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestHttpException('Invalid parent comment ID format.');
+        }
+
+        $parent = $this->placeCommentRepository->findById($parentUuid);
+        if (null === $parent || $parent->status() === PlaceCommentStatus::REMOVED_BY_MODERATOR) {
+            throw new NotFoundHttpException('Parent comment not found.');
+        }
+
+        if (null !== $parent->parentId()) {
+            throw new BadRequestHttpException('COMMENT_REPLY_DEPTH_LIMIT');
+        }
+
+        $contentType = $request->headers->get('Content-Type') ?? '';
+        if (!str_contains($contentType, 'application/json') && 'json' !== $request->getContentTypeFormat()) {
+            throw new BadRequestHttpException('Content-Type must be application/json.');
+        }
+
+        $content = $request->getContent();
+        if (\strlen($content) > 8192) {
+            throw new BadRequestHttpException('Payload too large.');
+        }
+
+        $data = json_decode($content, true);
+        if (JSON_ERROR_NONE !== json_last_error() || !\is_array($data)) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
+
+        // Reject extra fields
+        $allowedFields = ['body'];
+        foreach (array_keys($data) as $key) {
+            if (!\in_array($key, $allowedFields, true)) {
+                throw new BadRequestHttpException(sprintf('Extra field "%s" is not allowed.', $key));
+            }
+        }
+
+        $body = $data['body'] ?? null;
+        if (null === $body || !\is_string($body)) {
+            throw new BadRequestHttpException('Missing or invalid body.');
+        }
+        $bodyStr = trim($body);
+        if (mb_strlen($bodyStr) < 1 || mb_strlen($bodyStr) > 3000) {
+            throw new UnprocessableEntityHttpException('Comment body must be between 1 and 3000 characters.');
+        }
+
+        $now = $this->clock->now();
+        $reply = new PlaceComment(
+            Uuid::v7(),
+            $parent->placeId(),
+            $user->getId(),
+            $parent->id(),
+            $bodyStr,
+            PlaceCommentStatus::PUBLISHED,
+            $now,
+            $now
+        );
+
+        $this->placeCommentRepository->save($reply);
+
+        $response = new JsonResponse([
+            'id' => $reply->id()->toString(),
+            'placeId' => $reply->placeId()->toString(),
+            'authorId' => $reply->authorId()->toString(),
+            'parentId' => $reply->parentId()->toString(),
+            'body' => $reply->body(),
+            'status' => $reply->status()->value,
+            'createdAt' => $reply->createdAt()->format(\DateTimeInterface::ATOM),
+            'updatedAt' => $reply->updatedAt()->format(\DateTimeInterface::ATOM),
+            'version' => $reply->version(),
+        ], Response::HTTP_CREATED);
+        $this->setPrivateNoCache($response);
+
+        return $response;
+    }
+
+    #[Route('/api/v1/me/place-comments/{commentId}', name: 'api_me_update_comment', methods: ['PATCH'])]
+    public function updateComment(string $commentId, Request $request): JsonResponse
+    {
+        $this->validateCsrf($request);
+        $user = $this->getAuthenticatedUser();
+
+        try {
+            $commentUuid = Uuid::fromString($commentId);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestHttpException('Invalid comment ID format.');
+        }
+
+        $comment = $this->placeCommentRepository->findById($commentUuid);
+        if (null === $comment || $comment->status() === PlaceCommentStatus::DELETED_BY_AUTHOR || $comment->status() === PlaceCommentStatus::REMOVED_BY_MODERATOR) {
+            throw new NotFoundHttpException('Comment not found.');
+        }
+
+        if ($comment->authorId()->toRfc4122() !== $user->getId()->toRfc4122()) {
+            throw new AccessDeniedHttpException('You cannot edit someone else\'s comment.');
+        }
+
+        $contentType = $request->headers->get('Content-Type') ?? '';
+        if (!str_contains($contentType, 'application/json') && 'json' !== $request->getContentTypeFormat()) {
+            throw new BadRequestHttpException('Content-Type must be application/json.');
+        }
+
+        $content = $request->getContent();
+        if (\strlen($content) > 8192) {
+            throw new BadRequestHttpException('Payload too large.');
+        }
+
+        $data = json_decode($content, true);
+        if (JSON_ERROR_NONE !== json_last_error() || !\is_array($data)) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
+
+        // Reject extra fields
+        $allowedFields = ['body', 'version'];
+        foreach (array_keys($data) as $key) {
+            if (!\in_array($key, $allowedFields, true)) {
+                throw new BadRequestHttpException(sprintf('Extra field "%s" is not allowed.', $key));
+            }
+        }
+
+        $expectedVersion = $data['version'] ?? null;
+        if (null === $expectedVersion || !is_numeric($expectedVersion)) {
+            throw new BadRequestHttpException('Missing or invalid expected version.');
+        }
+
+        if ($comment->version() !== (int) $expectedVersion) {
+            throw new ConflictHttpException('CONCURRENCY_ERROR');
+        }
+
+        $body = $data['body'] ?? $comment->body();
+        if (!\is_string($body)) {
+            throw new BadRequestHttpException('Body must be a string.');
+        }
+        $bodyStr = trim($body);
+        if (mb_strlen($bodyStr) < 1 || mb_strlen($bodyStr) > 3000) {
+            throw new UnprocessableEntityHttpException('Comment body must be between 1 and 3000 characters.');
+        }
+
+        $comment->edit($bodyStr, $this->clock->now());
+
+        try {
+            $this->placeCommentRepository->save($comment);
+        } catch (\RuntimeException $e) {
+            if ('CONCURRENCY_ERROR' === $e->getMessage()) {
+                throw new ConflictHttpException('CONCURRENCY_ERROR', $e);
+            }
+            throw $e;
+        }
+
+        $response = new JsonResponse([
+            'id' => $comment->id()->toString(),
+            'placeId' => $comment->placeId()->toString(),
+            'authorId' => $comment->authorId()->toString(),
+            'parentId' => $comment->parentId()?->toString(),
+            'body' => $comment->body(),
+            'status' => $comment->status()->value,
+            'createdAt' => $comment->createdAt()->format(\DateTimeInterface::ATOM),
+            'updatedAt' => $comment->updatedAt()->format(\DateTimeInterface::ATOM),
+            'version' => $comment->version(),
+        ]);
+        $this->setPrivateNoCache($response);
+
+        return $response;
+    }
+
+    #[Route('/api/v1/me/place-comments/{commentId}', name: 'api_me_delete_comment', methods: ['DELETE'])]
+    public function deleteComment(string $commentId, Request $request): JsonResponse
+    {
+        $this->validateCsrf($request);
+        $user = $this->getAuthenticatedUser();
+
+        try {
+            $commentUuid = Uuid::fromString($commentId);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestHttpException('Invalid comment ID format.');
+        }
+
+        $comment = $this->placeCommentRepository->findById($commentUuid);
+        if (null === $comment || $comment->status() === PlaceCommentStatus::DELETED_BY_AUTHOR || $comment->status() === PlaceCommentStatus::REMOVED_BY_MODERATOR) {
+            throw new NotFoundHttpException('Comment not found.');
+        }
+
+        if ($comment->authorId()->toRfc4122() !== $user->getId()->toRfc4122()) {
+            throw new AccessDeniedHttpException('You cannot delete someone else\'s comment.');
+        }
+
+        $comment->softDelete($this->clock->now());
+        $this->placeCommentRepository->save($comment);
+
+        $response = new JsonResponse(null, Response::HTTP_NO_CONTENT);
         $this->setPrivateNoCache($response);
 
         return $response;

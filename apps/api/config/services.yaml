@@ -118,6 +118,7 @@ services:
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
     App\Community\Domain\Review\ReviewRepository: '@App\Community\Infrastructure\Review\DbalReviewRepository'
     App\Community\Application\Review\RatingSummaryLookup: '@App\Community\Infrastructure\Review\DbalRatingSummaryLookup'
+    App\Community\Domain\PlaceDiscussion\PlaceCommentRepository: '@App\Community\Infrastructure\PlaceDiscussion\DbalPlaceCommentRepository'
 
     # Storage Configuration
     App\Shared\Infrastructure\Storage\LocalStorageAdapter:
