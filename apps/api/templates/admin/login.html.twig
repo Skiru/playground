@@ -1,10 +1,13 @@
 {% extends '@EasyAdmin/page/login.html.twig' %}
 
+{% block html_lang %}pl{% endblock %}
+
 {% block page_title %}Logowanie administratora | FamilyPlaces Admin{% endblock %}
 
 {# Configure standard EasyAdmin login variables #}
 {% set error = error|default(null) %}
 {% set last_username = last_username|default('') %}
+{% set target_path = '/admin' %}
 {% set csrf_token_intention = 'authenticate' %}
 {% set username_label = 'E-mail' %}
 {% set password_label = 'Hasło' %}

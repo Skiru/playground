@@ -36,9 +36,20 @@ export const AppImage: React.FC<AppImageProps> = ({
   const imgRef = useRef<HTMLImageElement>(null);
   const lastErrorSrcRef = useRef<string | undefined>(undefined);
 
-  // Reset error count when any source or fallback prop changes
-  useEffect(() => {
+  const [prevProps, setPrevProps] = useState({ src, srcSet, fallback });
+
+  if (
+    prevProps.src !== src ||
+    prevProps.srcSet !== srcSet ||
+    prevProps.fallback !== fallback
+  ) {
+    setPrevProps({ src, srcSet, fallback });
     setErrorCount(0);
+  }
+
+  // Reset the last error source ref inside an effect when the source props change.
+  // Mutating a ref inside an effect is safe and does not trigger any cascading renders.
+  useEffect(() => {
     lastErrorSrcRef.current = undefined;
   }, [src, srcSet, fallback]);
 

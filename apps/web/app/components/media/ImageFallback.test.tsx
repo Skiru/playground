@@ -229,4 +229,33 @@ describe("AppImage and PlaceImage fallbacks", () => {
     const img = container.querySelector("img") as HTMLImageElement;
     expect(img.src).toContain("/brand/place-placeholder.svg");
   });
+
+  // 11. Regression test for avoiding synchronous setState in useEffect
+  it("regression: resets error state synchronously on prop change avoiding setState in effect", () => {
+    const { container, rerender } = render(
+      <AppImage
+        src="/broken-image.jpg"
+        fallback="/brand/place-placeholder.svg"
+        alt="Test image"
+      />
+    );
+    const img = container.querySelector("img") as HTMLImageElement;
+    
+    // Simulate primary error -> switches to fallback
+    fireEvent.error(img);
+    expect(img.src).toContain("/brand/place-placeholder.svg");
+
+    // Rerender with new src
+    rerender(
+      <AppImage
+        src="/new-valid-image.jpg"
+        fallback="/brand/place-placeholder.svg"
+        alt="Test image"
+      />
+    );
+
+    // It should reset to PRIMARY immediately in the same render phase
+    const resetImg = container.querySelector("img") as HTMLImageElement;
+    expect(resetImg.src).toContain("/new-valid-image.jpg");
+  });
 });
