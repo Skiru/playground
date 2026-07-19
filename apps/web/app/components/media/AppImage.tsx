@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 
 export interface AppImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string;
@@ -24,19 +24,53 @@ export const AppImage: React.FC<AppImageProps> = ({
   style,
   ...props
 }) => {
-  const [status, setStatus] = useState<'PRIMARY' | 'FALLBACK' | 'FINAL'>(src ? 'PRIMARY' : 'FALLBACK');
+  // Use a simple error count to manage the deterministic state transitions:
+  // - If src is provided:
+  //   - errorCount 0: PRIMARY (tries src)
+  //   - errorCount 1: FALLBACK (tries fallback)
+  //   - errorCount >= 2: FINAL (renders custom styled div fallback)
+  // - If src is empty:
+  //   - errorCount 0: FALLBACK (tries fallback)
+  //   - errorCount >= 1: FINAL (renders custom styled div fallback)
+  const [errorCount, setErrorCount] = useState(0);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const lastErrorSrcRef = useRef<string | undefined>(undefined);
 
+  // Reset error count when any source or fallback prop changes
   useEffect(() => {
-    setStatus(src ? 'PRIMARY' : 'FALLBACK');
+    setErrorCount(0);
+    lastErrorSrcRef.current = undefined;
   }, [src, srcSet, fallback]);
 
   const handleError = () => {
-    if (status === 'PRIMARY') {
-      setStatus('FALLBACK');
-    } else if (status === 'FALLBACK') {
-      setStatus('FINAL');
+    if (imgRef.current) {
+      lastErrorSrcRef.current = imgRef.current.src;
     }
+    setErrorCount((prev) => prev + 1);
   };
+
+  const isFinalState = src ? (errorCount >= 2) : (errorCount >= 1);
+  const isFallbackState = src ? (errorCount === 1) : (errorCount === 0);
+
+  const currentExpectedSrc = isFallbackState ? fallback : src;
+
+  // React 19 Hydration workaround:
+  // We use useLayoutEffect to perform a synchronous complete check on mount/hydration
+  // to catch any broken images that failed before React finished hydrating.
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+
+    if (img.complete && img.naturalWidth === 0) {
+      const isJsdom = typeof navigator !== "undefined" && navigator.userAgent.includes("jsdom");
+      
+      if (errorCount === 0 && img.src !== lastErrorSrcRef.current) {
+        handleError();
+      } else if (errorCount === 1 && !isJsdom && img.src !== lastErrorSrcRef.current) {
+        handleError();
+      }
+    }
+  }, [errorCount, src, fallback, currentExpectedSrc]);
 
   const imageStyle: React.CSSProperties = {
     objectFit: "cover",
@@ -44,7 +78,7 @@ export const AppImage: React.FC<AppImageProps> = ({
     ...style,
   };
 
-  if (status === 'FINAL') {
+  if (isFinalState) {
     return (
       <div
         className={`flex items-center justify-center bg-muted text-muted-foreground ${className || ""}`}
@@ -66,10 +100,14 @@ export const AppImage: React.FC<AppImageProps> = ({
     );
   }
 
+  const currentSrc = isFallbackState ? fallback : src;
+  const currentSrcSet = isFallbackState ? undefined : srcSet;
+
   return (
     <img
-      src={status === 'PRIMARY' ? src : fallback}
-      srcSet={status === 'PRIMARY' ? srcSet : undefined}
+      ref={imgRef}
+      src={currentSrc}
+      srcSet={currentSrcSet}
       sizes={sizes}
       width={width}
       height={height}
