@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Administration\Infrastructure\Http;
 
-use App\Administration\Infrastructure\Http\PlaceAdminController;
+use App\Administration\Infrastructure\EasyAdmin\DashboardController;
 use App\Administration\UI\Form\PlaceAdminCommandFactory;
 use App\Administration\UI\Form\PlaceAdminFormData;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,7 @@ final class PlaceAdminArchitectureTest extends TestCase
 {
     public function testFullEditUsesOnlyTheAggregateCommandWithoutVersionArithmetic(): void
     {
-        $file = (new \ReflectionClass(PlaceAdminController::class))->getFileName();
+        $file = (new \ReflectionClass(DashboardController::class))->getFileName();
         self::assertIsString($file);
         $source = file_get_contents($file);
         self::assertIsString($source);
@@ -23,7 +23,7 @@ final class PlaceAdminArchitectureTest extends TestCase
         $factorySource = file_get_contents($factoryFile);
         self::assertIsString($factorySource);
         self::assertStringContainsString('new UpdatePlaceAggregate(', $factorySource);
-        self::assertStringContainsString('commandFactory->update(', $source);
+        self::assertStringContainsString('commandFactory()->update(', $source);
         self::assertStringNotContainsString('$version++', $source);
         self::assertStringNotContainsString('commands->edit(', $source);
         self::assertStringNotContainsString('new ReplacePlace', $source);

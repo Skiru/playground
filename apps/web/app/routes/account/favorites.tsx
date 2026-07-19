@@ -9,7 +9,7 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
 import { Heart, Trash2, ArrowLeft, ArrowRight, ShieldAlert } from "lucide-react"
-import { brand } from "~/brand/default-brand"
+import { PlaceImage } from "../../components/media/PlaceImage"
 import { toast } from "sonner"
 import * as React from "react"
 
@@ -104,21 +104,14 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
                   <Card key={item.id} className={`group overflow-hidden bg-card border hover:border-primary/50 hover:shadow-md transition-all duration-300 scroll-mt-20 ${!isPublished ? "opacity-90 border-amber-200/60 bg-amber-50/10" : ""}`}>
                     <CardContent className="p-5 flex flex-col sm:flex-row gap-5">
                       <div className="relative w-full sm:w-36 aspect-video sm:aspect-square rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                        {place.main_photo ? (
-                          <img
-                            src={place.main_photo.thumbnail}
-                            srcSet={`${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w`}
-                            sizes="(max-width: 640px) 100vw, 144px"
-                            alt={place.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <img
-                            src={brand.placePlaceholder.path}
-                            alt={brand.placePlaceholder.alt}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
+                        <PlaceImage
+                          mainPhotoUrl={place.main_photo?.thumbnail}
+                          srcSet={place.main_photo ? `${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w` : undefined}
+                          sizes="(max-width: 640px) 100vw, 144px"
+                          placeName={place.name}
+                          categorySlug={place.categories?.[0]?.slug}
+                          className="h-full w-full object-cover"
+                        />
                         {!isPublished && (
                           <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-2 text-center text-white text-3xs font-mono font-bold uppercase tracking-widest">
                             Miejsce nieaktywne

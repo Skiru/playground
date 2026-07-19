@@ -26,6 +26,10 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
+    App\Administration\Infrastructure\EasyAdmin\DashboardController:
+        public: true
+        autowire: true
+
     App\Shared\Application\:
         resource: '../src/Shared/Application/'
 

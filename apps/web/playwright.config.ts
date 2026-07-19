@@ -15,9 +15,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     video: "retain-on-failure",
+    locale: "en-US",
   },
   projects: [
-    { name: "chromium-desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "chromium-mobile", use: { ...devices["Pixel 7"] } },
+    { name: "chromium-desktop", use: { ...devices["Desktop Chrome"], locale: "en-US" } },
+    { name: "chromium-mobile", use: { ...devices["Pixel 7"], locale: "en-US" } },
   ],
 });

@@ -32,6 +32,7 @@ services:
     command: ["pnpm", "--filter", "@family-places/web", "dev", "--host", "0.0.0.0", "--port", "3000"]
     environment:
       NODE_ENV: development
+      CI: "true"
       MAP_STYLE_URL: ${MAP_STYLE_URL:-https://demotiles.maplibre.org/style.json}
       MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:-MapLibre demonstration tiles (development only)}
       MAP_PROVIDER_NAME: ${MAP_PROVIDER_NAME:-MapLibre Demo Tiles (development only)}

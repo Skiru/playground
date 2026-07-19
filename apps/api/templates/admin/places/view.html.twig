@@ -1,104 +1,383 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/layout.html.twig' %}
+
 {% block title %}{{ place.name }} | FamilyPlaces Admin{% endblock %}
-{% block body %}
-<main>
-    <nav><a href="{{ path('admin_places') }}">Miejsca</a> · <a href="{{ path('admin_places_edit', {id: place.id}) }}">Edytuj</a></nav>
-    <h1>{{ place.name }}</h1>
-    <section aria-label="Workflow">{% for action in ['submit','publish','unpublish','reverify','close','archive'] %}<form method="post" action="{{ path('admin_places_action', {id: place.id, action: action}) }}" style="display:inline"><input type="hidden" name="_token" value="{{ csrf_token('place-' ~ place.id) }}"><input type="hidden" name="version" value="{{ place.version }}"><button>{{ action }}</button></form>{% endfor %}</section>
-    <dl>
-        <dt>Status</dt><dd>{{ place.status.value }}</dd><dt>Wersja</dt><dd>{{ place.version }}</dd>
-        <dt>Slug</dt><dd>{{ place.slug }}</dd><dt>Miasto</dt><dd>{{ place.city.name }}</dd>
-        <dt>Adres</dt><dd>{{ place.addressLine1 }} {{ place.addressLine2 }}; {{ place.postalCode }}</dd>
-        <dt>Współrzędne</dt><dd>{{ place.coordinates.latitude }}, {{ place.coordinates.longitude }}</dd>
-        <dt>Timezone</dt><dd>{{ place.timezone }}</dd><dt>Weryfikacja</dt><dd>{{ place.verificationStatus.value }}</dd>
-    </dl>
-    <h2>Opis</h2><p>{{ place.shortDescription }}</p><p>{{ place.description }}</p>
-    <h2>Kategorie</h2><ul>{% for category in place.categories %}<li>{{ category.name }}{% if category.id == place.primaryCategory.id %} (primary){% endif %}</li>{% endfor %}</ul>
-    <h2>Udogodnienia</h2><ul>{% for amenity in place.amenities %}<li>{{ amenity.name }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
-    <h2>Strefy wieku</h2><ul>{% for zone in place.ageZones %}<li>{{ zone.name }}: {{ zone.ageRange.minAgeMonths }}–{{ zone.ageRange.maxAgeMonths ?? 'bez limitu' }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
-    <h2>Godziny tygodniowe</h2><ul>{% for interval in place.weeklyOpeningHours %}<li>{{ interval.weekday }}. {{ interval.opensAt|date('H:i') }}–{{ interval.closesAt|date('H:i') }}{% if interval.closesNextDay %} (+1){% endif %}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
-    <h2>Dni specjalne</h2><ul>{% for day in place.specialOpeningDays %}<li>{{ day.localDate|date('Y-m-d') }}: {{ day.closed ? 'zamknięte' : 'otwarte' }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
-    <h2>Referencje zewnętrzne</h2><ul>{% for reference in place.externalReferences %}<li>{{ reference.provider }}: {{ reference.externalId }}</li>{% else %}<li>Brak</li>{% endfor %}</ul>
 
-    <hr style="margin: 2rem 0; border: 0; border-top: 1px solid #ccd0d5;">
+{% block content_title %}
+    <ol class="breadcrumb mb-1 fs-6">
+        <li class="breadcrumb-item"><a href="{{ path('admin') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ path('admin_places') }}">Miejsca</a></li>
+        <li class="breadcrumb-item active text-dark">{{ place.name }}</li>
+    </ol>
+    <h1 class="m-0 fs-2 fw-bold text-dark">{{ place.name }}</h1>
+{% endblock %}
 
-    <h2>Media & Galeria</h2>
-    <div style="background:#f0f4f8; padding:1.5rem; border-radius:8px; border:1px solid #ccd0d5; margin-bottom:2rem;">
-        <h3 style="margin-top:0">Dodaj zdjęcia</h3>
-        <form method="post" enctype="multipart/form-data" action="{{ path('admin_places_photos_upload', {id: place.id}) }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('place-photos-' ~ place.id) }}">
-            <div style="margin-bottom:1rem">
-                <input type="file" name="photos[]" multiple accept="image/*" required>
-            </div>
-            <button type="submit" style="background:#0056b3; color:#fff; border:0; padding:0.5rem 1rem; border-radius:4px; font-weight:bold; cursor:pointer">Prześlij zdjęcia</button>
-        </form>
+{% block page_actions %}
+    <div class="d-flex gap-2">
+        <a href="{{ path('admin_places') }}" class="btn btn-outline-secondary">
+            <i class="fa fa-arrow-left me-1"></i> Lista
+        </a>
+        <a href="{{ path('admin_places_edit', {id: place.id}) }}" class="btn btn-primary">
+            <i class="fa fa-edit me-1"></i> Edytuj dane
+        </a>
     </div>
+{% endblock %}
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.5rem; margin-bottom: 3rem;">
-        {% for photo in place.photos %}
-            <div style="border:1px solid #ccd0d5; border-radius:8px; padding:1rem; background:#fff; display:flex; flex-direction:column; gap:0.5rem; position:relative;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem">
-                    <span style="font-weight:bold; font-size:0.85rem">Zdjęcie ({{ photo.status }})</span>
-                    {% if photo.main %}
-                        <span style="background:#28a745; color:#fff; font-size:0.75rem; padding:0.2rem 0.4rem; border-radius:4px; font-weight:bold;">GŁÓWNE</span>
-                    {% endif %}
-                </div>
-                
-                {% if photo.status == 'completed' and photo.variants.thumbnail is defined %}
-                    <img src="{{ photo.variants.thumbnail }}" alt="{{ photo.altText ?? 'Zdjęcie' }}" style="width:100%; height:160px; object-fit:cover; border-radius:4px; margin-bottom:0.5rem" />
-                {% else %}
-                    <div style="width:100%; height:160px; background:#e9ecef; display:flex; align-items:center; justify-content:center; border-radius:4px; margin-bottom:0.5rem; color:#6c757d; font-size:0.9rem">
-                        {% if photo.status == 'processing' %}
-                            Przetwarzanie...
-                        {% elseif photo.status == 'failed' %}
-                            Błąd przetwarzania
-                        {% else %}
-                            Brak podglądu
-                        {% endif %}
-                    </div>
+{% block main %}
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    <!-- Workflow quick-actions bar -->
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info-light py-2">
+            <h5 class="m-0 fs-6 fw-bold text-info-dark"><i class="fa fa-cogs me-1"></i> Akcje Statusu (Workflow)</h5>
+        </div>
+        <div class="card-body py-3">
+            <div class="workflow-actions m-0">
+                {% set hasActions = false %}
+                {% for action in ['submit','publish','unpublish','reverify','close','archive'] %}
+                    <form method="post" action="{{ path('admin_places_action', {id: place.id, action: action}) }}" class="d-inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token('place-' ~ place.id) }}">
+                        <input type="hidden" name="version" value="{{ place.version }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm" {% if action == 'archive' %}data-confirm="Czy na pewno chcesz zarchiwizować to miejsce?"{% endif %}>
+                            {{ action }}
+                        </button>
+                    </form>
+                    {% set hasActions = true %}
+                {% endfor %}
+                {% if not hasActions %}
+                    <span class="text-muted small">Brak dozwolonych operacji w tym stanie.</span>
                 {% endif %}
+            </div>
+        </div>
+    </div>
 
-                <p style="font-size:0.75rem; color:#6c757d; margin:0 0 0.5rem 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ photo.originalFilename }}">Plik: {{ photo.originalFilename }}</p>
-
-                <form method="post" action="{{ path('admin_places_photos_update', {id: place.id, photoId: photo.id.toRfc4122}) }}" style="display:grid; gap:0.4rem; margin-bottom:0.5rem">
-                    <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ photo.id.toRfc4122) }}">
-                    <div>
-                        <label style="font-size:0.75rem; font-weight:bold; display:block">Alt Text</label>
-                        <input type="text" name="alt_text" value="{{ photo.altText }}" style="width:100%; padding:0.25rem; font-size:0.8rem">
-                    </div>
-                    <div>
-                        <label style="font-size:0.75rem; font-weight:bold; display:block">Podpis (Caption)</label>
-                        <input type="text" name="caption" value="{{ photo.caption }}" style="width:100%; padding:0.25rem; font-size:0.8rem">
-                    </div>
-                    <div>
-                        <label style="font-size:0.75rem; font-weight:bold; display:block">Kolejność (Display Order)</label>
-                        <input type="number" name="display_order" value="{{ photo.displayOrder }}" style="width:60px; padding:0.25rem; font-size:0.8rem">
-                    </div>
-                    <button type="submit" style="background:#6c757d; color:#fff; border:0; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; cursor:pointer; align-self:start">Zapisz szczegóły</button>
-                </form>
-
-                <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:auto; border-top:1px solid #eee; padding-top:0.5rem">
-                    {% if not photo.main and photo.status == 'completed' %}
-                        <form method="post" action="{{ path('admin_places_photos_set_main', {id: place.id, photoId: photo.id.toRfc4122}) }}">
-                            <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ photo.id.toRfc4122) }}">
-                            <button type="submit" style="background:#007bff; color:#fff; border:0; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; cursor:pointer">Ustaw jako główne</button>
-                        </form>
-                    {% endif %}
+    <div class="row g-4">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Podstawowe dane -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header py-3 bg-light">
+                    <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-info-circle me-1"></i> Opis i podstawowe dane</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold small text-uppercase text-muted">Krótki opis (Lead)</h6>
+                    <p class="border-start border-3 border-secondary ps-3 py-1 bg-light rounded-end">{{ place.shortDescription }}</p>
                     
-                    <form method="post" action="{{ path('admin_places_photos_reprocess', {id: place.id, photoId: photo.id.toRfc4122}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ photo.id.toRfc4122) }}">
-                        <button type="submit" style="background:#ffc107; color:#000; border:0; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; cursor:pointer">Przetwórz ponownie</button>
-                    </form>
-
-                    <form method="post" action="{{ path('admin_places_photos_delete', {id: place.id, photoId: photo.id.toRfc4122}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ photo.id.toRfc4122) }}">
-                        <button type="submit" style="background:#dc3545; color:#fff; border:0; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; cursor:pointer" onclick="return confirm('Czy na pewno chcesz usunąć to zdjęcie?')">Usuń</button>
-                    </form>
+                    <h6 class="fw-bold small text-uppercase text-muted mt-3">Pełny opis</h6>
+                    <p style="white-space: pre-line;">{{ place.description }}</p>
                 </div>
             </div>
-        {% else %}
-            <p style="grid-column: 1/-1; text-align:center; color:#6c757d; font-style:italic">Brak zdjęć w galerii.</p>
-        {% endfor %}
+
+            <!-- Godziny -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header py-3 bg-light">
+                    <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-clock me-1"></i> Godziny otwarcia</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold small text-uppercase text-muted">Harmonogram tygodniowy</h6>
+                            <ul class="list-group list-group-flush p-0">
+                                {% for interval in place.weeklyOpeningHours %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <span class="fw-semibold">Dzień {{ interval.weekday }}</span>
+                                        <span class="badge bg-secondary-light text-dark">
+                                            {{ interval.opensAt|date('H:i') }} – {{ interval.closesAt|date('H:i') }}
+                                            {% if interval.closesNextDay %}<span class="text-danger small ms-1">+1</span>{% endif %}
+                                        </span>
+                                    </li>
+                                {% else %}
+                                    <li class="list-group-item text-muted px-0 py-2">Brak godzin w bazie danych.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold small text-uppercase text-muted ps-md-3">Wyjątki i dni specjalne</h6>
+                            <ul class="list-group list-group-flush ps-md-3">
+                                {% for day in place.specialOpeningDays %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <span>{{ day.localDate|date('Y-m-d') }}</span>
+                                        <span class="badge {% if day.closed %}bg-danger{% else %}bg-success{% endif %}">
+                                            {{ day.closed ? 'Zamknięte' : 'Otwarte' }}
+                                        </span>
+                                    </li>
+                                {% else %}
+                                    <li class="list-group-item text-muted px-0 py-2">Brak dni specjalnych.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kategorie i strefy wieku -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header py-3 bg-light">
+                    <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-tags me-1"></i> Kategorie &amp; Strefy Wieku</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold small text-uppercase text-muted">Przypisane kategorie</h6>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                {% for category in place.categories %}
+                                    <span class="badge {% if category.id == place.primaryCategory.id %}bg-primary{% else %}bg-secondary{% endif %} py-2 px-3 fs-6">
+                                        {{ category.name }} {% if category.id == place.primaryCategory.id %}<small class="ms-1 fw-bold">(główna)</small>{% endif %}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold small text-uppercase text-muted ps-md-3">Dedykowane grupy wiekowe</h6>
+                            <ul class="list-group list-group-flush ps-md-3">
+                                {% for zone in place.ageZones %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <span class="fw-semibold">{{ zone.name }}</span>
+                                        <span class="badge bg-info text-dark">
+                                            {{ zone.ageRange.minAgeMonths }} – {{ zone.ageRange.maxAgeMonths ?? 'bez limitu' }} mies.
+                                        </span>
+                                    </li>
+                                {% else %}
+                                    <li class="list-group-item text-muted px-0 py-2">Brak zdefiniowanych stref wieku.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Weryfikacja i status -->
+            <div class="card mb-4 shadow-sm border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase d-block m-0">Status publikacji</label>
+                        <span class="status-badge status-badge-{{ place.status.value }} mt-1 fs-6">
+                            {{ place.status.value }}
+                        </span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase d-block m-0">Status weryfikacji</label>
+                        <span class="badge bg-info text-dark mt-1 fs-6 py-2 px-3">
+                            {{ place.verificationStatus.value }}
+                        </span>
+                    </div>
+                    <div>
+                        <label class="form-label small fw-bold text-muted text-uppercase d-block m-0">Wersja agregatu</label>
+                        <span class="badge bg-light text-dark mt-1 fs-6">v{{ place.version }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lokalizacja i kontakt -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header py-3 bg-light">
+                    <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-map-marker-alt me-1"></i> Lokalizacja i kontakt</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row m-0 gy-3">
+                        <dt class="col-sm-4 small text-muted text-uppercase m-0">Miasto</dt>
+                        <dd class="col-sm-8 fw-semibold m-0">{{ place.city.name }}</dd>
+
+                        <dt class="col-sm-4 small text-muted text-uppercase m-0">Adres</dt>
+                        <dd class="col-sm-8 m-0">
+                            {{ place.addressLine1 }}<br>
+                            {% if place.addressLine2 %}{{ place.addressLine2 }}<br>{% endif %}
+                            {{ place.postalCode }} {{ place.city.name }}
+                        </dd>
+
+                        <dt class="col-sm-4 small text-muted text-uppercase m-0">Współrzędne</dt>
+                        <dd class="col-sm-8 small m-0 code">{{ place.coordinates.latitude }}, {{ place.coordinates.longitude }}</dd>
+
+                        <dt class="col-sm-4 small text-muted text-uppercase m-0">Strefa czasowa</dt>
+                        <dd class="col-sm-8 small m-0">{{ place.timezone }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Udogodnienia -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header py-3 bg-light">
+                    <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-concierge-bell me-1"></i> Udogodnienia</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for amenity in place.amenities %}
+                            <span class="badge bg-light text-dark border py-2 px-3"><i class="fa fa-check text-success me-1"></i> {{ amenity.name }}</span>
+                        {% else %}
+                            <span class="text-muted small">Brak udogodnień</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referencje zewnętrzne -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header py-3 bg-light">
+                    <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-link me-1"></i> Referencje zewnętrzne</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush p-0">
+                        {% for reference in place.externalReferences %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                <span class="fw-semibold small text-uppercase text-muted">{{ reference.provider }}</span>
+                                <span class="badge bg-light text-dark font-monospace">{{ reference.externalId }}</span>
+                            </li>
+                        {% else %}
+                            <li class="list-group-item text-muted px-0 py-2">Brak referencji.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
-</main>
+
+    <!-- Media i Galeria -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header py-3 bg-light d-flex justify-content-between align-items-center">
+            <h5 class="card-title m-0 fw-bold fs-6"><i class="fa fa-images me-1"></i> Galeria zdjęć</h5>
+            <span class="badge bg-secondary">{{ place.photos|length }} zdjęć</span>
+        </div>
+        <div class="card-body">
+            <!-- Add photos section -->
+            <div class="bg-light p-3 border rounded mb-4">
+                <h6 class="fw-bold mb-2"><i class="fa fa-upload me-1"></i> Dodaj nowe zdjęcia</h6>
+                <form method="post" enctype="multipart/form-data" action="{{ path('admin_places_photos_upload', {id: place.id}) }}" class="row g-2 align-items-center">
+                    <input type="hidden" name="_token" value="{{ csrf_token('place-photos-' ~ place.id) }}">
+                    <div class="col-auto">
+                        <input type="file" name="photos[]" multiple accept="image/*" required class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-primary">Prześlij zdjęcia</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Reorder trigger -->
+            {% if place.photos|length > 1 %}
+                <form method="post" action="{{ path('admin_places_photos_reorder', {id: place.id}) }}" class="mb-3 d-inline-block">
+                    <input type="hidden" name="_token" value="{{ csrf_token('place-photos-reorder-' ~ place.id) }}">
+                    {% for photo in place.photos %}
+                        <input type="hidden" name="photo_ids[]" value="{{ photo.id.toRfc4122 }}">
+                    {% endfor %}
+                </form>
+            {% endif %}
+
+            <!-- Gallery grid -->
+            <div class="gallery-grid">
+                {% for photo in place.photos %}
+                    {% set pId = photo.id.toRfc4122 %}
+                    <div class="photo-card card {% if photo.status.value == 'PROCESSING' %}processing{% elseif photo.status.value == 'FAILED' %}failed{% endif %} shadow-sm">
+                        <div class="card-header py-1 bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <span class="badge bg-secondary-light text-dark small fw-bold">
+                                {{ photo.status.value }}
+                            </span>
+                            {% if photo.main %}
+                                <span class="badge bg-success text-white small fw-bold">GŁÓWNE</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Completed photo or state placeholders -->
+                        {% if photo.status.value == 'COMPLETED' and photo.variants.thumbnail is defined %}
+                            <img src="{{ photo.variants.thumbnail }}" alt="{{ photo.altText ?? 'Zdjęcie' }}" class="photo-preview img-thumbnail" onError="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="photo-preview-fallback d-none align-items-center justify-content-center bg-secondary-light border rounded text-muted" style="height: 120px;"><i class="fa fa-image fa-2x"></i></div>
+                        {% else %}
+                            <div class="photo-preview-placeholder d-flex align-items-center justify-content-center bg-secondary-light border rounded text-muted" style="height: 120px;">
+                                {% if photo.status.value == 'PROCESSING' %}
+                                    <div class="text-center">
+                                        <i class="fa fa-spinner fa-spin fa-2x mb-1 text-primary"></i>
+                                        <div class="small fw-semibold">Przetwarzanie...</div>
+                                    </div>
+                                {% elseif photo.status.value == 'QUEUED' %}
+                                    <div class="text-center">
+                                        <i class="fa fa-hourglass-half fa-2x mb-1 text-warning"></i>
+                                        <div class="small fw-semibold">W kolejce</div>
+                                    </div>
+                                {% elseif photo.status.value == 'FAILED' %}
+                                    <div class="text-center p-2 text-danger">
+                                        <i class="fa fa-exclamation-triangle fa-2x mb-1"></i>
+                                        <div class="small fw-semibold">Błąd!</div>
+                                        <div class="font-monospace small text-muted" style="font-size: 0.7rem;">{{ photo.failureCode ?? 'ERR' }}</div>
+                                    </div>
+                                {% elseif photo.status.value == 'DELETING' %}
+                                    <div class="text-center">
+                                        <i class="fa fa-trash-alt fa-2x mb-1 text-danger"></i>
+                                        <div class="small fw-semibold">Usuwanie...</div>
+                                    </div>
+                                {% else %}
+                                    <i class="fa fa-image fa-2x"></i>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+
+                        <div class="card-body p-0 pt-2">
+                            <p class="text-muted font-monospace small m-0 mb-2 overflow-hidden text-nowrap text-truncate" title="{{ photo.originalFilename }}">Plik: {{ photo.originalFilename }}</p>
+                            
+                            <!-- Meta update form -->
+                            <form method="post" action="{{ path('admin_places_photos_update', {id: place.id, photoId: pId}) }}" class="d-grid gap-2 border p-2 rounded bg-light mb-2">
+                                <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ pId) }}">
+                                <div>
+                                    <label class="form-label small fw-bold m-0" style="font-size: 0.75rem;">Alt Text</label>
+                                    <input type="text" name="alt_text" value="{{ photo.altText }}" class="form-control form-control-sm py-0" style="font-size: 0.8rem;">
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-bold m-0" style="font-size: 0.75rem;">Podpis (Caption)</label>
+                                    <input type="text" name="caption" value="{{ photo.caption }}" class="form-control form-control-sm py-0" style="font-size: 0.8rem;">
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-bold m-0" style="font-size: 0.75rem;">Kolejność (Display Order)</label>
+                                    <input type="number" name="display_order" value="{{ photo.displayOrder }}" class="form-control form-control-sm py-0" style="font-size: 0.8rem; width: 70px;">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-outline-secondary py-0 mt-1">Zapisz detale</button>
+                            </form>
+                        </div>
+
+                        <!-- Control Actions footer -->
+                        <div class="card-footer bg-transparent border-0 p-0 pt-2 mt-auto d-flex flex-wrap gap-1 justify-content-between align-items-center">
+                            {% if not photo.main and photo.status.value == 'COMPLETED' %}
+                                <form method="post" action="{{ path('admin_places_photos_set_main', {id: place.id, photoId: pId}) }}" class="m-0">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ pId) }}">
+                                    <button type="submit" class="btn btn-sm btn-link text-primary p-0 text-decoration-none fw-semibold">Ustaw główne</button>
+                                </form>
+                            {% endif %}
+                            
+                            {% if photo.status.value == 'FAILED' %}
+                                <form method="post" action="{{ path('admin_places_photos_reprocess', {id: place.id, photoId: pId}) }}" class="m-0">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ pId) }}">
+                                    <button type="submit" class="btn btn-sm btn-link text-warning p-0 text-decoration-none fw-semibold">Spróbuj ponownie</button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{{ path('admin_places_photos_reprocess', {id: place.id, photoId: pId}) }}" class="m-0">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ pId) }}">
+                                    <button type="submit" class="btn btn-sm btn-link text-secondary p-0 text-decoration-none fw-semibold">Przetwórz ponownie</button>
+                                </form>
+                            {% endif %}
+
+                            <form method="post" action="{{ path('admin_places_photos_delete', {id: place.id, photoId: pId}) }}" class="m-0">
+                                <input type="hidden" name="_token" value="{{ csrf_token('place-photo-ops-' ~ pId) }}">
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0 text-decoration-none fw-semibold" data-confirm="Czy na pewno chcesz usunąć to zdjęcie?">Usuń</button>
+                            </form>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="col-12 py-5 text-center text-muted border border-dashed rounded bg-light">
+                        <i class="fa fa-images fa-3x mb-2 text-muted-light"></i>
+                        <div>Brak zdjęć w galerii. Dodaj je powyżej.</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 {% endblock %}

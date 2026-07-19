@@ -13,6 +13,8 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Badge } from "~/components/ui/badge"
+import { AppImage } from "../components/media/AppImage"
+import { PlaceImage } from "../components/media/PlaceImage"
 
 export function meta() {
   return [
@@ -165,8 +167,9 @@ export function HomeView({
                     className="group relative flex flex-col justify-end overflow-hidden rounded-xl border bg-card aspect-[4/3] p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1"
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent z-10 transition-opacity group-hover:from-black/90" />
-                    <img
+                    <AppImage
                       src={categoryImg.path}
+                      fallback={brand.placePlaceholder.path}
                       alt={categoryImg.alt}
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -246,21 +249,14 @@ export function HomeView({
                 {featuredPlaces.map((place) => (
                   <Card key={place.id} className="group overflow-hidden rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300">
                     <div className="relative aspect-video overflow-hidden bg-muted">
-                      {place.main_photo ? (
-                        <img
-                          src={place.main_photo.thumbnail}
-                          srcSet={`${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w`}
-                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 384px"
-                          alt={place.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <img
-                          src={brand.placePlaceholder.path}
-                          alt={brand.placePlaceholder.alt}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      )}
+                      <PlaceImage
+                        mainPhotoUrl={place.main_photo?.thumbnail}
+                        srcSet={place.main_photo ? `${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w` : undefined}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 384px"
+                        placeName={place.name}
+                        categorySlug={place.categories[0]?.slug}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
                       <Badge className="absolute top-3 left-3 bg-primary text-white font-mono text-xs py-1 px-2.5 font-bold rounded-md">
                         {place.indoor ? content.places.indoor : content.places.outdoor}
                       </Badge>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#f7fafc"/>
+  <circle cx="600" cy="250" r="100" fill="#3182ce" opacity="0.1"/>
+  <text x="600" y="300" font-family="system-ui, sans-serif" font-weight="bold" font-size="64" fill="#2d3748" text-anchor="middle">FamilyPlaces</text>
+  <text x="600" y="360" font-family="system-ui, sans-serif" font-size="28" fill="#4a5568" text-anchor="middle">Miejsca przyjazne rodzinom</text>
+</svg>

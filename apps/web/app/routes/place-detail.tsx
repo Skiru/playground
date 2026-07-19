@@ -11,6 +11,8 @@ import { content } from "../content"
 import { brand } from "../brand/default-brand"
 import type { Route } from "./+types/place-detail"
 import { Button } from "~/components/ui/button"
+import { AppImage } from "../components/media/AppImage"
+import { PlaceImage } from "../components/media/PlaceImage"
 import { Card, CardContent } from "~/components/ui/card"
 import { Badge } from "~/components/ui/badge"
 import { Separator } from "~/components/ui/separator"
@@ -61,24 +63,17 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
 
       {/* Place Hero */}
       <div className="relative rounded-2xl overflow-hidden bg-muted aspect-video md:aspect-[3/1] border shadow-sm">
-        {place.main_photo ? (
-          <img
-            src={place.main_photo.hero}
-            srcSet={`${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original_max} 1920w`}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
-            alt={place.name}
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <img
-            src={brand.placePlaceholder.path}
-            alt={place.name}
-            className="h-full w-full object-cover"
-          />
-        )}
+        <PlaceImage
+          mainPhotoUrl={place.main_photo?.hero}
+          srcSet={place.main_photo ? `${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original_max} 1920w` : undefined}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+          placeName={place.name}
+          categorySlug={place.categories[0]?.slug}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
         <div className="absolute bottom-6 left-6 right-6 z-20 text-white flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -191,10 +186,11 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                   {place.photos.map((photo) => (
                     <figure key={photo.id} tabIndex={0} className="group relative flex flex-col gap-2 rounded-lg border bg-muted p-2 hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary transition-all duration-300">
                       <div className="aspect-square overflow-hidden rounded-md">
-                        <img
+                        <AppImage
                           src={photo.variants?.thumbnail}
-                          srcSet={`${photo.variants?.thumbnail_mini} 150w, ${photo.variants?.thumbnail} 400w, ${photo.variants?.card} 800w`}
+                          srcSet={photo.variants ? `${photo.variants.thumbnail_mini} 150w, ${photo.variants.thumbnail} 400w, ${photo.variants.card} 800w` : undefined}
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                          fallback={brand.placePlaceholder.path}
                           alt={photo.alt_text || `Zdjęcie przedstawiające ${place.name}`}
                           loading="lazy"
                           decoding="async"
