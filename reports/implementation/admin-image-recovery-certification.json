@@ -1,42 +1,42 @@
 {
   "taskId": "PLAYGROUND_FAMILY_PLACES_ADMIN_UI_IMAGE_FALLBACK_BROWSER_CLOSURE",
   "status": "PASS",
-  "certifiedAt": "2026-07-19T02:40:00+02:00",
+  "certifiedAt": "2026-07-19T10:35:00+02:00",
   "branch": "fix/admin-easyadmin-and-image-fallbacks",
   "prNumber": 12,
   "baseBranch": "main",
-  "implementationSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
-  "implementationTree": "d24a1f6966f03c405694f6dd2bb27377b2b7a378",
-  "checkedPrHead": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+  "implementationSha": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
+  "implementationTree": "aae6b3950fcced1d4421fba6f935aee5bf85318f",
+  "checkedPrHead": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
   "githubWorkflows": [
     {
       "name": "Backend quality",
-      "runId": 987654321,
-      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "runId": 29681117743,
+      "checkedSha": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
       "conclusion": "success"
     },
     {
       "name": "Frontend quality",
-      "runId": 987654322,
-      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "runId": 29681117714,
+      "checkedSha": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
       "conclusion": "success"
     },
     {
       "name": "Integration and browser E2E",
-      "runId": 987654323,
-      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "runId": 29681117716,
+      "checkedSha": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
       "conclusion": "success"
     },
     {
       "name": "Containers",
-      "runId": 987654324,
-      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "runId": 29681117751,
+      "checkedSha": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
       "conclusion": "success"
     },
     {
       "name": "Security",
-      "runId": 987654325,
-      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "runId": 29681117699,
+      "checkedSha": "b03644a4482eccbf5281485bfcdfc10ed6da9d92",
       "conclusion": "success"
     }
   ],
