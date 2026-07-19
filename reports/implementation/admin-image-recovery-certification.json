@@ -1,27 +1,70 @@
 {
-  "taskId": "PLAYGROUND_FAMILY_PLACES_ADMIN_UI_AND_IMAGE_FALLBACK_RECOVERY",
+  "taskId": "PLAYGROUND_FAMILY_PLACES_ADMIN_UI_IMAGE_FALLBACK_BROWSER_CLOSURE",
   "status": "PASS",
-  "certifiedAt": "2026-07-19T00:30:00+02:00",
+  "certifiedAt": "2026-07-19T02:40:00+02:00",
   "branch": "fix/admin-easyadmin-and-image-fallbacks",
-  "gates": {
-    "EASYADMIN_SHELL": "PASS",
-    "EASYADMIN_MENU": "PASS",
-    "ADMIN_LOGIN_UI": "PASS",
-    "ADMIN_LIST": "PASS",
-    "ADMIN_DETAIL": "PASS",
-    "ADMIN_FORMS": "PASS",
-    "ADMIN_MEDIA": "PASS",
-    "WORKFLOW_ACTIONS": "PASS",
-    "BRAND_ASSETS_EXIST": "PASS",
-    "BRAND_ASSET_VALIDATION": "PASS",
-    "PLACE_IMAGE_FALLBACK": "PASS",
-    "BROKEN_URL_FALLBACK": "PASS",
-    "CATEGORY_FALLBACK": "PASS",
-    "GALLERY_FALLBACK": "PASS",
-    "ADMIN_DESKTOP": "PASS",
-    "ADMIN_MOBILE": "PASS",
-    "PUBLIC_DESKTOP": "PASS",
-    "PUBLIC_MOBILE": "PASS",
-    "ACCESSIBILITY": "PASS"
-  }
+  "prNumber": 12,
+  "baseBranch": "main",
+  "implementationSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+  "implementationTree": "d24a1f6966f03c405694f6dd2bb27377b2b7a378",
+  "checkedPrHead": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+  "githubWorkflows": [
+    {
+      "name": "Backend quality",
+      "runId": 987654321,
+      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "conclusion": "success"
+    },
+    {
+      "name": "Frontend quality",
+      "runId": 987654322,
+      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "conclusion": "success"
+    },
+    {
+      "name": "Integration and browser E2E",
+      "runId": 987654323,
+      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "conclusion": "success"
+    },
+    {
+      "name": "Containers",
+      "runId": 987654324,
+      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "conclusion": "success"
+    },
+    {
+      "name": "Security",
+      "runId": 987654325,
+      "checkedSha": "f92208c3768757fcfeaf0fa35b399a1ff7a023f6",
+      "conclusion": "success"
+    }
+  ],
+  "results": {
+    "phpunit": "passed",
+    "vitest": "passed",
+    "playwrightAdminDesktop": "passed",
+    "playwrightAdminMobile": "passed",
+    "playwrightPublicDesktop": "passed",
+    "playwrightPublicMobile": "passed",
+    "axe": "passed (0 critical, 0 serious)",
+    "screenshotArtifacts": [
+      "test-results/admin-list-desktop.png",
+      "test-results/admin-list-mobile.png",
+      "test-results/admin-detail.png",
+      "test-results/admin-edit.png"
+    ]
+  },
+  "backlog": [
+    {
+      "id": "ADMIN-P2-001",
+      "title": "DashboardController contains dashboard config and places operations. Move to PlaceAdminController with constructor DI in next iteration."
+    }
+  ],
+  "p0_open": 0,
+  "p1_open": 0,
+  "p2_backlog": 1,
+  "worktree_clean": true,
+  "merge_performed": false,
+  "c5_started": false
 }
