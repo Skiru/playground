@@ -27,7 +27,7 @@ test("real admin create, edit, invalid publish, valid publish, visibility and un
 
   await page.getByRole("button", { name: "publish", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("not ready");
-  await page.getByRole("row").filter({ hasText: name }).getByRole("link", { name: "edit" }).click();
+  await page.getByRole("row").filter({ hasText: name }).getByRole("link", { name: /edit|edytuj/i }).click();
   await page.getByLabel("Parki rodzinne").check();
   await page.getByLabel("Parking").check();
   await page.getByLabel("Wifi").check();
