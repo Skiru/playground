@@ -27,7 +27,7 @@ final class PlaceComment
         PlaceCommentStatus $status,
         \DateTimeImmutable $createdAt,
         \DateTimeImmutable $updatedAt,
-        int $version = 1
+        int $version = 1,
     ) {
         $trimmedBody = trim($body);
         if (mb_strlen($trimmedBody) < 1 || mb_strlen($trimmedBody) > 3000) {
@@ -81,13 +81,53 @@ final class PlaceComment
     }
 
     // Getters
-    public function id(): Uuid { return $this->id; }
-    public function placeId(): Uuid { return $this->placeId; }
-    public function authorId(): Uuid { return $this->authorId; }
-    public function parentId(): ?Uuid { return $this->parentId; }
-    public function body(): string { return $this->body; }
-    public function status(): PlaceCommentStatus { return $this->status; }
-    public function createdAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function updatedAt(): \DateTimeImmutable { return $this->updatedAt; }
-    public function version(): int { return $this->version; }
+    public function id(): Uuid
+    {
+        return $this->id;
+    }
+
+    public function placeId(): Uuid
+    {
+        return $this->placeId;
+    }
+
+    public function authorId(): Uuid
+    {
+        return $this->authorId;
+    }
+
+    public function parentId(): ?Uuid
+    {
+        return $this->parentId;
+    }
+
+    public function body(): string
+    {
+        return $this->body;
+    }
+
+    public function status(): PlaceCommentStatus
+    {
+        return $this->status;
+    }
+
+    public function createdAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function updatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function advanceVersion(): void
+    {
+        ++$this->version;
+    }
 }

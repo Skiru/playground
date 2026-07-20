@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddFavoriteData, AddFavoriteErrors, AddFavoriteResponses, AddVisitData, AddVisitErrors, AddVisitResponses, DeleteVisitData, DeleteVisitErrors, DeleteVisitResponses, GetAmenitiesData, GetAmenitiesResponses, GetCategoriesData, GetCategoriesResponses, GetCitiesData, GetCitiesResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetMapPlacesData, GetMapPlacesErrors, GetMapPlacesResponses, GetPlaceBySlugData, GetPlaceBySlugErrors, GetPlaceBySlugResponses, GetPlaceStateData, GetPlaceStateErrors, GetPlaceStateResponses, ListFavoritesData, ListFavoritesErrors, ListFavoritesResponses, ListVisitsData, ListVisitsErrors, ListVisitsResponses, LoginWithDevAuthData, LoginWithDevAuthErrors, LoginWithDevAuthResponses, LoginWithGoogleData, LoginWithGoogleErrors, LoginWithGoogleResponses, RemoveFavoriteData, RemoveFavoriteErrors, RemoveFavoriteResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, UpdateVisitData, UpdateVisitErrors, UpdateVisitResponses } from './types.gen';
+import type { AddCommentData, AddCommentErrors, AddCommentResponses, AddFavoriteData, AddFavoriteErrors, AddFavoriteResponses, AddReplyData, AddReplyErrors, AddReplyResponses, AddReviewData, AddReviewErrors, AddReviewResponses, AddVisitData, AddVisitErrors, AddVisitResponses, CreateForumPostData, CreateForumPostResponses, CreateForumThreadData, CreateForumThreadResponses, DeleteCommentData, DeleteCommentErrors, DeleteCommentResponses, DeleteOwnForumPostData, DeleteOwnForumPostResponses, DeleteOwnForumThreadData, DeleteOwnForumThreadResponses, DeleteReviewData, DeleteReviewErrors, DeleteReviewResponses, DeleteVisitData, DeleteVisitErrors, DeleteVisitResponses, EditOwnForumPostData, EditOwnForumPostResponses, EditOwnForumThreadData, EditOwnForumThreadResponses, GetAmenitiesData, GetAmenitiesResponses, GetCategoriesData, GetCategoriesResponses, GetCitiesData, GetCitiesResponses, GetCommunityFeedData, GetCommunityFeedResponses, GetForumThreadData, GetForumThreadResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetMapPlacesData, GetMapPlacesErrors, GetMapPlacesResponses, GetPlaceBySlugData, GetPlaceBySlugErrors, GetPlaceBySlugResponses, GetPlaceStateData, GetPlaceStateErrors, GetPlaceStateResponses, ListCategoryThreadsData, ListCategoryThreadsResponses, ListCommentsData, ListCommentsResponses, ListFavoritesData, ListFavoritesErrors, ListFavoritesResponses, ListForumCategoriesData, ListForumCategoriesResponses, ListForumPostsData, ListForumPostsResponses, ListModerationQueueData, ListModerationQueueResponses, ListReviewsData, ListReviewsResponses, ListVisitsData, ListVisitsErrors, ListVisitsResponses, LoginWithDevAuthData, LoginWithDevAuthErrors, LoginWithDevAuthResponses, LoginWithGoogleData, LoginWithGoogleErrors, LoginWithGoogleResponses, ModerateContentData, ModerateContentResponses, MyReviewsData, MyReviewsErrors, MyReviewsResponses, RemoveFavoriteData, RemoveFavoriteErrors, RemoveFavoriteResponses, ReportContentData, ReportContentResponses, SearchPlacesData, SearchPlacesErrors, SearchPlacesResponses, UpdateCommentData, UpdateCommentErrors, UpdateCommentResponses, UpdateReviewData, UpdateReviewErrors, UpdateReviewResponses, UpdateVisitData, UpdateVisitErrors, UpdateVisitResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -34,6 +34,96 @@ export const loginWithGoogle = <ThrowOnError extends boolean = false>(options?: 
  * Dev bypass login
  */
 export const loginWithDevAuth = <ThrowOnError extends boolean = false>(options?: Options<LoginWithDevAuthData, ThrowOnError>): RequestResult<LoginWithDevAuthResponses, LoginWithDevAuthErrors, ThrowOnError> => (options?.client ?? client).post<LoginWithDevAuthResponses, LoginWithDevAuthErrors, ThrowOnError>({ url: '/api/v1/dev-auth/login', ...options });
+
+/**
+ * Get community activity feed
+ */
+export const getCommunityFeed = <ThrowOnError extends boolean = false>(options?: Options<GetCommunityFeedData, ThrowOnError>): RequestResult<GetCommunityFeedResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetCommunityFeedResponses, unknown, ThrowOnError>({ url: '/api/v1/community/feed', ...options });
+
+/**
+ * Delete comment
+ */
+export const deleteComment = <ThrowOnError extends boolean = false>(options: Options<DeleteCommentData, ThrowOnError>): RequestResult<DeleteCommentResponses, DeleteCommentErrors, ThrowOnError> => (options.client ?? client).delete<DeleteCommentResponses, DeleteCommentErrors, ThrowOnError>({ url: '/api/v1/me/place-comments/{commentId}', ...options });
+
+/**
+ * Update comment
+ */
+export const updateComment = <ThrowOnError extends boolean = false>(options: Options<UpdateCommentData, ThrowOnError>): RequestResult<UpdateCommentResponses, UpdateCommentErrors, ThrowOnError> => (options.client ?? client).patch<UpdateCommentResponses, UpdateCommentErrors, ThrowOnError>({
+    url: '/api/v1/me/place-comments/{commentId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get my reviews
+ */
+export const myReviews = <ThrowOnError extends boolean = false>(options?: Options<MyReviewsData, ThrowOnError>): RequestResult<MyReviewsResponses, MyReviewsErrors, ThrowOnError> => (options?.client ?? client).get<MyReviewsResponses, MyReviewsErrors, ThrowOnError>({ url: '/api/v1/me/reviews', ...options });
+
+/**
+ * Delete review
+ */
+export const deleteReview = <ThrowOnError extends boolean = false>(options: Options<DeleteReviewData, ThrowOnError>): RequestResult<DeleteReviewResponses, DeleteReviewErrors, ThrowOnError> => (options.client ?? client).delete<DeleteReviewResponses, DeleteReviewErrors, ThrowOnError>({ url: '/api/v1/me/reviews/{reviewId}', ...options });
+
+/**
+ * Update review
+ */
+export const updateReview = <ThrowOnError extends boolean = false>(options: Options<UpdateReviewData, ThrowOnError>): RequestResult<UpdateReviewResponses, UpdateReviewErrors, ThrowOnError> => (options.client ?? client).patch<UpdateReviewResponses, UpdateReviewErrors, ThrowOnError>({
+    url: '/api/v1/me/reviews/{reviewId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Reply to a comment
+ */
+export const addReply = <ThrowOnError extends boolean = false>(options: Options<AddReplyData, ThrowOnError>): RequestResult<AddReplyResponses, AddReplyErrors, ThrowOnError> => (options.client ?? client).post<AddReplyResponses, AddReplyErrors, ThrowOnError>({
+    url: '/api/v1/place-comments/{commentId}/replies',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get discussion comments for a place
+ */
+export const listComments = <ThrowOnError extends boolean = false>(options: Options<ListCommentsData, ThrowOnError>): RequestResult<ListCommentsResponses, unknown, ThrowOnError> => (options.client ?? client).get<ListCommentsResponses, unknown, ThrowOnError>({ url: '/api/v1/places/{placeId}/comments', ...options });
+
+/**
+ * Add a comment to place discussion
+ */
+export const addComment = <ThrowOnError extends boolean = false>(options: Options<AddCommentData, ThrowOnError>): RequestResult<AddCommentResponses, AddCommentErrors, ThrowOnError> => (options.client ?? client).post<AddCommentResponses, AddCommentErrors, ThrowOnError>({
+    url: '/api/v1/places/{placeId}/comments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get reviews for a place
+ */
+export const listReviews = <ThrowOnError extends boolean = false>(options: Options<ListReviewsData, ThrowOnError>): RequestResult<ListReviewsResponses, unknown, ThrowOnError> => (options.client ?? client).get<ListReviewsResponses, unknown, ThrowOnError>({ url: '/api/v1/places/{placeId}/reviews', ...options });
+
+/**
+ * Add review for a place
+ */
+export const addReview = <ThrowOnError extends boolean = false>(options: Options<AddReviewData, ThrowOnError>): RequestResult<AddReviewResponses, AddReviewErrors, ThrowOnError> => (options.client ?? client).post<AddReviewResponses, AddReviewErrors, ThrowOnError>({
+    url: '/api/v1/places/{placeId}/reviews',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * List enabled amenities
@@ -70,6 +160,84 @@ export const searchPlaces = <ThrowOnError extends boolean = false>(options?: Opt
 export const getPlaceBySlug = <ThrowOnError extends boolean = false>(options: Options<GetPlaceBySlugData, ThrowOnError>): RequestResult<GetPlaceBySlugResponses, GetPlaceBySlugErrors, ThrowOnError> => (options.client ?? client).get<GetPlaceBySlugResponses, GetPlaceBySlugErrors, ThrowOnError>({ url: '/api/v1/places/{slug}', ...options });
 
 /**
+ * Get all forum categories
+ */
+export const listForumCategories = <ThrowOnError extends boolean = false>(options?: Options<ListForumCategoriesData, ThrowOnError>): RequestResult<ListForumCategoriesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListForumCategoriesResponses, unknown, ThrowOnError>({ url: '/api/v1/forum/categories', ...options });
+
+/**
+ * Create forum thread
+ */
+export const createForumThread = <ThrowOnError extends boolean = false>(options: Options<CreateForumThreadData, ThrowOnError>): RequestResult<CreateForumThreadResponses, unknown, ThrowOnError> => (options.client ?? client).post<CreateForumThreadResponses, unknown, ThrowOnError>({
+    url: '/api/v1/forum/categories/{categoryId}/threads',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get category threads
+ */
+export const listCategoryThreads = <ThrowOnError extends boolean = false>(options: Options<ListCategoryThreadsData, ThrowOnError>): RequestResult<ListCategoryThreadsResponses, unknown, ThrowOnError> => (options.client ?? client).get<ListCategoryThreadsResponses, unknown, ThrowOnError>({ url: '/api/v1/forum/categories/{slug}/threads', ...options });
+
+/**
+ * Get forum thread by ID
+ */
+export const getForumThread = <ThrowOnError extends boolean = false>(options: Options<GetForumThreadData, ThrowOnError>): RequestResult<GetForumThreadResponses, unknown, ThrowOnError> => (options.client ?? client).get<GetForumThreadResponses, unknown, ThrowOnError>({ url: '/api/v1/forum/threads/{threadId}', ...options });
+
+/**
+ * Get posts in thread
+ */
+export const listForumPosts = <ThrowOnError extends boolean = false>(options: Options<ListForumPostsData, ThrowOnError>): RequestResult<ListForumPostsResponses, unknown, ThrowOnError> => (options.client ?? client).get<ListForumPostsResponses, unknown, ThrowOnError>({ url: '/api/v1/forum/threads/{threadId}/posts', ...options });
+
+/**
+ * Create forum post
+ */
+export const createForumPost = <ThrowOnError extends boolean = false>(options: Options<CreateForumPostData, ThrowOnError>): RequestResult<CreateForumPostResponses, unknown, ThrowOnError> => (options.client ?? client).post<CreateForumPostResponses, unknown, ThrowOnError>({
+    url: '/api/v1/forum/threads/{threadId}/posts',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete own forum post
+ */
+export const deleteOwnForumPost = <ThrowOnError extends boolean = false>(options: Options<DeleteOwnForumPostData, ThrowOnError>): RequestResult<DeleteOwnForumPostResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteOwnForumPostResponses, unknown, ThrowOnError>({ url: '/api/v1/me/forum-posts/{postId}', ...options });
+
+/**
+ * Edit own forum post
+ */
+export const editOwnForumPost = <ThrowOnError extends boolean = false>(options: Options<EditOwnForumPostData, ThrowOnError>): RequestResult<EditOwnForumPostResponses, unknown, ThrowOnError> => (options.client ?? client).patch<EditOwnForumPostResponses, unknown, ThrowOnError>({
+    url: '/api/v1/me/forum-posts/{postId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete own forum thread
+ */
+export const deleteOwnForumThread = <ThrowOnError extends boolean = false>(options: Options<DeleteOwnForumThreadData, ThrowOnError>): RequestResult<DeleteOwnForumThreadResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteOwnForumThreadResponses, unknown, ThrowOnError>({ url: '/api/v1/me/forum-threads/{threadId}', ...options });
+
+/**
+ * Edit own forum thread
+ */
+export const editOwnForumThread = <ThrowOnError extends boolean = false>(options: Options<EditOwnForumThreadData, ThrowOnError>): RequestResult<EditOwnForumThreadResponses, unknown, ThrowOnError> => (options.client ?? client).patch<EditOwnForumThreadResponses, unknown, ThrowOnError>({
+    url: '/api/v1/me/forum-threads/{threadId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Liveness probe
  *
  * Checks process availability without contacting dependencies.
@@ -82,6 +250,35 @@ export const getHealthLive = <ThrowOnError extends boolean = false>(options?: Op
  * Checks the required PostgreSQL dependency; optional Redis is excluded.
  */
 export const getHealthReady = <ThrowOnError extends boolean = false>(options?: Options<GetHealthReadyData, ThrowOnError>): RequestResult<GetHealthReadyResponses, GetHealthReadyErrors, ThrowOnError> => (options?.client ?? client).get<GetHealthReadyResponses, GetHealthReadyErrors, ThrowOnError>({ url: '/api/v1/health/ready', ...options });
+
+/**
+ * Report offensive content
+ */
+export const reportContent = <ThrowOnError extends boolean = false>(options?: Options<ReportContentData, ThrowOnError>): RequestResult<ReportContentResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ReportContentResponses, unknown, ThrowOnError>({
+    url: '/api/v1/content-reports',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Perform moderator action on content
+ */
+export const moderateContent = <ThrowOnError extends boolean = false>(options?: Options<ModerateContentData, ThrowOnError>): RequestResult<ModerateContentResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ModerateContentResponses, unknown, ThrowOnError>({
+    url: '/api/v1/moderation/action',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Get moderator queue of reports
+ */
+export const listModerationQueue = <ThrowOnError extends boolean = false>(options?: Options<ListModerationQueueData, ThrowOnError>): RequestResult<ListModerationQueueResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListModerationQueueResponses, unknown, ThrowOnError>({ url: '/api/v1/moderation/queue', ...options });
 
 /**
  * List favorite places

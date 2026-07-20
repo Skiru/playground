@@ -1,0 +1,28 @@
+{
+  "actors": {
+    "anonymous": {
+      "GET /api/v1/forum/categories": "ALLOW",
+      "GET /api/v1/forum/categories/{slug}/threads": "ALLOW",
+      "GET /api/v1/forum/threads/{threadId}": "ALLOW",
+      "GET /api/v1/forum/threads/{threadId}/posts": "ALLOW",
+      "POST /api/v1/forum/categories/{categoryId}/threads": "DENY (401)",
+      "POST /api/v1/content-reports": "DENY (401)",
+      "GET /api/v1/moderation/queue": "DENY (401)"
+    },
+    "inactive_user": {
+      "POST /api/v1/forum/categories/{categoryId}/threads": "DENY (403 INACTIVE_ACCOUNT)",
+      "POST /api/v1/content-reports": "DENY (403 INACTIVE_ACCOUNT)",
+      "GET /api/v1/moderation/queue": "DENY (403)"
+    },
+    "alice (active_user)": {
+      "POST /api/v1/forum/categories/{categoryId}/threads": "ALLOW",
+      "PATCH /api/v1/me/forum-threads/{threadId} (own)": "ALLOW",
+      "PATCH /api/v1/me/forum-threads/{threadId} (bob's)": "DENY (403 FORBIDDEN_OWNERSHIP)",
+      "GET /api/v1/moderation/queue": "DENY (403 MODERATOR_ROLE_REQUIRED)"
+    },
+    "moderator": {
+      "GET /api/v1/moderation/queue": "ALLOW",
+      "POST /api/v1/moderation/action": "ALLOW"
+    }
+  }
+}

@@ -97,8 +97,7 @@ final readonly class DbalPlaceCommentRepository implements PlaceCommentRepositor
                 throw new \RuntimeException('CONCURRENCY_ERROR');
             }
 
-            $ref = new \ReflectionProperty($comment, 'version');
-            $ref->setValue($comment, $version + 1);
+            $comment->advanceVersion();
         } else {
             $this->connection->executeStatement(
                 'INSERT INTO place_comments (id, place_id, author_id, parent_id, body, status, created_at, updated_at, version) 
@@ -118,6 +117,9 @@ final readonly class DbalPlaceCommentRepository implements PlaceCommentRepositor
         }
     }
 
+    /**
+     * @param array<string, mixed> $row
+     */
     private function reconstitute(array $row): PlaceComment
     {
         return new PlaceComment(

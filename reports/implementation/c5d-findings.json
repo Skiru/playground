@@ -1,0 +1,15 @@
+{
+  "taskId": "PLAYGROUND_C5D_SCOPE_RECOVERY_AND_FULL_COMMUNITY_DELIVERY",
+  "status": "PASS",
+  "locatedWork": {
+    "backend": "All domain models, application use cases, DBAL repositories, and Http controllers for Forum, Reporting, and Moderation have been audited and fully validated under apps/api/src/Community.",
+    "frontend": "The Remix frontend has been verified to be completely buildable, utilizing the type-safe generated API client.",
+    "database": "Corrective indexes forward migration has been applied and validated against the entity mappings."
+  },
+  "repairedWork": {
+    "composer": "Removed all global --ignore-platform-reqs from api.Dockerfile. Built the container using the correct production PHP 8.5 environment to fully satisfy dependencies.",
+    "hardenedFetch": "Implemented isBodyJson typed body policy in hardened-fetch.server.ts to handle strings, blobs, arrays, FormData, and search params separately, and added 11 unit tests.",
+    "accessibility": "Implemented exact perWCAG-rule exclusions for EasyAdmin layout nodes in accessibility.spec.ts instead of global exclusions, and documented vendor risks.",
+    "e2eSync": "Replaced fragile 'DU' string locator in e2e tests with the semantic, test-id-based and aria-labeled button 'Panel użytkownika'."
+  }
+}

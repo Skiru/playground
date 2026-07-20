@@ -224,9 +224,9 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         foreach ($allowedOrigins as $allowed) {
             $normAllowed = $this->normalizeOrigin($allowed);
             if (null !== $normAllowed) {
-                if ($normOrigin['scheme'] === $normAllowed['scheme'] &&
-                    $normOrigin['host'] === $normAllowed['host'] &&
-                    $normOrigin['port'] === $normAllowed['port']) {
+                if ($normOrigin['scheme'] === $normAllowed['scheme']
+                    && $normOrigin['host'] === $normAllowed['host']
+                    && $normOrigin['port'] === $normAllowed['port']) {
                     return true;
                 }
             }
@@ -235,6 +235,9 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         return false;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     private function normalizeOrigin(string $url): ?array
     {
         $parsed = parse_url($url);

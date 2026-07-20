@@ -120,6 +120,21 @@ services:
     App\Community\Application\Review\RatingSummaryLookup: '@App\Community\Infrastructure\Review\DbalRatingSummaryLookup'
     App\Community\Domain\PlaceDiscussion\PlaceCommentRepository: '@App\Community\Infrastructure\PlaceDiscussion\DbalPlaceCommentRepository'
 
+    # Forum and Moderation Repositories
+    App\Community\Domain\Forum\ForumCategoryRepository: '@App\Community\Infrastructure\Forum\DbalForumCategoryRepository'
+    App\Community\Domain\Forum\ForumThreadRepository: '@App\Community\Infrastructure\Forum\DbalForumThreadRepository'
+    App\Community\Domain\Forum\ForumPostRepository: '@App\Community\Infrastructure\Forum\DbalForumPostRepository'
+    App\Community\Domain\Moderation\ContentReportRepository: '@App\Community\Infrastructure\Moderation\DbalContentReportRepository'
+    App\Community\Domain\Moderation\ModerationActionRepository: '@App\Community\Infrastructure\Moderation\DbalModerationActionRepository'
+
+    # Rate Limiter Aliases
+    Symfony\Component\RateLimiter\RateLimiterFactory $reviewWrite: '@limiter.review_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $commentWrite: '@limiter.comment_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $forumThreadWrite: '@limiter.forum_thread_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $forumPostWrite: '@limiter.forum_post_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $reportWrite: '@limiter.report_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $moderatorWrite: '@limiter.moderator_write'
+
     # Storage Configuration
     App\Shared\Infrastructure\Storage\LocalStorageAdapter:
         arguments:

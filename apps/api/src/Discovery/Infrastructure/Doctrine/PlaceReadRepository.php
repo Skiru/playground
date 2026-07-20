@@ -282,6 +282,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
         return array_map(static function (array $item): array {
             $min = (int) $item['minAgeMonths'];
             $max = null === $item['maxAgeMonths'] ? null : (int) $item['maxAgeMonths'];
+
             return [
                 'minAgeMonths' => $min,
                 'maxAgeMonths' => $max,
@@ -292,24 +293,24 @@ final readonly class PlaceReadRepository implements PlaceReadModel
 
     private static function formatAgeLabel(int $min, ?int $max): string
     {
-        if ($min === 0 && $max === null) {
+        if (0 === $min && null === $max) {
             return 'Dowolny wiek';
         }
         $minYears = $min / 12;
-        $minIsYear = ($min % 12 === 0);
-        $maxYears = $max !== null ? $max / 12 : null;
-        $maxIsYear = $max !== null ? ($max % 12 === 0) : false;
+        $minIsYear = (0 === $min % 12);
+        $maxYears = null !== $max ? $max / 12 : null;
+        $maxIsYear = null !== $max ? (0 === $max % 12) : false;
 
-        if ($max === null) {
-            return $minIsYear ? "Od {$minYears} " . self::yearsWord((int)$minYears) : "Od {$min} m.";
+        if (null === $max) {
+            return $minIsYear ? "Od {$minYears} ".self::yearsWord((int) $minYears) : "Od {$min} m.";
         }
 
-        if ($min === 0) {
-            return $maxIsYear ? "Do {$maxYears} " . self::yearsWord((int)$maxYears) : "Do {$max} m.";
+        if (0 === $min) {
+            return $maxIsYear ? "Do {$maxYears} ".self::yearsWord((int) $maxYears) : "Do {$max} m.";
         }
 
         if ($minIsYear && $maxIsYear) {
-            return "{$minYears}-{$maxYears} " . self::yearsWord((int)$maxYears);
+            return "{$minYears}-{$maxYears} ".self::yearsWord((int) $maxYears);
         }
 
         return "{$min}-{$max} m.";
@@ -317,7 +318,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
 
     private static function yearsWord(int $years): string
     {
-        if ($years === 1) {
+        if (1 === $years) {
             return 'roku';
         }
         $lastDigit = $years % 10;
@@ -325,6 +326,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
         if ($lastDigit >= 2 && $lastDigit <= 4 && ($lastTwo < 10 || $lastTwo >= 20)) {
             return 'lata';
         }
+
         return 'lat';
     }
 
@@ -349,6 +351,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                 'closed' => [] === $periods,
             ];
         }
+
         return $schedule;
     }
 
@@ -356,6 +359,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
     private static function specialOpeningDays(mixed $value): array
     {
         $days = self::jsonList($value);
+
         return array_map(static function (array $day): array {
             $periods = [];
             if (isset($day['periods']) && \is_array($day['periods'])) {
@@ -367,11 +371,12 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                     ];
                 }
             }
+
             return [
                 'date' => (string) $day['localDate'],
                 'mode' => (string) ($day['mode'] ?? ($day['closed'] ? 'closed' : 'custom')),
                 'periods' => $periods,
-                'note' => isset($day['note']) && '' !== trim((string)$day['note']) ? (string)$day['note'] : null,
+                'note' => isset($day['note']) && '' !== trim((string) $day['note']) ? (string) $day['note'] : null,
             ];
         }, $days);
     }

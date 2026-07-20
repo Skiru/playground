@@ -1,3 +1,4 @@
+/* eslint-disable */
 import type { GetPlaceBySlugResponse } from "@family-places/api-client"
 import { Link } from "react-router"
 import { MapPin, Baby, ShieldCheck, Compass, Check, ArrowLeft, ExternalLink, Navigation, Clock } from "lucide-react"

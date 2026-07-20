@@ -29,7 +29,7 @@ final class Review
         ReviewStatus $status,
         \DateTimeImmutable $createdAt,
         \DateTimeImmutable $updatedAt,
-        int $version = 1
+        int $version = 1,
     ) {
         if ($rating < 1 || $rating > 5) {
             throw new \InvalidArgumentException('Rating must be between 1 and 5.');
@@ -92,14 +92,58 @@ final class Review
     }
 
     // Getters
-    public function id(): Uuid { return $this->id; }
-    public function placeId(): Uuid { return $this->placeId; }
-    public function authorId(): Uuid { return $this->authorId; }
-    public function rating(): int { return $this->rating; }
-    public function body(): string { return $this->body; }
-    public function visitedOn(): ?\DateTimeImmutable { return $this->visitedOn; }
-    public function status(): ReviewStatus { return $this->status; }
-    public function createdAt(): \DateTimeImmutable { return $this->createdAt; }
-    public function updatedAt(): \DateTimeImmutable { return $this->updatedAt; }
-    public function version(): int { return $this->version; }
+    public function id(): Uuid
+    {
+        return $this->id;
+    }
+
+    public function placeId(): Uuid
+    {
+        return $this->placeId;
+    }
+
+    public function authorId(): Uuid
+    {
+        return $this->authorId;
+    }
+
+    public function rating(): int
+    {
+        return $this->rating;
+    }
+
+    public function body(): string
+    {
+        return $this->body;
+    }
+
+    public function visitedOn(): ?\DateTimeImmutable
+    {
+        return $this->visitedOn;
+    }
+
+    public function status(): ReviewStatus
+    {
+        return $this->status;
+    }
+
+    public function createdAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function updatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function advanceVersion(): void
+    {
+        ++$this->version;
+    }
 }

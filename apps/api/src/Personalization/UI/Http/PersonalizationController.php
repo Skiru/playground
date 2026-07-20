@@ -12,7 +12,6 @@ use App\Personalization\Application\UseCase\DeleteVisit;
 use App\Personalization\Application\UseCase\RemoveFavorite;
 use App\Personalization\Application\UseCase\UpdateVisit;
 use App\Personalization\Application\VisitRepository;
-use App\Shared\Application\Clock;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,7 +35,6 @@ final class PersonalizationController
         private readonly Connection $connection,
         private readonly Security $security,
         private readonly CsrfValidator $csrfValidator,
-        private readonly Clock $clock,
     ) {
     }
 
@@ -58,16 +56,6 @@ final class PersonalizationController
     {
         $response->headers->set('Cache-Control', 'private, no-store');
         $response->headers->set('Vary', 'Cookie');
-    }
-
-    private function parseDate(string $dateStr): \DateTimeImmutable
-    {
-        $date = \DateTimeImmutable::createFromFormat('Y-m-d', $dateStr);
-        if (!$date || $date->format('Y-m-d') !== $dateStr) {
-            throw new \InvalidArgumentException('Date must be in exact Y-m-d format.');
-        }
-
-        return $date->setTime(0, 0, 0);
     }
 
     #[Route('/api/v1/me/favorites', name: 'api_get_favorites', methods: ['GET'])]

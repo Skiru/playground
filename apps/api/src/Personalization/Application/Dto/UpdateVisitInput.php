@@ -32,7 +32,7 @@ final readonly class UpdateVisitInput
 
         $content = $request->getContent();
         $data = json_decode($content, true);
-        if (JSON_ERROR_NONE !== json_last_error() || !\is_array($data)) {
+        if (\JSON_ERROR_NONE !== json_last_error() || !\is_array($data)) {
             throw new BadRequestHttpException('Invalid JSON payload.');
         }
 
@@ -40,7 +40,7 @@ final readonly class UpdateVisitInput
         $allowedFields = ['visitedOn', 'note'];
         foreach (array_keys($data) as $key) {
             if (!\in_array($key, $allowedFields, true)) {
-                throw new BadRequestHttpException(sprintf('Extra field "%s" is not allowed.', $key));
+                throw new BadRequestHttpException(\sprintf('Extra field "%s" is not allowed.', $key));
             }
         }
 

@@ -13,6 +13,6 @@ enum PlaceCommentStatus: string
 
     public function isActive(): bool
     {
-        return $this === self::PUBLISHED || $this === self::HIDDEN;
+        return self::PUBLISHED === $this || self::HIDDEN === $this;
     }
 }

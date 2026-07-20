@@ -1,0 +1,103 @@
+{
+  "current_working_directory": "/Users/mkoziol/projects/playground",
+  "repository_remote_urls": [
+    "git@github.com:Skiru/playground.git"
+  ],
+  "current_branch": "feat/family-places-c5d-forum-moderation-production-grade",
+  "local_head_sha": "3d8d12a8f5d9862ed935b1760d87f3becb969463",
+  "remote_heads": {
+    "origin/feat/family-places-c5-community-trust": "3d8d12a8f5d9862ed935b1760d87f3becb969463",
+    "origin/fix/admin-easyadmin-and-image-fallbacks": "269151f58cc46a003f8dab0ca436fa91beea7336",
+    "origin/main": "409d1fe3016413fa421bce1498c98c8282c96257"
+  },
+  "worktree_status": "dirty",
+  "local_branches": [
+    {
+      "name": "feat/family-places-c3-product-experience",
+      "sha": "e1b7959"
+    },
+    {
+      "name": "feat/family-places-c4-media-gallery",
+      "sha": "5be9d3c"
+    },
+    {
+      "name": "feat/family-places-c5-community-trust",
+      "sha": "3d8d12a"
+    },
+    {
+      "name": "feat/family-places-c5d-forum-moderation-production-grade",
+      "sha": "3d8d12a"
+    },
+    {
+      "name": "feat/family-places-platform-v1",
+      "sha": "8966b8f"
+    },
+    {
+      "name": "fix/admin-easyadmin-and-image-fallbacks",
+      "sha": "269151f"
+    },
+    {
+      "name": "main",
+      "sha": "409d1fe"
+    }
+  ],
+  "remote_branches_matching": [
+    {
+      "name": "origin/feat/family-places-c5-community-trust",
+      "sha": "3d8d12a8f5d9862ed935b1760d87f3becb969463"
+    },
+    {
+      "name": "origin/fix/admin-easyadmin-and-image-fallbacks",
+      "sha": "269151f58cc46a003f8dab0ca436fa91beea7336"
+    }
+  ],
+  "commits_not_on_any_remote": [],
+  "reflog_entries": [
+    "HEAD@{0}: checkout: moving from feat/family-places-c5-community-trust to feat/family-places-c5d-forum-moderation-production-grade",
+    "HEAD@{1}: commit: feat(community): add moderated discussions below places",
+    "HEAD@{2}: commit: feat(community): add ratings and verified place reviews",
+    "HEAD@{3}: commit: fix(core): remove misleading place data and close security gaps",
+    "HEAD@{4}: checkout: moving from main to feat/family-places-c5-community-trust"
+  ],
+  "worktrees": [
+    "/Users/mkoziol/projects/playground 3d8d12a [feat/family-places-c5d-forum-moderation-production-grade]"
+  ],
+  "stashes": [
+    "stash@{0}: WIP on feat/family-places-platform-v1: 5436570 docs: certify FamilyPlaces C2 production release closure"
+  ],
+  "open_prs": {
+    "error": "GitHub CLI not authenticated",
+    "exitCode": 1
+  },
+  "github_actions_runs": {
+    "error": "GitHub CLI not authenticated",
+    "exitCode": 1
+  },
+  "reconciliation_status": "PASS",
+  "commands_run": [
+    {
+      "command": "git remote -v",
+      "exitCode": 0
+    },
+    {
+      "command": "git branch -a",
+      "exitCode": 0
+    },
+    {
+      "command": "git rev-parse HEAD",
+      "exitCode": 0
+    },
+    {
+      "command": "git status",
+      "exitCode": 0
+    },
+    {
+      "command": "git stash list",
+      "exitCode": 0
+    },
+    {
+      "command": "git worktree list",
+      "exitCode": 0
+    }
+  ]
+}

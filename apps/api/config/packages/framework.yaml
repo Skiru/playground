@@ -25,6 +25,30 @@ framework:
             policy: token_bucket
             limit: 5
             rate: { interval: '1 minute', amount: 5 }
+        review_write:
+            policy: token_bucket
+            limit: '%env(int:LIMIT_REVIEW_WRITE)%'
+            rate: { interval: '1 minute', amount: '%env(int:LIMIT_REVIEW_WRITE)%' }
+        comment_write:
+            policy: token_bucket
+            limit: '%env(int:LIMIT_COMMENT_WRITE)%'
+            rate: { interval: '1 minute', amount: '%env(int:LIMIT_COMMENT_WRITE)%' }
+        forum_thread_write:
+            policy: token_bucket
+            limit: '%env(int:LIMIT_FORUM_THREAD_WRITE)%'
+            rate: { interval: '1 minute', amount: '%env(int:LIMIT_FORUM_THREAD_WRITE)%' }
+        forum_post_write:
+            policy: token_bucket
+            limit: '%env(int:LIMIT_FORUM_POST_WRITE)%'
+            rate: { interval: '1 minute', amount: '%env(int:LIMIT_FORUM_POST_WRITE)%' }
+        report_write:
+            policy: token_bucket
+            limit: '%env(int:LIMIT_REPORT_WRITE)%'
+            rate: { interval: '1 minute', amount: '%env(int:LIMIT_REPORT_WRITE)%' }
+        moderator_write:
+            policy: token_bucket
+            limit: '%env(int:LIMIT_MODERATOR_WRITE)%'
+            rate: { interval: '1 minute', amount: '%env(int:LIMIT_MODERATOR_WRITE)%' }
 
     #esi: true
     #fragments: true

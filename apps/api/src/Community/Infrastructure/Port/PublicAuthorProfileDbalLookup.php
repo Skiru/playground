@@ -35,6 +35,35 @@ final readonly class PublicAuthorProfileDbalLookup implements PublicAuthorProfil
         ];
     }
 
+    public function getProfiles(array $userIds): array
+    {
+        if (empty($userIds)) {
+            return [];
+        }
+
+        $uniqueIds = array_unique(array_map(static fn (Uuid $id) => $id->toRfc4122(), $userIds));
+
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT id, display_name FROM users WHERE id IN (:ids)',
+            ['ids' => $uniqueIds],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::STRING]
+        );
+
+        $profiles = [];
+        foreach ($rows as $row) {
+            $displayName = (string) $row['display_name'];
+            $initials = $this->calculateInitials($displayName);
+            $idStr = (string) $row['id'];
+            $profiles[$idStr] = [
+                'id' => $idStr,
+                'displayName' => $displayName,
+                'initials' => $initials,
+            ];
+        }
+
+        return $profiles;
+    }
+
     private function calculateInitials(string $displayName): string
     {
         $words = preg_split('/\s+/', trim($displayName));

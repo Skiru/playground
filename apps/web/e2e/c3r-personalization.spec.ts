@@ -14,12 +14,12 @@ test.describe("C3R Personalization and Security E2E", () => {
     await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
 
     // 4. Verify successful login and session menu button in the header (initials DU)
-    const duButton = page.getByRole("button", { name: "DU", exact: true }).filter({ visible: true });
-    await expect(duButton).toBeVisible();
+    const userMenuButton = page.getByTestId("user-menu-button").filter({ visible: true });
+    await expect(userMenuButton).toBeVisible();
 
     // 5. Reload page to verify session persistence
     await page.reload();
-    await expect(duButton).toBeVisible();
+    await expect(userMenuButton).toBeVisible();
 
     // 6. Navigate to place list and details
     await page.goto("/miejsca?city=warszawa");
@@ -94,7 +94,7 @@ test.describe("C3R Personalization and Security E2E", () => {
 
     // 7. Logout and verify unauthenticated state
     await page.goto("/");
-    await duButton.click();
+    await page.getByTestId("user-menu-button").filter({ visible: true }).click();
     await page.getByRole("menuitem", { name: "Wyloguj się" }).click();
     
     // Verify logout success toast and original button

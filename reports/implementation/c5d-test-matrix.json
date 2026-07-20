@@ -1,0 +1,19 @@
+{
+  "testSuites": {
+    "phpunit": {
+      "totalTests": 131,
+      "assertions": 966,
+      "keyTestCases": [
+        "App\\Tests\\Community\\UI\\Http\\PlaceDiscussionControllerTest",
+        "App\\Tests\\Community\\UI\\Http\\CommunityControllerTest",
+        "App\\Tests\\Community\\UI\\Http\\ForumAndModerationSecurityTest"
+      ]
+    },
+    "vitest": {
+      "totalTests": 34,
+      "keyTestCases": [
+        "app/lib/hardened-fetch.server.test.ts"
+      ]
+    }
+  }
+}

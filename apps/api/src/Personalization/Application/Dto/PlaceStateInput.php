@@ -13,6 +13,9 @@ final readonly class PlaceStateInput
     /** @var list<Uuid> */
     public array $placeIds;
 
+    /**
+     * @param list<Uuid> $placeIds
+     */
     public function __construct(array $placeIds)
     {
         if (\count($placeIds) > 50) {

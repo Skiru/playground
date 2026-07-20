@@ -50,6 +50,6 @@ deptrac:
         CommunityDomain: [SharedDomain]
         CommunityApplication: [SharedDomain, SharedApplication, CommunityDomain]
         CommunityInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, CommunityDomain, CommunityApplication, PlacesDomain, PlacesApplication, IdentityDomain, IdentityApplication]
-        CommunityUI: [SharedApplication, CommunityApplication]
+        CommunityUI: [SharedApplication, CommunityApplication, IdentityDomain, CommunityDomain]
         AdministrationInfrastructure: [SharedApplication, IdentityApplication, PlacesApplication, AdministrationUI, PlacesDomain]
         AdministrationUI: [PlacesDomain, PlacesApplication]

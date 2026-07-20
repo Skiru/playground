@@ -29,10 +29,10 @@ final readonly class PaginationInput
         $page = $request->query->get('page');
         $pageSize = $request->query->get('pageSize');
 
-        if (null !== $page && (!is_numeric($page) || (int)$page < 1)) {
+        if (null !== $page && (!is_numeric($page) || (int) $page < 1)) {
             throw new BadRequestHttpException('Invalid page parameter.');
         }
-        if (null !== $pageSize && (!is_numeric($pageSize) || (int)$pageSize < 1 || (int)$pageSize > 50)) {
+        if (null !== $pageSize && (!is_numeric($pageSize) || (int) $pageSize < 1 || (int) $pageSize > 50)) {
             throw new BadRequestHttpException('Invalid pageSize parameter.');
         }
 

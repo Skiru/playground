@@ -8,7 +8,6 @@ use App\Identity\Domain\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Uid\Uuid;
 
 final class PlaceDiscussionControllerTest extends WebTestCase
 {
@@ -51,7 +50,7 @@ final class PlaceDiscussionControllerTest extends WebTestCase
         $csrfHeaders = [
             'HTTP_X-CSRF-Token' => $csrfToken,
             'CONTENT_TYPE' => 'application/json',
-            'HTTP_CONTENT_TYPE' => 'application/json'
+            'HTTP_CONTENT_TYPE' => 'application/json',
         ];
 
         // Clean existing comments for both places
@@ -97,6 +96,7 @@ final class PlaceDiscussionControllerTest extends WebTestCase
         $client->request('GET', \sprintf('/api/v1/places/%s/comments', $placeId1));
         self::assertResponseIsSuccessful();
         $list = json_decode($client->getResponse()->getContent(), true);
-        self::assertCount(2, $list['items']);
+        self::assertCount(1, $list['items']);
+        self::assertCount(1, $list['items'][0]['replies']);
     }
 }

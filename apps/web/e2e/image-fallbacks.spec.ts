@@ -140,12 +140,17 @@ test.describe("Real Playwright Image Fallbacks", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Zaloguj się" }).filter({ visible: true }).first().click();
     await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
+    const userMenuButton = page.getByTestId("user-menu-button").filter({ visible: true });
+    await expect(userMenuButton).toBeVisible();
 
     // Add a favorite first
     await page.goto("/miejsca?city=warszawa");
+    await expect(page.locator(".place-card").first()).toBeVisible();
     const favButton = page.locator(".place-card").first().locator('button[title="Dodaj do ulubionych"]');
     await expect(favButton).toBeEnabled();
     await favButton.click();
+    // Wait for favorite to be added in the backend
+    await expect(page.getByText("Dodano do ulubionych!")).toBeVisible();
 
     // Intercept any real media URL and return 404
     await page.route("**/media/**", (route) => {

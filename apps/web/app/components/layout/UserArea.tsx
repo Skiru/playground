@@ -30,7 +30,7 @@ export function UserArea() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-all hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Button aria-label="Panel użytkownika" data-testid="user-menu-button" variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-all hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Avatar className="h-10 w-10 border bg-primary/5">
               <AvatarFallback className="text-sm font-bold text-primary">
                 {session.user.initials}

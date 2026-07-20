@@ -150,8 +150,7 @@ final readonly class DbalReviewRepository implements ReviewRepository
                 throw new \RuntimeException('CONCURRENCY_ERROR');
             }
 
-            $ref = new \ReflectionProperty($review, 'version');
-            $ref->setValue($review, $version + 1);
+            $review->advanceVersion();
         } else {
             $this->connection->executeStatement(
                 'INSERT INTO reviews (id, place_id, author_id, rating, body, visited_on, status, created_at, updated_at, version) 
@@ -172,6 +171,9 @@ final readonly class DbalReviewRepository implements ReviewRepository
         }
     }
 
+    /**
+     * @param array<string, mixed> $row
+     */
     private function reconstitute(array $row): Review
     {
         return new Review(

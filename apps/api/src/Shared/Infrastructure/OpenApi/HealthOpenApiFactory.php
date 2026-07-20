@@ -8,8 +8,8 @@ use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
-use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\Model\RequestBody;
+use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
@@ -76,7 +76,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'loginWithGoogle',
                 tags: ['Authentication'],
-                requestBody: new \ApiPlatform\OpenApi\Model\RequestBody('Google ID token.', new \ArrayObject([
+                requestBody: new RequestBody('Google ID token.', new \ArrayObject([
                     'application/json' => [
                         'schema' => [
                             'type' => 'object',
@@ -159,7 +159,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 operationId: 'addVisit',
                 tags: ['Personalization'],
                 parameters: [new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid'])],
-                requestBody: new \ApiPlatform\OpenApi\Model\RequestBody('Visit details.', new \ArrayObject([
+                requestBody: new RequestBody('Visit details.', new \ArrayObject([
                     'application/json' => [
                         'schema' => [
                             'type' => 'object',
@@ -204,7 +204,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 operationId: 'updateVisit',
                 tags: ['Personalization'],
                 parameters: [new Parameter('visitId', 'path', 'Visit UUID.', true, schema: ['type' => 'string', 'format' => 'uuid'])],
-                requestBody: new \ApiPlatform\OpenApi\Model\RequestBody('Updated visit details.', new \ArrayObject([
+                requestBody: new RequestBody('Updated visit details.', new \ArrayObject([
                     'application/json' => [
                         'schema' => [
                             'type' => 'object',
@@ -274,7 +274,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                             ]],
                             'items' => ['type' => 'array', 'items' => ['type' => 'object']],
                             'pagination' => ['type' => 'object'],
-                        ]
+                        ],
                     ]]])),
                 ],
                 summary: 'Get reviews for a place',
@@ -293,7 +293,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                         'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
                         'body' => ['type' => 'string', 'minLength' => 20, 'maxLength' => 5000],
                         'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
-                    ]
+                    ],
                 ]]])),
                 responses: [
                     '201' => new Response('Review created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
@@ -320,7 +320,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                         'body' => ['type' => 'string', 'minLength' => 20, 'maxLength' => 5000],
                         'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
                         'version' => ['type' => 'integer'],
-                    ]
+                    ],
                 ]]])),
                 responses: [
                     '200' => new Response('Review updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
@@ -376,7 +376,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                         'properties' => [
                             'items' => ['type' => 'array', 'items' => ['type' => 'object']],
                             'pagination' => ['type' => 'object'],
-                        ]
+                        ],
                     ]]])),
                 ],
                 summary: 'Get discussion comments for a place',
@@ -393,7 +393,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     'required' => ['body'],
                     'properties' => [
                         'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
-                    ]
+                    ],
                 ]]])),
                 responses: [
                     '201' => new Response('Comment created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
@@ -417,7 +417,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     'required' => ['body'],
                     'properties' => [
                         'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
-                    ]
+                    ],
                 ]]])),
                 responses: [
                     '201' => new Response('Reply created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
@@ -442,7 +442,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     'properties' => [
                         'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
                         'version' => ['type' => 'integer'],
-                    ]
+                    ],
                 ]]])),
                 responses: [
                     '200' => new Response('Comment updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
@@ -461,6 +461,247 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Delete comment',
+            )
+        ));
+
+        // 15. Forum, reporting, and moderation endpoints
+        $openApi->getPaths()->addPath('/api/v1/forum/categories', new PathItem(
+            get: new Operation(
+                operationId: 'listForumCategories',
+                tags: ['Forum'],
+                responses: [
+                    '200' => new Response('Forum categories list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'array', 'items' => ['type' => 'object']]]])),
+                ],
+                summary: 'Get all forum categories',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/categories/{slug}/threads', new PathItem(
+            get: new Operation(
+                operationId: 'listCategoryThreads',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('slug', 'path', 'Category slug.', true, schema: ['type' => 'string']),
+                    new Parameter('limit', 'query', 'Page limit.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                ],
+                responses: [
+                    '200' => new Response('Category threads list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Get category threads',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/categories/{categoryId}/threads', new PathItem(
+            post: new Operation(
+                operationId: 'createForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('categoryId', 'path', 'Category UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Thread content', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['title', 'body'],
+                    'properties' => [
+                        'title' => ['type' => 'string', 'minLength' => 5, 'maxLength' => 160],
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Thread created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Create forum thread',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/threads/{threadId}', new PathItem(
+            get: new Operation(
+                operationId: 'getForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Thread detail.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Get forum thread by ID',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/me/forum-threads/{threadId}', new PathItem(
+            patch: new Operation(
+                operationId: 'editOwnForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Edit thread body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['title', 'version'],
+                    'properties' => [
+                        'title' => ['type' => 'string', 'minLength' => 5, 'maxLength' => 160],
+                        'version' => ['type' => 'integer'],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Thread updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Edit own forum thread',
+            ),
+            delete: new Operation(
+                operationId: 'deleteOwnForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                ],
+                summary: 'Delete own forum thread',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/threads/{threadId}/posts', new PathItem(
+            get: new Operation(
+                operationId: 'listForumPosts',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('limit', 'query', 'Page limit.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                ],
+                responses: [
+                    '200' => new Response('Posts list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Get posts in thread',
+            ),
+            post: new Operation(
+                operationId: 'createForumPost',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Post body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
+                        'replyToPostId' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Post created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Create forum post',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/me/forum-posts/{postId}', new PathItem(
+            patch: new Operation(
+                operationId: 'editOwnForumPost',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('postId', 'path', 'Post UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Edit post body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['body', 'version'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
+                        'version' => ['type' => 'integer'],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Post updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Edit own forum post',
+            ),
+            delete: new Operation(
+                operationId: 'deleteOwnForumPost',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('postId', 'path', 'Post UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                ],
+                summary: 'Delete own forum post',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/community/feed', new PathItem(
+            get: new Operation(
+                operationId: 'getCommunityFeed',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('limit', 'query', 'Page limit.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                    new Parameter('type', 'query', 'Filter by activity type.', false, schema: ['type' => 'string']),
+                    new Parameter('cityId', 'query', 'Filter by city UUID.', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('categoryId', 'query', 'Filter by category UUID.', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Community activity feed.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Get community activity feed',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/content-reports', new PathItem(
+            post: new Operation(
+                operationId: 'reportContent',
+                tags: ['Moderation'],
+                requestBody: new RequestBody('Report details', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['targetId', 'targetType', 'reason'],
+                    'properties' => [
+                        'targetId' => ['type' => 'string', 'format' => 'uuid'],
+                        'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+                        'reason' => ['type' => 'string', 'enum' => ['SPAM', 'HARASSMENT', 'INAPPROPRIATE', 'MISINFORMATION', 'PRIVACY_CONCERN', 'OTHER']],
+                        'details' => ['type' => 'string', 'maxLength' => 1000],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Report created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Report offensive content',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/queue', new PathItem(
+            get: new Operation(
+                operationId: 'listModerationQueue',
+                tags: ['Moderation'],
+                parameters: [
+                    new Parameter('status', 'query', 'Filter by report status.', false, schema: ['type' => 'string']),
+                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer']),
+                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer']),
+                ],
+                responses: [
+                    '200' => new Response('Moderation queue reports list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Get moderator queue of reports',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/action', new PathItem(
+            post: new Operation(
+                operationId: 'moderateContent',
+                tags: ['Moderation'],
+                requestBody: new RequestBody('Moderation action details', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['targetId', 'targetType', 'action', 'reason'],
+                    'properties' => [
+                        'targetId' => ['type' => 'string', 'format' => 'uuid'],
+                        'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+                        'action' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']],
+                        'reason' => ['type' => 'string', 'minLength' => 1],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Perform moderator action.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Perform moderator action on content',
             )
         ));
 
@@ -542,7 +783,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 'address_line1', 'address_line2', 'postal_code', 'country_code', 'categories', 'amenities',
                 'age_zones', 'weekly_opening', 'special_opening', 'indoor', 'outdoor', 'free_entry',
                 'price_description', 'website_url', 'phone', 'verification_status', 'longitude', 'latitude',
-                'ageZones', 'openingSchedule', 'specialOpeningDays'
+                'ageZones', 'openingSchedule', 'specialOpeningDays',
             ],
             'properties' => [
                 'id' => ['type' => 'string', 'format' => 'uuid'],

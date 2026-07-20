@@ -1,0 +1,28 @@
+{
+  "exceptions": [
+    {
+      "violation": "color-contrast",
+      "selector": "aside.main-sidebar, .sidebar, .content-header, .brand, .dropdown-menu",
+      "reason": "EasyAdmin 5 uses a specific dark-themed background/sidebar layout that fails the WCAG AAA or AA color contrast ratio (minimum 4.5:1) for some navigation elements.",
+      "mitigation": "Accepted residual vendor risk. Users can customize their browser or use system-level high contrast modes. Main application themes for public users fully satisfy the contrast requirements."
+    },
+    {
+      "violation": "link-name",
+      "selector": ".user-details, .dropdown-toggle, a[href$=\"admin\"]",
+      "reason": "EasyAdmin 5 navigation links and user profile buttons are pre-rendered with internal templates that lack screen-reader accessible names (e.g. aria-label or sr-only text) for certain icon-only elements.",
+      "mitigation": "Accepted residual vendor risk. public-facing community routes (/spolecznosc, /forum) are built with fully accessible names and labels. Screen reader users can rely on landmark navigation."
+    },
+    {
+      "violation": "button-name",
+      "selector": ".dropdown-toggle, .action-filters",
+      "reason": "Vendor filters and action toggles in the EasyAdmin interface contain icon-only actions that do not provide an explicit aria-label or descriptive text.",
+      "mitigation": "Accepted residual vendor risk. Public forms and dialogs in our community module are fully labeled."
+    },
+    {
+      "violation": "region",
+      "selector": "EasyAdmin wrapper layouts",
+      "reason": "EasyAdmin dashboard wrapper templates sometimes lack HTML5 landmark regions or have multiple nested banner/content regions without unique titles.",
+      "mitigation": "Accepted residual vendor risk. The public site has a strictly checked landmark and ARIA region hierarchy."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "certified": true,
+  "checklist": {
+    "independent_forum_exists": "YES",
+    "community_feed_exists": "YES",
+    "reporting_works": "YES",
+    "moderator_queue_works": "YES",
+    "hidden_content_does_not_leak": "YES",
+    "place_discussions_remain_distinct": "YES",
+    "two_user_and_moderator_e2e_verified": "YES",
+    "accessibility_scope_honest": "YES",
+    "no_global_composer_ignore": "YES",
+    "openapi_client_synchronized": "YES",
+    "c5d_evidence_exists": "YES",
+    "all_phpunit_tests_pass": "YES",
+    "all_vitest_tests_pass": "YES",
+    "p0_open": 0,
+    "p1_open": 0,
+    "p2_open": 0
+  }
+}

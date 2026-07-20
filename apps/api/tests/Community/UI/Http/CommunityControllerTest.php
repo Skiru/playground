@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Community\UI\Http;
 
 use App\Identity\Domain\User;
-use App\Identity\Domain\UserStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Uid\Uuid;
 
 final class CommunityControllerTest extends WebTestCase
 {
@@ -55,7 +53,7 @@ final class CommunityControllerTest extends WebTestCase
         $csrfHeaders = [
             'HTTP_X-CSRF-Token' => $csrfToken,
             'CONTENT_TYPE' => 'application/json',
-            'HTTP_CONTENT_TYPE' => 'application/json'
+            'HTTP_CONTENT_TYPE' => 'application/json',
         ];
 
         // 1. Create a review

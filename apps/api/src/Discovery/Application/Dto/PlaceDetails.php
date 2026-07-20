@@ -7,16 +7,16 @@ namespace App\Discovery\Application\Dto;
 final readonly class PlaceDetails implements \JsonSerializable
 {
     /**
-     * @param list<array{slug: string, name: string}>                                                                      $categories
-     * @param list<array{slug: string, name: string}>                                                                      $amenities
-     * @param list<array{name: string, minAgeMonths: int, maxAgeMonths: ?int, notes: ?string}>                             $ageZones
-     * @param list<array{weekday: int, sequence: int, opensAt: string, closesAt: string, closesNextDay: bool}>             $weeklyOpening
-     * @param list<array{localDate: string, closed: bool, note: ?string}>                                                  $specialOpening
-     * @param list<array{minAgeMonths: int, maxAgeMonths: ?int, label: string}>                                            $ageZonesCamel
-     * @param list<array{dayOfWeek: int, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, closed: bool}> $openingSchedule
+     * @param list<array{slug: string, name: string}>                                                                                              $categories
+     * @param list<array{slug: string, name: string}>                                                                                              $amenities
+     * @param list<array{name: string, minAgeMonths: int, maxAgeMonths: ?int, notes: ?string}>                                                     $ageZones
+     * @param list<array{weekday: int, sequence: int, opensAt: string, closesAt: string, closesNextDay: bool}>                                     $weeklyOpening
+     * @param list<array{localDate: string, closed: bool, note: ?string}>                                                                          $specialOpening
+     * @param list<array{minAgeMonths: int, maxAgeMonths: ?int, label: string}>                                                                    $ageZonesCamel
+     * @param list<array{dayOfWeek: int, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, closed: bool}>              $openingSchedule
      * @param list<array{date: string, mode: string, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, note: ?string}> $specialOpeningDays
-     * @param array<string, string>|null                                                                                   $mainPhoto
-     * @param list<array{id: string, is_main: bool, alt_text: ?string, caption: ?string, variants: array<string, string>}> $photos
+     * @param array<string, string>|null                                                                                                           $mainPhoto
+     * @param list<array{id: string, is_main: bool, alt_text: ?string, caption: ?string, variants: array<string, string>}>                         $photos
      */
     public function __construct(
         public string $id,
