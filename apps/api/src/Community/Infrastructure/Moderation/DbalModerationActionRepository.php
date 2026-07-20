@@ -58,10 +58,12 @@ final class DbalModerationActionRepository implements ModerationActionRepository
         $createdAt = $record->createdAt()->format('Y-m-d H:i:s');
         $previousStatus = $record->previousStatus();
         $resultingStatus = $record->resultingStatus();
+        $reportId = $record->reportId()?->toRfc4122();
+        $correlationId = $record->correlationId();
 
         $this->connection->executeStatement(
-            'INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status) 
-             VALUES (:id, :moderator_id, :target_type, :target_id, :action, :reason, :created_at, :previous_status, :resulting_status)',
+            'INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status, report_id, correlation_id) 
+             VALUES (:id, :moderator_id, :target_type, :target_id, :action, :reason, :created_at, :previous_status, :resulting_status, :report_id, :correlation_id)',
             [
                 'id' => $id,
                 'moderator_id' => $moderatorId,
@@ -72,6 +74,8 @@ final class DbalModerationActionRepository implements ModerationActionRepository
                 'created_at' => $createdAt,
                 'previous_status' => $previousStatus,
                 'resulting_status' => $resultingStatus,
+                'report_id' => $reportId,
+                'correlation_id' => $correlationId,
             ]
         );
     }
@@ -90,7 +94,9 @@ final class DbalModerationActionRepository implements ModerationActionRepository
             (string) $row['reason'],
             new \DateTimeImmutable((string) $row['created_at']),
             null !== $row['previous_status'] ? (string) $row['previous_status'] : null,
-            (string) $row['resulting_status']
+            (string) $row['resulting_status'],
+            null === $row['report_id'] ? null : Uuid::fromString((string) $row['report_id']),
+            null === $row['correlation_id'] ? null : (string) $row['correlation_id']
         );
     }
 }

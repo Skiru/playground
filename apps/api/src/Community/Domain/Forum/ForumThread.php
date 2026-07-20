@@ -54,6 +54,10 @@ final class ForumThread
 
     public function editTitle(string $title, \DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Hidden, removed, or deleted thread cannot be edited by its author.');
+        }
+
         $trimmedTitle = trim($title);
         $len = mb_strlen($trimmedTitle);
         if ($len < 5 || $len > 160) {
@@ -90,18 +94,27 @@ final class ForumThread
 
     public function lock(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Non-public thread cannot be locked.');
+        }
         $this->lockedAt = $now;
         $this->updatedAt = $now;
     }
 
     public function unlock(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::REMOVED_BY_MODERATOR === $this->status) {
+            throw new \LogicException('Removed thread cannot be unlocked into public availability.');
+        }
         $this->lockedAt = null;
         $this->updatedAt = $now;
     }
 
     public function pin(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Hidden, removed, or deleted thread cannot be pinned.');
+        }
         $this->pinnedAt = $now;
         $this->updatedAt = $now;
     }
@@ -115,6 +128,11 @@ final class ForumThread
     public function updateLastActivity(\DateTimeImmutable $now): void
     {
         $this->lastActivityAt = $now;
+    }
+
+    public function advanceVersion(): void
+    {
+        $this->version++;
     }
 
     public function id(): Uuid
@@ -170,10 +188,5 @@ final class ForumThread
     public function version(): int
     {
         return $this->version;
-    }
-
-    public function advanceVersion(): void
-    {
-        ++$this->version;
     }
 }

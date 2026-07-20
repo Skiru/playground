@@ -1,0 +1,34 @@
+{
+  "features": [
+    {
+      "id": "F_FEED",
+      "name": "Public Community Feed Visibility",
+      "implementation": "App\\Community\\Infrastructure\\Query\\DbalCommunityFeedQuery",
+      "tests": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testFeedVisibilityContainingSecrets"
+    },
+    {
+      "id": "F_REPORT",
+      "name": "Content Reporting and Target Non-disclosure",
+      "implementation": "App\\Community\\Application\\UseCase\\ReportContent",
+      "tests": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testInaccessibleTargetReporting"
+    },
+    {
+      "id": "F_REPLY",
+      "name": "Forum Post Replying Enforcements",
+      "implementation": "App\\Community\\Application\\UseCase\\CreateForumPost",
+      "tests": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testReplyToNonPublicPost"
+    },
+    {
+      "id": "F_MOD_CASE",
+      "name": "Explicit Report-based Moderation",
+      "implementation": "App\\Community\\Application\\UseCase\\ModerateContent",
+      "tests": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testDuplicateReportAndRace"
+    },
+    {
+      "id": "F_MOD_QUEUE",
+      "name": "High-performance Moderation Queue with No N+1 Queries",
+      "implementation": "App\\Community\\Infrastructure\\Query\\DbalModerationQueueQuery",
+      "tests": "App\\Tests\\Community\\UI\\Http\\ForumAndModerationSecurityTest"
+    }
+  ]
+}

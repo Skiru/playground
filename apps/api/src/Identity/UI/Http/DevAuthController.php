@@ -38,18 +38,25 @@ final class DevAuthController
             throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Route not found.');
         }
 
+        // Parse optional credentials from POST request body
+        $reqData = json_decode($request->getContent(), true) ?? [];
+        $emailStr = isset($reqData['email']) ? (string) $reqData['email'] : 'dev-user@example.com';
+        $displayNameStr = isset($reqData['displayName']) ? (string) $reqData['displayName'] : 'Developer User';
+        $rolesArray = isset($reqData['roles']) && is_array($reqData['roles']) ? $reqData['roles'] : ['ROLE_USER'];
+        $statusStr = isset($reqData['status']) ? (string) $reqData['status'] : 'ACTIVE';
+
         // Dynamically instantiate to bypass Deptrac boundaries
         $emailClass = 'App\Identity\Domain\ValueObject\EmailAddress';
         $userClass = 'App\Identity\Domain\User';
 
-        $emailObj = new $emailClass('dev-user@example.com');
+        $emailObj = new $emailClass($emailStr);
         /** @var \Symfony\Component\Security\Core\User\UserInterface|null $user */ // @phpstan-ignore varTag.nativeType
         $user = $this->userRepository->findByEmail($emailObj);
 
         if (null !== $user && method_exists($user, 'status')) {
             $status = $user->status();
-            $statusStr = $status instanceof \BackedEnum ? $status->value : (string) $status;
-            if ('ACTIVE' !== $statusStr) {
+            $dbStatusStr = $status instanceof \BackedEnum ? $status->value : (string) $status;
+            if ('ACTIVE' !== $dbStatusStr) {
                 return new JsonResponse([
                     'type' => 'https://familyplaces.example/problems/auth_failed',
                     'title' => 'Authentication Failed',
@@ -68,10 +75,24 @@ final class DevAuthController
             /** @var \Symfony\Component\Security\Core\User\UserInterface $user */ // @phpstan-ignore varTag.nativeType
             $user = new $userClass(
                 $emailObj,
-                'Developer User',
+                $displayNameStr,
                 $this->clock->now(),
-                ['ROLE_USER']
+                $rolesArray
             );
+
+            if ('ACTIVE' !== $statusStr) {
+                // Set non-active status via reflection if requested
+                $ref = new \ReflectionClass($user);
+                if ($ref->hasProperty('status')) {
+                    $prop = $ref->getProperty('status');
+                    $prop->setAccessible(true);
+                    $enumClass = 'App\Identity\Domain\UserStatus';
+                    if (class_exists($enumClass)) {
+                        $prop->setValue($user, $statusStr === 'SUSPENDED' ? $enumClass::SUSPENDED : $enumClass::DELETED);
+                    }
+                }
+            }
+
             $this->userRepository->save($user); // @phpstan-ignore argument.type
         }
 
@@ -98,6 +119,7 @@ final class DevAuthController
             ],
             'csrfToken' => $csrfToken,
         ]);
+
         $response->headers->set('Cache-Control', 'private, no-store');
         $response->headers->set('Vary', 'Cookie');
 

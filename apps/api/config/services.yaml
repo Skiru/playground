@@ -109,6 +109,8 @@ services:
     App\Community\Application\Port\PublishedPlaceLookup: '@App\Community\Infrastructure\Port\PublishedPlaceDbalLookup'
     App\Community\Application\Port\ActiveCommunityUserLookup: '@App\Community\Infrastructure\Port\ActiveCommunityUserDbalLookup'
     App\Community\Application\Port\PublicAuthorProfileLookup: '@App\Community\Infrastructure\Port\PublicAuthorProfileDbalLookup'
+    App\Community\Application\Port\CommunityFeedQuery: '@App\Community\Infrastructure\Query\DbalCommunityFeedQuery'
+    App\Community\Application\Port\ModerationQueueQuery: '@App\Community\Infrastructure\Query\DbalModerationQueueQuery'
 
     App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier:
         arguments:

@@ -1,0 +1,124 @@
+{
+  "findings": [
+    {
+      "id": "F_P0_1",
+      "severity": "P0",
+      "title": "no public forum/community routes",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/web/app/routes/community/*.tsx"
+    },
+    {
+      "id": "F_P0_2",
+      "severity": "P0",
+      "title": "no community Playwright journeys",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/web/e2e/*.spec.ts"
+    },
+    {
+      "id": "F_P0_3",
+      "severity": "P0",
+      "title": "feed visibility leakage",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/tests/Community/UI/Http/C5DForumModerationRegressionTest.php::testFeedVisibilityContainingSecrets"
+    },
+    {
+      "id": "F_P0_4",
+      "severity": "P0",
+      "title": "report button does not submit a report",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/web/app/components/community/ReportContentDialog.tsx"
+    },
+    {
+      "id": "F_P0_5",
+      "severity": "P0",
+      "title": "no real PR and no exact-SHA CI",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "GitHub Actions workflows on branch"
+    },
+    {
+      "id": "F_P1_1",
+      "severity": "P1",
+      "title": "report target visibility/enumeration",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/tests/Community/UI/Http/C5DForumModerationRegressionTest.php::testInaccessibleTargetReporting"
+    },
+    {
+      "id": "F_P1_2",
+      "severity": "P1",
+      "title": "replies to non-public forum posts",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/tests/Community/UI/Http/C5DForumModerationRegressionTest.php::testReplyToNonPublicPost"
+    },
+    {
+      "id": "F_P1_3",
+      "severity": "P1",
+      "title": "moderation actions not bound to a specific report",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/src/Community/Application/UseCase/ModerateContent.php"
+    },
+    {
+      "id": "F_P1_4",
+      "severity": "P1",
+      "title": "moderation queue N+1 and Application-layer SQL",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/src/Community/Infrastructure/Query/DbalModerationQueueQuery.php"
+    },
+    {
+      "id": "F_P1_5",
+      "severity": "P1",
+      "title": "destructive FK cascades",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/migrations/Version20260720150000.php"
+    },
+    {
+      "id": "F_P1_6",
+      "severity": "P1",
+      "title": "insufficient domain transition guards",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/src/Community/Domain/Forum/ForumThread.php"
+    },
+    {
+      "id": "F_P1_7",
+      "severity": "P1",
+      "title": "raw fetch/native alert/confirm/loose frontend contracts",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/web/app/components/community/*.tsx"
+    },
+    {
+      "id": "F_P1_8",
+      "severity": "P1",
+      "title": "non-auditable evidence",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "apps/api/migrations/Version20260720150000.php"
+    },
+    {
+      "id": "F_P2_1",
+      "severity": "P2",
+      "title": "stale README",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "README.md update"
+    },
+    {
+      "id": "F_P2_2",
+      "severity": "P2",
+      "title": "incomplete forensic recovery of PR #10",
+      "status": "RESOLVED",
+      "resolvedAt": "2026-07-20T18:15:00+02:00",
+      "testPath": "reports/implementation/c5d-v2-pr10-forensics.json"
+    }
+  ]
+}

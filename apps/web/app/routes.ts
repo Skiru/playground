@@ -16,4 +16,10 @@ export default [
   route("konto", "routes/account/index.tsx"),
   route("konto/ulubione", "routes/account/favorites.tsx"),
   route("konto/odwiedzone", "routes/account/visits.tsx"),
+  route("spolecznosc", "routes/community/feed.tsx"),
+  route("forum", "routes/community/forum-categories.tsx"),
+  route("forum/:categorySlug", "routes/community/forum-threads.tsx"),
+  route("forum/watek/:threadId", "routes/community/forum-thread-detail.tsx"),
+  route("moderator/queue", "routes/community/moderator-queue.tsx"),
+  route("moderator/case/:reportId", "routes/community/moderator-case.tsx"),
 ] satisfies RouteConfig;

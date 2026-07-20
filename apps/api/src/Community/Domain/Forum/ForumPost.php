@@ -48,6 +48,10 @@ final class ForumPost
 
     public function edit(string $body, \DateTimeImmutable $now): void
     {
+        if (ForumPostStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Deleted, hidden, or removed post cannot be edited.');
+        }
+
         $trimmedBody = trim($body);
         $len = mb_strlen($trimmedBody);
         if ($len < 1 || $len > 10000) {
@@ -80,6 +84,11 @@ final class ForumPost
     {
         $this->status = ForumPostStatus::REMOVED_BY_MODERATOR;
         $this->updatedAt = $now;
+    }
+
+    public function advanceVersion(): void
+    {
+        $this->version++;
     }
 
     public function id(): Uuid
@@ -125,10 +134,5 @@ final class ForumPost
     public function version(): int
     {
         return $this->version;
-    }
-
-    public function advanceVersion(): void
-    {
-        ++$this->version;
     }
 }

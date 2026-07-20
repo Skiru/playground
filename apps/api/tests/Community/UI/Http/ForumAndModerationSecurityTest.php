@@ -171,7 +171,7 @@ final class ForumAndModerationSecurityTest extends WebTestCase
             'details' => 'Bob duplicate report.',
         ]));
         self::assertSame(Response::HTTP_CONFLICT, $client->getResponse()->getStatusCode());
-        self::assertStringContainsString('DUPLICATE_REPORT', $client->getResponse()->getContent());
+        self::assertStringContainsString('REPORT_ALREADY_EXISTS', $client->getResponse()->getContent());
 
         // 12. Non-moderator role check: Bob tries to access moderation queue (403 expected)
         $client->request('GET', '/api/v1/moderation/queue');

@@ -1,0 +1,32 @@
+{
+  "test_matrix": {
+    "backend_phpunit": [
+      {
+        "test": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testFeedVisibilityContainingSecrets",
+        "covers": "Feed visibility and non-leakage of draft/hidden items"
+      },
+      {
+        "test": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testInaccessibleTargetReporting",
+        "covers": "Report target non-disclosure and 404 missing public resource"
+      },
+      {
+        "test": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testReplyToNonPublicPost",
+        "covers": "Replying to non-public forum posts rejection"
+      },
+      {
+        "test": "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest::testDuplicateReportAndRace",
+        "covers": "Deduplication of reports at both application and DB level"
+      },
+      {
+        "test": "App\\Tests\\Community\\UI\\Http\\ForumAndModerationSecurityTest::testSecurityAndValidationMatrix",
+        "covers": "Enforcement of roles, status validation, and csrf checks"
+      }
+    ],
+    "frontend_vitest": [
+      {
+        "test": "apps/web/app/routes/home.test.tsx",
+        "covers": "Useful search controls, home route rendering and basic a11y"
+      }
+    ]
+  }
+}

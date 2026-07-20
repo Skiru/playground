@@ -1,0 +1,8 @@
+{
+  "migration": {
+    "file": "Version20260720150000.php",
+    "description": "Harden database lifecycle, remove destructive cascades, and add audit linkage",
+    "applied_at": "2026-07-20T16:23:22+02:00",
+    "status": "PASS"
+  }
+}

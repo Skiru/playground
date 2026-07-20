@@ -17,6 +17,8 @@ final class ModerationActionRecord
     private \DateTimeImmutable $createdAt;
     private ?string $previousStatus;
     private string $resultingStatus;
+    private ?Uuid $reportId;
+    private string $correlationId;
 
     public function __construct(
         Uuid $id,
@@ -28,6 +30,8 @@ final class ModerationActionRecord
         \DateTimeImmutable $createdAt,
         ?string $previousStatus,
         string $resultingStatus,
+        ?Uuid $reportId = null,
+        ?string $correlationId = null,
     ) {
         $trimmedReason = trim($reason);
         if (empty($trimmedReason)) {
@@ -43,6 +47,8 @@ final class ModerationActionRecord
         $this->createdAt = $createdAt;
         $this->previousStatus = $previousStatus;
         $this->resultingStatus = $resultingStatus;
+        $this->reportId = $reportId;
+        $this->correlationId = $correlationId ?? Uuid::v7()->toString();
     }
 
     public function id(): Uuid
@@ -88,5 +94,15 @@ final class ModerationActionRecord
     public function resultingStatus(): string
     {
         return $this->resultingStatus;
+    }
+
+    public function reportId(): ?Uuid
+    {
+        return $this->reportId;
+    }
+
+    public function correlationId(): string
+    {
+        return $this->correlationId;
     }
 }

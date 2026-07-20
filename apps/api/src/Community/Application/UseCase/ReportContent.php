@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Community\Application\UseCase;
 
+use App\Community\Application\Port\PublishedPlaceLookup;
+use App\Community\Domain\Forum\ForumCategoryRepository;
 use App\Community\Domain\Forum\ForumPostRepository;
 use App\Community\Domain\Forum\ForumPostStatus;
 use App\Community\Domain\Forum\ForumThreadRepository;
@@ -19,6 +21,7 @@ use App\Community\Domain\Review\ReviewRepository;
 use App\Community\Domain\Review\ReviewStatus;
 use App\Shared\Application\Clock;
 use App\Shared\Application\Exception\ApiException;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\Uid\Uuid;
 
 final class ReportContent
@@ -29,6 +32,8 @@ final class ReportContent
         private readonly PlaceCommentRepository $commentRepository,
         private readonly ForumThreadRepository $threadRepository,
         private readonly ForumPostRepository $postRepository,
+        private readonly ForumCategoryRepository $categoryRepository,
+        private readonly PublishedPlaceLookup $placeLookup,
         private readonly Clock $clock,
     ) {
     }
@@ -39,28 +44,46 @@ final class ReportContent
         switch ($targetType) {
             case TargetType::REVIEW:
                 $target = $this->reviewRepository->findById($targetId);
-                if (null === $target || ReviewStatus::HIDDEN === $target->status() || ReviewStatus::REMOVED_BY_MODERATOR === $target->status()) {
+                if (null === $target || ReviewStatus::PUBLISHED !== $target->status()) {
+                    throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
+                }
+                if (!$this->placeLookup->isPublished($target->placeId())) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
                 break;
 
             case TargetType::PLACE_COMMENT:
                 $target = $this->commentRepository->findById($targetId);
-                if (null === $target || PlaceCommentStatus::HIDDEN === $target->status() || PlaceCommentStatus::REMOVED_BY_MODERATOR === $target->status()) {
+                if (null === $target || PlaceCommentStatus::PUBLISHED !== $target->status()) {
+                    throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
+                }
+                if (!$this->placeLookup->isPublished($target->placeId())) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
                 break;
 
             case TargetType::FORUM_THREAD:
                 $target = $this->threadRepository->findById($targetId);
-                if (null === $target || ForumThreadStatus::HIDDEN === $target->status() || ForumThreadStatus::REMOVED_BY_MODERATOR === $target->status()) {
+                if (null === $target || ForumThreadStatus::PUBLISHED !== $target->status()) {
+                    throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
+                }
+                $category = $this->categoryRepository->findById($target->categoryId());
+                if (null === $category || !$category->isActive()) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
                 break;
 
             case TargetType::FORUM_POST:
                 $target = $this->postRepository->findById($targetId);
-                if (null === $target || ForumPostStatus::HIDDEN === $target->status() || ForumPostStatus::REMOVED_BY_MODERATOR === $target->status()) {
+                if (null === $target || ForumPostStatus::PUBLISHED !== $target->status()) {
+                    throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
+                }
+                $thread = $this->threadRepository->findById($target->threadId());
+                if (null === $thread || ForumThreadStatus::PUBLISHED !== $thread->status()) {
+                    throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
+                }
+                $category = $this->categoryRepository->findById($thread->categoryId());
+                if (null === $category || !$category->isActive()) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
                 break;
@@ -69,7 +92,7 @@ final class ReportContent
         // 2. Prevent duplicate open reports by the same reporter for the same target
         $existing = $this->reportRepository->findOpenByReporterAndTarget($reporterId, $targetId, $targetType);
         if (null !== $existing) {
-            throw new ApiException(409, 'You have already reported this content.', 'DUPLICATE_REPORT');
+            throw new ApiException(409, 'You have already reported this content.', 'REPORT_ALREADY_EXISTS');
         }
 
         $now = $this->clock->now();
@@ -84,7 +107,11 @@ final class ReportContent
             $now
         );
 
-        $this->reportRepository->save($report);
+        try {
+            $this->reportRepository->save($report);
+        } catch (UniqueConstraintViolationException $e) {
+            throw new ApiException(409, 'You have already reported this content.', 'REPORT_ALREADY_EXISTS');
+        }
 
         return $report;
     }

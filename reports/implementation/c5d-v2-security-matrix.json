@@ -1,0 +1,35 @@
+{
+  "matrix": {
+    "roles": {
+      "ROLE_USER": {
+        "forum_read": "ALLOWED",
+        "forum_write": "ALLOWED",
+        "moderation_queue": "DENIED",
+        "moderate_action": "DENIED"
+      },
+      "ROLE_MODERATOR": {
+        "forum_read": "ALLOWED",
+        "forum_write": "ALLOWED",
+        "moderation_queue": "ALLOWED",
+        "moderate_action": "ALLOWED"
+      },
+      "ROLE_ADMIN": {
+        "forum_read": "ALLOWED",
+        "forum_write": "ALLOWED",
+        "moderation_queue": "ALLOWED",
+        "moderate_action": "ALLOWED"
+      }
+    },
+    "transitions": {
+      "ContentReport": {
+        "OPEN_to_IN_REVIEW": "ALLOWED",
+        "OPEN_to_RESOLVED": "ALLOWED",
+        "OPEN_to_DISMISSED": "ALLOWED",
+        "IN_REVIEW_to_RESOLVED": "ALLOWED",
+        "IN_REVIEW_to_DISMISSED": "ALLOWED",
+        "RESOLVED_to_OPEN": "DENIED",
+        "DISMISSED_to_RESOLVED": "DENIED"
+      }
+    }
+  }
+}

@@ -29,7 +29,7 @@ final class CreateForumPost
     public function execute(Uuid $userId, Uuid $threadId, ?Uuid $replyToPostId, string $body): ForumPost
     {
         $thread = $this->threadRepository->findById($threadId);
-        if (null === $thread || ForumThreadStatus::DELETED_BY_AUTHOR === $thread->status() || ForumThreadStatus::REMOVED_BY_MODERATOR === $thread->status() || ForumThreadStatus::HIDDEN === $thread->status()) {
+        if (null === $thread || ForumThreadStatus::PUBLISHED !== $thread->status()) {
             throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
         }
 
@@ -48,6 +48,9 @@ final class CreateForumPost
             $parentPost = $this->postRepository->findById($replyToPostId);
             if (null === $parentPost || $parentPost->threadId()->toRfc4122() !== $threadId->toRfc4122()) {
                 throw new ApiException(400, 'Replied-to post must belong to the same thread.', 'INVALID_PARENT_POST');
+            }
+            if (ForumPostStatus::PUBLISHED !== $parentPost->status()) {
+                throw new ApiException(400, 'Cannot reply to a non-public post.', 'INVALID_PARENT_STATUS');
             }
         }
 

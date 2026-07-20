@@ -43,8 +43,19 @@ final class ContentReport
         $this->resolvedBy = $resolvedBy;
     }
 
+    public function claim(Uuid $moderatorId, \DateTimeImmutable $now): void
+    {
+        if (ReportStatus::OPEN !== $this->status && ReportStatus::IN_REVIEW !== $this->status) {
+            throw new \LogicException('Only OPEN reports can be claimed for review.');
+        }
+        $this->status = ReportStatus::IN_REVIEW;
+    }
+
     public function resolve(Uuid $moderatorId, \DateTimeImmutable $now): void
     {
+        if (ReportStatus::DISMISSED === $this->status) {
+            throw new \LogicException('Dismissed report cannot be resolved.');
+        }
         $this->status = ReportStatus::RESOLVED;
         $this->resolvedAt = $now;
         $this->resolvedBy = $moderatorId;
@@ -52,6 +63,9 @@ final class ContentReport
 
     public function dismiss(Uuid $moderatorId, \DateTimeImmutable $now): void
     {
+        if (ReportStatus::RESOLVED === $this->status) {
+            throw new \LogicException('Resolved report cannot be dismissed.');
+        }
         $this->status = ReportStatus::DISMISSED;
         $this->resolvedAt = $now;
         $this->resolvedBy = $moderatorId;
