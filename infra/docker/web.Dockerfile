@@ -1,4 +1,4 @@
-FROM node:24-bookworm@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059 AS base
+FROM node:26-bookworm@sha256:219fc9da91e7f29a9f32290ff598cdf8886fd68f421ff515c8f93434da39a271 AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -22,7 +22,7 @@ RUN pnpm --filter @family-places/api-client build \
     && cp -R apps/web/build /prod/web/build \
     && test -x /prod/web/node_modules/.bin/react-router-serve
 
-FROM node:24-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS production
+FROM node:26-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb AS production
 ENV NODE_ENV=production PORT=3000
 
 LABEL org.opencontainers.image.source="https://github.com/Skiru/playground"
