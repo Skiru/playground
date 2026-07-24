@@ -16,8 +16,8 @@ final class ListModerationQueue
     /**
      * @return array<string, mixed>
      */
-    public function execute(?string $statusFilter, int $page, int $pageSize): array
+    public function execute(?string $statusFilter, ?string $cursor, int $limit): array
     {
-        return $this->queueQuery->getQueue($statusFilter, $page, $pageSize);
+        return $this->queueQuery->getQueue($statusFilter, $cursor, $limit);
     }
 }

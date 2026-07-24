@@ -2,6 +2,7 @@ import * as React from "react"
 import { useParams, Link } from "react-router"
 import { listCategoryThreads, createForumThread } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
@@ -33,13 +34,23 @@ interface Category {
   description: string
 }
 
+interface CursorPagination {
+  nextCursor?: string | null
+  hasNextPage?: boolean
+}
+
 export default function ForumThreadsPage() {
   const { categorySlug } = useParams()
   const { session } = useSession()
   const [category, setCategory] = React.useState<Category | null>(null)
   const [threads, setThreads] = React.useState<Thread[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [loadingMore, setLoadingMore] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+
+  // Pagination states
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
+  const [hasNextPage, setHasNextPage] = React.useState(false)
 
   // Creation State
   const [isCreateOpen, setIsOpen] = React.useState(false)
@@ -48,15 +59,36 @@ export default function ForumThreadsPage() {
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
 
-  const loadThreads = React.useCallback(async () => {
+  const loadThreads = React.useCallback(async (cursor: string | null = null, append = false) => {
     if (!categorySlug) return
-    setLoading(true)
+    if (cursor) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
     setError(null)
     try {
-      const res = await listCategoryThreads({ path: { categorySlug } })
+      const res = await listCategoryThreads({
+        path: { categorySlug },
+        query: {
+          limit: 10,
+          cursor: cursor || undefined,
+        }
+      })
       if (res.data) {
         setCategory(res.data.category as Category)
-        setThreads((res.data.items || []) as Thread[])
+        const fetchedItems = (res.data.items || []) as Thread[]
+        
+        setThreads((prev) => {
+          if (!append) return fetchedItems
+          const existingIds = new Set(prev.map(t => t.id))
+          const uniqueNew = fetchedItems.filter(t => !existingIds.has(t.id))
+          return [...prev, ...uniqueNew]
+        })
+        
+        const pagination = res.data.pagination as CursorPagination | undefined
+        setNextCursor(pagination?.nextCursor || null)
+        setHasNextPage(pagination?.hasNextPage || false)
       } else {
         setError("Nie znaleziono podanej kategorii forum.")
       }
@@ -64,6 +96,7 @@ export default function ForumThreadsPage() {
       setError(err instanceof Error ? err.message : "Wystąpił błąd.")
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }, [categorySlug])
 
@@ -90,8 +123,8 @@ export default function ForumThreadsPage() {
         setNewBody("")
         loadThreads()
       } else {
-        const errorData = res.error as any
-        setCreateError(errorData?.detail || "Nie udało się utworzyć wątku.")
+        const errorData = mapApiError(res.error)
+        setCreateError(errorData.detail || "Nie udało się utworzyć wątku.")
       }
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -271,6 +304,20 @@ export default function ForumThreadsPage() {
                       </CardContent>
                     </Card>
                   ))}
+
+                  {hasNextPage && (
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadThreads(nextCursor, true)}
+                        disabled={loadingMore}
+                        className="font-semibold px-6"
+                      >
+                        {loadingMore ? "Ładowanie..." : "Wczytaj więcej"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

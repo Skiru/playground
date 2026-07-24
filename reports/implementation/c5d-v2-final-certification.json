@@ -1,5 +1,9 @@
 {
-  "certified": true,
+  "certified": false,
+  "superseded": true,
+  "supersededReason": "The previous certification is rejected because no real C5D pull request exists, no remote GitHub Actions evidence exists, several Playwright tests do not execute the journeys declared in their names, the accessibility test does not run Axe, a concrete mixed-target moderator queue mapping defect exists, the frontend contains raw fetch, manually duplicated DTOs, any, native dialogs, and incomplete pagination, PR #10 is still open, and evidence files contained unsupported YES values.",
+  "supersededAt": "2026-07-21T07:40:00+02:00",
+  "replacementTaskId": "PLAYGROUND_C5D_RELEASE_EVIDENCE_AND_REAL_JOURNEYS_V3",
   "checklist": {
     "independent_forum_exists": "YES",
     "community_feed_exists": "YES",

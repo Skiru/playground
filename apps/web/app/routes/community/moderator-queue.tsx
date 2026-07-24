@@ -1,6 +1,7 @@
 import * as React from "react"
 import { listModerationQueue } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
@@ -23,12 +24,22 @@ interface Report {
   author?: { id: string; displayName: string; initials: string } | null
 }
 
+interface CursorPagination {
+  nextCursor?: string | null
+  hasNextPage?: boolean
+}
+
 export default function ModeratorQueuePage() {
   const { session } = useSession()
   const [reports, setReports] = React.useState<Report[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [loadingMore, setLoadingMore] = React.useState(false)
   const [statusFilter, setStatusFilter] = React.useState<string>("OPEN")
   const [error, setError] = React.useState<string | null>(null)
+
+  // Pagination states
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
+  const [hasNextPage, setHasNextPage] = React.useState<boolean>(false)
 
   const isModerator = session.authenticated && (
     session.user?.roles.includes("ROLE_MODERATOR") || session.user?.roles.includes("ROLE_ADMIN")
@@ -42,12 +53,14 @@ export default function ModeratorQueuePage() {
       const res = await listModerationQueue({
         query: {
           status: statusFilter === "ALL" ? undefined : statusFilter,
-          page: 1,
-          pageSize: 50,
+          limit: 15,
         },
       })
       if (res.data) {
         setReports((res.data.items || []) as Report[])
+        const pagination = res.data.pagination as CursorPagination | undefined
+        setNextCursor(pagination?.nextCursor || null)
+        setHasNextPage(pagination?.hasNextPage || false)
       } else {
         setError("Nie udało się pobrać kolejki moderatora.")
       }
@@ -57,6 +70,32 @@ export default function ModeratorQueuePage() {
       setLoading(false)
     }
   }, [isModerator, statusFilter])
+
+  const handleLoadMore = async () => {
+    if (!nextCursor || !isModerator || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await listModerationQueue({
+        query: {
+          status: statusFilter === "ALL" ? undefined : statusFilter,
+          limit: 15,
+          cursor: nextCursor,
+        },
+      })
+      if (res.data) {
+        setReports((prev) => [...prev, ...((res.data.items || []) as Report[])])
+        const pagination = res.data.pagination as CursorPagination | undefined
+        setNextCursor(pagination?.nextCursor || null)
+        setHasNextPage(pagination?.hasNextPage || false)
+      } else {
+        setError("Nie udało się załadować więcej zgłoszeń.")
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   React.useEffect(() => {
     loadQueue()
@@ -191,6 +230,20 @@ export default function ModeratorQueuePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {hasNextPage && (
+            <div className="flex justify-center mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="font-semibold px-6"
+              >
+                {loadingMore ? "Ładowanie..." : "Wczytaj więcej"}
+              </Button>
             </div>
           )}
         </div>

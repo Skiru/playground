@@ -3519,12 +3519,14 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "targetId",
-                                    "targetType",
                                     "action",
                                     "reason"
                                 ],
                                 "properties": {
+                                    "reportId": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
                                     "targetId": {
                                         "type": "string",
                                         "format": "uuid"
@@ -3564,6 +3566,78 @@
                 }
             }
         },
+        "/api/v1/moderation/case/{reportId}": {
+            "get": {
+                "operationId": "getModerationCase",
+                "tags": [
+                    "Moderation"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Moderation case details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Get moderation case details by report ID",
+                "parameters": [
+                    {
+                        "name": "reportId",
+                        "in": "path",
+                        "description": "The report UUID.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    }
+                ]
+            }
+        },
+        "/api/v1/moderation/case/{reportId}/claim": {
+            "post": {
+                "operationId": "claimModerationCase",
+                "tags": [
+                    "Moderation"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Case claimed successfully.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "summary": "Claim a moderation case by report ID",
+                "parameters": [
+                    {
+                        "name": "reportId",
+                        "in": "path",
+                        "description": "The report UUID.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    }
+                ]
+            }
+        },
         "/api/v1/moderation/queue": {
             "get": {
                 "operationId": "listModerationQueue",
@@ -3597,21 +3671,21 @@
                         "explode": true
                     },
                     {
-                        "name": "page",
+                        "name": "cursor",
                         "in": "query",
-                        "description": "Page number.",
+                        "description": "Cursor for pagination.",
                         "required": false,
                         "deprecated": false,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         },
                         "style": "form",
                         "explode": true
                     },
                     {
-                        "name": "pageSize",
+                        "name": "limit",
                         "in": "query",
-                        "description": "Page size.",
+                        "description": "Limit of items per page.",
                         "required": false,
                         "deprecated": false,
                         "schema": {

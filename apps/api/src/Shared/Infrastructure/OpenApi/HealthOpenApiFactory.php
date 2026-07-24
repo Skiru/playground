@@ -674,13 +674,41 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Moderation'],
                 parameters: [
                     new Parameter('status', 'query', 'Filter by report status.', false, schema: ['type' => 'string']),
-                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer']),
-                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Cursor for pagination.', false, schema: ['type' => 'string']),
+                    new Parameter('limit', 'query', 'Limit of items per page.', false, schema: ['type' => 'integer']),
                 ],
                 responses: [
                     '200' => new Response('Moderation queue reports list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
                 ],
                 summary: 'Get moderator queue of reports',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/case/{reportId}', new PathItem(
+            get: new Operation(
+                operationId: 'getModerationCase',
+                tags: ['Moderation'],
+                parameters: [
+                    new Parameter('reportId', 'path', 'The report UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Moderation case details.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Get moderation case details by report ID',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/case/{reportId}/claim', new PathItem(
+            post: new Operation(
+                operationId: 'claimModerationCase',
+                tags: ['Moderation'],
+                parameters: [
+                    new Parameter('reportId', 'path', 'The report UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Case claimed successfully.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                ],
+                summary: 'Claim a moderation case by report ID',
             )
         ));
 
@@ -690,8 +718,9 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Moderation'],
                 requestBody: new RequestBody('Moderation action details', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
-                    'required' => ['targetId', 'targetType', 'action', 'reason'],
+                    'required' => ['action', 'reason'],
                     'properties' => [
+                        'reportId' => ['type' => 'string', 'format' => 'uuid'],
                         'targetId' => ['type' => 'string', 'format' => 'uuid'],
                         'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
                         'action' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']],

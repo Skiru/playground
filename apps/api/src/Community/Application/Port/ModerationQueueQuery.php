@@ -9,5 +9,5 @@ interface ModerationQueueQuery
     /**
      * @return array<string, mixed>
      */
-    public function getQueue(?string $statusFilter, int $page, int $pageSize): array;
+    public function getQueue(?string $statusFilter, ?string $cursor, int $limit): array;
 }

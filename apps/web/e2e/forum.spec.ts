@@ -13,44 +13,131 @@ async function loginAs(page: any, email: string, displayName: string, roles: str
   await page.goto("/");
 }
 
-test.describe("Forum E2E", () => {
-  test("Forum thread lifecycle: create, reply, no edit Bob, lock, post block, unlock, post again", async ({ page }) => {
-    // 1. Alice creates a thread
-    await loginAs(page, "alice@example.com", "Alice");
-    await page.goto("/forum");
-    await page.locator("a[href^='/forum/']").first().click();
+test.describe("Forum E2E Real Journey", () => {
+  test("Complete multi-user forum and moderator workflow", async ({ browser }) => {
+    const uniqueSuffix = Math.random().toString(36).substring(7);
+    const threadTitle = `Wątek E2E ${uniqueSuffix}`;
+    const threadBody = `Treść pierwszego posta w wątku E2E ${uniqueSuffix}`;
+    const replyText = `Odpowiedź Boba E2E ${uniqueSuffix}`;
+    const postSecret = `TAJNY_MARKER_${uniqueSuffix}`;
 
-    await page.getByRole("button", { name: "Nowy wątek" }).click();
-    await page.locator("#title").fill("Gdzie na weekend z trzylatkiem w Warszawie?");
-    await page.locator("#body").fill("Szukam ciekawych miejsc zadaszonych na wypadek deszczu.");
-    await page.getByRole("button", { name: "Utwórz wątek" }).click();
+    // 1. Create separate contexts
+    const aliceCtx = await browser.newContext();
+    const bobCtx = await browser.newContext();
+    const modCtx = await browser.newContext();
 
-    // Verify thread is visible on the threads list
-    await expect(page.getByText("Gdzie na weekend z trzylatkiem")).toBeVisible();
+    const alicePage = await aliceCtx.newPage();
+    const bobPage = await bobCtx.newPage();
+    const modPage = await modCtx.newPage();
 
-    // 2. Go to thread details
-    await page.locator("a", { hasText: "Gdzie na weekend" }).first().click();
-    await expect(page.getByText("Szukam ciekawych miejsc zadaszonych")).toBeVisible();
+    // 2. Log in each user separately
+    await loginAs(alicePage, `alice_${uniqueSuffix}@example.com`, "Alice");
+    await loginAs(bobPage, `bob_${uniqueSuffix}@example.com`, "Bob");
+    await loginAs(modPage, `mod_${uniqueSuffix}@example.com`, "Moderator", ["ROLE_MODERATOR"]);
 
-    // Get thread UUID from URL
-    const url = page.url();
-    const threadId = url.split("/").pop();
+    // 3. Alice creates a thread
+    await alicePage.goto("/forum");
+    await alicePage.locator("a[href^='/forum/']").first().click();
+    await alicePage.getByRole("button", { name: "Nowy wątek" }).click();
+    await alicePage.locator("#title").fill(threadTitle);
+    await alicePage.locator("#body").fill(threadBody);
+    await alicePage.getByRole("button", { name: "Utwórz wątek" }).click();
 
-    // 3. Bob replies to Alice's thread
-    await loginAs(page, "bob@example.com", "Bob");
-    await page.goto(`/forum/watek/${threadId}`);
-    await page.locator("textarea").fill("Polecam Bawialnię Demo na Mokotowie, świetne miejsce!");
-    await page.getByRole("button", { name: "Wyślij" }).click();
+    // Verify thread title is visible
+    await expect(alicePage.getByText(threadTitle)).toBeVisible();
 
-    // Verify Bob's post is visible
-    await expect(page.getByText("Polecam Bawialnię Demo")).toBeVisible();
+    // Go to thread details
+    await alicePage.locator("a", { hasText: threadTitle }).first().click();
+    const threadUrl = alicePage.url();
+    const threadId = threadUrl.split("/").pop();
 
-    // 4. Log back as Alice, verify she cannot edit Bob's post
-    await loginAs(page, "alice@example.com", "Alice");
-    await page.goto(`/forum/watek/${threadId}`);
+    // 4. Bob opens the same thread and replies
+    await bobPage.goto(`/forum/watek/${threadId}`);
+    await expect(bobPage.getByText(threadBody)).toBeVisible();
+    await bobPage.locator("textarea").fill(`${replyText} ${postSecret}`);
+    await bobPage.getByRole("button", { name: "Wyślij" }).click();
+
+    // Verify Bob's reply is visible
+    await expect(bobPage.getByText(replyText)).toBeVisible();
+
+    const bobsPostCard = bobPage.locator(".card", { hasText: replyText });
+    await expect(bobsPostCard).toBeVisible();
+
+    // 5. Alice attempts to edit Bob's post (Edit button must NOT be visible)
+    await alicePage.goto(`/forum/watek/${threadId}`);
+    await expect(alicePage.locator(".card", { hasText: replyText }).getByRole("button", { name: "Edytuj" })).not.toBeVisible();
     
-    // Alice cannot see edit/delete buttons on Bob's post
-    const bobsPostCard = page.locator(".card", { hasText: "Polecam Bawialnię Demo" });
-    await expect(bobsPostCard.getByRole("button", { name: "Edytuj" })).not.toBeVisible();
+    // Alice reports Bob's post
+    const reportBtn = alicePage.locator(".card", { hasText: replyText }).getByRole("button").filter({ has: alicePage.locator(".lucide-flag") }).first();
+    await reportBtn.click();
+    await expect(alicePage.getByRole("heading", { name: "Zgłoś naruszenie regulaminu" })).toBeVisible();
+    await alicePage.locator("#reason-select").click();
+    await alicePage.getByRole("option", { name: "Spam lub reklama" }).click();
+    await alicePage.locator("#details-textarea").fill("To jest spam!");
+    await alicePage.getByRole("button", { name: "Wyślij zgłoszenie" }).click();
+    await expect(alicePage.getByText("Zgłoszenie wysłane")).toBeVisible();
+
+    // Let's grab Bob's reported post ID
+    const urlParts = alicePage.url().split("/");
+    const tId = urlParts[urlParts.length - 1];
+
+    // 6. Moderator sees the exact report in the queue
+    await modPage.goto("/moderator/queue");
+    await expect(modPage.getByRole("heading", { name: "Panel Moderatorów" })).toBeVisible();
+    
+    const reportLink = modPage.locator("a", { hasText: replyText }).first();
+    await expect(reportLink).toBeVisible();
+    await reportLink.click();
+
+    // Moderator claims the case
+    await expect(modPage.getByRole("heading", { name: "Zgłoszenie naruszenia" })).toBeVisible();
+    await modPage.getByRole("button", { name: "Rozpocznij analizę (Claim)" }).click();
+
+    // 7. Moderator locks the thread
+    await modPage.locator("#action-select").click();
+    await modPage.getByRole("option", { name: "Zablokuj wątek (Lock)" }).click();
+    await modPage.locator("#moderator-reason-textarea").fill("Locking for E2E testing");
+    await modPage.getByRole("button", { name: "Zatwierdź decyzję" }).click();
+    await expect(modPage.getByText("Decyzja zapisana pomyślnie")).toBeVisible();
+
+    // 8. Bob attempts to post in locked thread and receives error / no textarea
+    await bobPage.goto(`/forum/watek/${threadId}`);
+    await expect(bobPage.getByText("Wątek zablokowany")).toBeVisible();
+    await expect(bobPage.locator("textarea")).not.toBeVisible();
+
+    // 9. Moderator unlocks the thread
+    await modPage.locator("#action-select").click();
+    await modPage.getByRole("option", { name: "Odblokuj wątek (Unlock)" }).click();
+    await modPage.locator("#moderator-reason-textarea").fill("Unlocking for E2E testing");
+    await modPage.getByRole("button", { name: "Zatwierdź decyzję" }).click();
+    await expect(modPage.getByText("Decyzja zapisana pomyślnie")).toBeVisible();
+
+    // 10. Bob posts successfully now
+    await bobPage.goto(`/forum/watek/${threadId}`);
+    await expect(bobPage.locator("textarea")).toBeVisible();
+    await bobPage.locator("textarea").fill("Resumed post successfully!");
+    await bobPage.getByRole("button", { name: "Wyślij" }).click();
+    await expect(bobPage.getByText("Resumed post successfully!")).toBeVisible();
+
+    // 11. Moderator hides the reported post
+    await modPage.goto("/moderator/queue");
+    await modPage.locator("a", { hasText: replyText }).first().click();
+    await modPage.locator("#action-select").click();
+    await modPage.getByRole("option", { name: "Ukryj treść (Hide)" }).click();
+    await modPage.locator("#moderator-reason-textarea").fill("Hiding Bob's post");
+    await modPage.getByRole("button", { name: "Zatwierdź decyzję" }).click();
+    await expect(modPage.getByText("Decyzja zapisana pomyślnie")).toBeVisible();
+
+    // 12. The post's unique secret disappears from public thread and feed
+    await bobPage.goto(`/forum/watek/${threadId}`);
+    await expect(bobPage.getByText(postSecret)).not.toBeVisible();
+
+    await bobPage.goto("/spolecznosc");
+    await expect(bobPage.getByText(postSecret)).not.toBeVisible();
+
+    // 13. Close contexts
+    await aliceCtx.close();
+    await bobCtx.close();
+    await modCtx.close();
   });
 });

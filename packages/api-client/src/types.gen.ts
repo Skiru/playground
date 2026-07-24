@@ -1412,8 +1412,9 @@ export type ModerateContentData = {
      * Moderation action details
      */
     body?: {
-        targetId: string;
-        targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reportId?: string;
+        targetId?: string;
+        targetType?: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
         action: 'HIDE' | 'REMOVE' | 'RESTORE' | 'LOCK' | 'UNLOCK' | 'PIN' | 'UNPIN' | 'DISMISS_REPORT' | 'RESOLVE_REPORT';
         reason: string;
     };
@@ -1433,6 +1434,52 @@ export type ModerateContentResponses = {
 
 export type ModerateContentResponse = ModerateContentResponses[keyof ModerateContentResponses];
 
+export type GetModerationCaseData = {
+    body?: never;
+    path: {
+        /**
+         * The report UUID.
+         */
+        reportId: string;
+    };
+    query?: never;
+    url: '/api/v1/moderation/case/{reportId}';
+};
+
+export type GetModerationCaseResponses = {
+    /**
+     * Moderation case details.
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetModerationCaseResponse = GetModerationCaseResponses[keyof GetModerationCaseResponses];
+
+export type ClaimModerationCaseData = {
+    body?: never;
+    path: {
+        /**
+         * The report UUID.
+         */
+        reportId: string;
+    };
+    query?: never;
+    url: '/api/v1/moderation/case/{reportId}/claim';
+};
+
+export type ClaimModerationCaseResponses = {
+    /**
+     * Case claimed successfully.
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClaimModerationCaseResponse = ClaimModerationCaseResponses[keyof ClaimModerationCaseResponses];
+
 export type ListModerationQueueData = {
     body?: never;
     path?: never;
@@ -1442,13 +1489,13 @@ export type ListModerationQueueData = {
          */
         status?: string;
         /**
-         * Page number.
+         * Cursor for pagination.
          */
-        page?: number;
+        cursor?: string;
         /**
-         * Page size.
+         * Limit of items per page.
          */
-        pageSize?: number;
+        limit?: number;
     };
     url: '/api/v1/moderation/queue';
 };

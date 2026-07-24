@@ -1,6 +1,7 @@
 import * as React from "react"
 import { reportContent } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import {
   Dialog,
   DialogContent,
@@ -44,7 +45,7 @@ export function ReportContentDialog({ targetId, targetType, trigger }: ReportCon
         body: {
           targetId,
           targetType,
-          reason: reason as any,
+          reason: reason as "SPAM" | "HARASSMENT" | "INAPPROPRIATE" | "MISINFORMATION" | "PRIVACY_CONCERN" | "OTHER",
           details: details.trim() || undefined,
         },
         headers: {
@@ -61,13 +62,13 @@ export function ReportContentDialog({ targetId, targetType, trigger }: ReportCon
           setDetails("")
         }, 2000)
       } else {
-        const errorData = res.error as any
+        const errorData = mapApiError(res.error)
         if (res.response.status === 409) {
           setError("Ta treść została już przez Ciebie zgłoszona i jest weryfikowana.")
         } else if (res.response.status === 429) {
           setError("Przekroczono limit zgłoszeń. Spróbuj ponownie później.")
         } else {
-          setError(errorData?.detail || "Nie udało się przesłać zgłoszenia.")
+          setError(errorData.detail || "Nie udało się przesłać zgłoszenia.")
         }
       }
     } catch (err: unknown) {

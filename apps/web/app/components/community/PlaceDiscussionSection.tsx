@@ -1,6 +1,7 @@
 import * as React from "react"
 import { listComments, addComment, addReply, updateComment, deleteComment } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import { Button } from "~/components/ui/button"
 import { CommentThread } from "./CommentThread"
 import { CommentForm } from "./CommentForm"
@@ -72,8 +73,8 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         setShowMainForm(false)
         loadComments()
       } else {
-        const errorData = res.error as any
-        setFormError(errorData?.detail || "Nie udało się dodać komentarza.")
+        const errorData = mapApiError(res.error)
+        setFormError(errorData.detail || "Nie udało się dodać komentarza.")
       }
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -95,8 +96,8 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
       if (res.response.status === 201) {
         loadComments()
       } else {
-        const errorData = res.error as any
-        setFormError(errorData?.detail || "Nie udało się dodać odpowiedzi.")
+        const errorData = mapApiError(res.error)
+        setFormError(errorData.detail || "Nie udało się dodać odpowiedzi.")
       }
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -118,8 +119,8 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
       if (res.response.status === 200) {
         loadComments()
       } else {
-        const errorData = res.error as any
-        setFormError(errorData?.detail || "Nie udało się edytować komentarza.")
+        const errorData = mapApiError(res.error)
+        setFormError(errorData.detail || "Nie udało się edytować komentarza.")
       }
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -129,6 +130,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
   }
 
   const handleDelete = async (commentId: string) => {
+    setFormError(null)
     try {
       const res = await deleteComment({
         path: { commentId },
@@ -138,10 +140,11 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         setDeleteTargetId(null)
         loadComments()
       } else {
-        alert("Nie udało się usunąć komentarza.")
+        const errorData = mapApiError(res.error)
+        setFormError(errorData.detail || "Nie udało się usunąć komentarza.")
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Wystąpił błąd.")
+      setFormError(err instanceof Error ? err.message : "Wystąpił błąd.")
     }
   }
 
@@ -175,6 +178,13 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
             setFormError(null)
           }}
         />
+      )}
+
+      {formError && !showMainForm && (
+        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded flex items-center gap-2" role="alert">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          <span>{formError}</span>
+        </div>
       )}
 
       {/* Accessible delete dialog fallback */}

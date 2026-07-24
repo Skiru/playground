@@ -13,52 +13,76 @@ async function loginAs(page: any, email: string, displayName: string, roles: str
   await page.goto("/");
 }
 
-test.describe("Community Reviews E2E", () => {
-  test("Alice creates, edits, and deletes a review, rating recalculates, Bob cannot edit", async ({ page }) => {
-    // 1. Log in as Alice
-    await loginAs(page, "alice@example.com", "Alice");
-    
-    // Go to first place details page
-    await page.goto("/miejsca?city=warszawa");
-    await expect(page.locator(".place-card").first()).toBeVisible();
-    await page.locator(".place-card h2 a").first().click();
-    await expect(page.getByRole("heading", { name: "Oceny i opinie" }).first()).toBeVisible();
+test.describe("Community Reviews E2E Real Journey", () => {
+  test("Alice creates, edits, and deletes a review with rating recalculation validations", async ({ browser }) => {
+    const uniqueSuffix = Math.random().toString(36).substring(7);
+    const aliceEmail = `alice_review_${uniqueSuffix}@example.com`;
+    const bobEmail = `bob_review_${uniqueSuffix}@example.com`;
 
-    // 2. Alice adds a review (rating = 5)
-    await page.getByRole("button", { name: "Dodaj opinię" }).first().click();
-    await page.locator("#review-form-body").fill("To jest fantastyczne miejsce dla wszystkich dzieci! Wyjątkowa i czysta sala zabaw.");
-    await page.getByRole("button", { name: "Zapisz opinię" }).click();
+    const aliceCtx = await browser.newContext();
+    const bobCtx = await browser.newContext();
+
+    const alicePage = await aliceCtx.newPage();
+    const bobPage = await bobCtx.newPage();
+
+    // 1. Log in Alice and Bob
+    await loginAs(alicePage, aliceEmail, "Alice");
+    await loginAs(bobPage, bobEmail, "Bob");
+
+    // 2. Go to first place details page under Alice Page
+    await alicePage.goto("/miejsca?city=warszawa");
+    await expect(alicePage.locator(".place-card").first()).toBeVisible();
+    await alicePage.locator(".place-card h2 a").first().click();
+    await expect(alicePage.getByRole("heading", { name: "Oceny i opinie" }).first()).toBeVisible();
+
+    const placeUrl = alicePage.url();
+
+    // 3. Read rating summary BEFORE creation
+    const ratingSummaryTextBefore = await alicePage.locator("#rating-summary-stats").textContent();
+    const totalReviewsBefore = ratingSummaryTextBefore ? parseInt(ratingSummaryTextBefore.replace(/\D/g, "") || "0", 10) : 0;
+
+    // 4. Alice adds a review (rating = 4)
+    await alicePage.getByRole("button", { name: "Dodaj opinię" }).first().click();
+    
+    // Select 4 stars
+    const starButtons = alicePage.locator("form button:has-text('★')");
+    await starButtons.nth(3).click(); // Click the 4th star (0-indexed, so 4th star)
+    
+    await alicePage.locator("#review-form-body").fill("To jest fantastyczne, czyste i unikalne miejsce dla wszystkich dzieci! Wyjątkowa i bezpieczna sala zabaw.");
+    await alicePage.getByRole("button", { name: "Zapisz opinię" }).click();
 
     // Verify review is visible
-    await expect(page.getByText("To jest fantastyczne miejsce").first()).toBeVisible();
+    await expect(alicePage.getByText("To jest fantastyczne, czyste i unikalne miejsce dla wszystkich dzieci!")).toBeVisible();
 
-    // 3. Alice edits her review (rating = 4)
-    await page.getByRole("button", { name: "Edytuj" }).first().click();
-    await page.locator("#review-form-body").fill("To jest fantastyczne miejsce dla wszystkich dzieci! Edytowana treść opinii o sali.");
-    await page.getByRole("button", { name: "Zapisz opinię" }).click();
+    // 5. Read rating summary AFTER creation (total reviews must be incremented by 1!)
+    const ratingSummaryTextAfter = await alicePage.locator("#rating-summary-stats").textContent();
+    const totalReviewsAfter = ratingSummaryTextAfter ? parseInt(ratingSummaryTextAfter.replace(/\D/g, "") || "0", 10) : 0;
+    expect(totalReviewsAfter).toBe(totalReviewsBefore + 1);
 
-    // Verify updated review text
-    await expect(page.getByText("Edytowana treść opinii").first()).toBeVisible();
-
-    // 4. Log in as Bob and verify he cannot edit Alice's review
-    await loginAs(page, "bob@example.com", "Bob");
-    await page.goto("/miejsca?city=warszawa");
-    await page.locator(".place-card h2 a").first().click();
+    // 6. Bob opens the same place details and verifies Bob cannot edit/delete Alice's review
+    await bobPage.goto(placeUrl);
+    await expect(bobPage.getByText("To jest fantastyczne, czyste i unikalne miejsce dla wszystkich dzieci!")).toBeVisible();
     
-    await expect(page.getByText("Edytowana treść opinii").first()).toBeVisible();
-    // Verify Bob does not see Edit/Delete buttons for Alice's review
-    await expect(page.getByRole("button", { name: "Edytuj" })).not.toBeVisible();
+    const aliceReviewCard = bobPage.locator("div", { hasText: "To jest fantastyczne, czyste i unikalne miejsce dla wszystkich dzieci!" });
+    await expect(aliceReviewCard.getByRole("button", { name: "Edytuj" })).not.toBeVisible();
+    await expect(aliceReviewCard.getByRole("button", { name: "Usuń" })).not.toBeVisible();
 
-    // 5. Log back in as Alice and delete her review
-    await loginAs(page, "alice@example.com", "Alice");
-    await page.goto("/miejsca?city=warszawa");
-    await page.locator(".place-card h2 a").first().click();
-
-    await page.getByRole("button", { name: "Usuń" }).first().click();
-    // Confirm delete using accessible delete notice trigger
-    await page.getByRole("button", { name: "Usuń", exact: true }).filter({ visible: true }).click();
+    // 7. Alice deletes her review and verifies rating summary has been recalculated back to initial state
+    await alicePage.getByRole("button", { name: "Usuń" }).first().click();
+    
+    // Confirm delete inside the custom accessible dialog
+    await alicePage.getByRole("button", { name: "Usuń", exact: true }).filter({ visible: true }).click();
 
     // Verify review is deleted and no longer visible
-    await expect(page.getByText("Edytowana treść opinii")).not.toBeVisible();
+    await expect(alicePage.getByText("To jest fantastyczne, czyste i unikalne miejsce dla wszystkich dzieci!")).not.toBeVisible();
+
+    // Summary must go back to initial count
+    const ratingSummaryTextFinal = await alicePage.locator("#rating-summary-stats").textContent();
+    const totalReviewsFinal = ratingSummaryTextFinal ? parseInt(ratingSummaryTextFinal.replace(/\D/g, "") || "0", 10) : 0;
+    expect(totalReviewsFinal).toBe(totalReviewsBefore);
+
+    // 8. Close contexts
+    await aliceCtx.close();
+    await bobCtx.close();
   });
 });

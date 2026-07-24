@@ -53,7 +53,8 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                 t.title as title,
                 NULL as body,
                 t.category_id as source_id,
-                NULL as parent_source_id
+                NULL as parent_source_id,
+                NULL as place_slug
             FROM forum_threads t {$joins} WHERE {$whereSql}";
         }
 
@@ -79,7 +80,8 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                 NULL as title,
                 p.body as body,
                 p.thread_id as source_id,
-                t.category_id as parent_source_id
+                t.category_id as parent_source_id,
+                NULL as place_slug
             FROM forum_posts p {$joins} WHERE {$whereSql}";
         }
 
@@ -102,7 +104,8 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                     NULL as title,
                     r.body as body,
                     r.place_id as source_id,
-                    NULL as parent_source_id
+                    NULL as parent_source_id,
+                    pl.slug as place_slug
                 FROM reviews r {$joins} WHERE {$whereSql}";
             }
         }
@@ -126,7 +129,8 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                     NULL as title,
                     pc.body as body,
                     pc.place_id as source_id,
-                    pc.parent_id as parent_source_id
+                    pc.parent_id as parent_source_id,
+                    pl.slug as place_slug
                 FROM place_comments pc {$joins} WHERE {$whereSql}";
             }
         }
@@ -186,6 +190,7 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                 'excerpt' => $excerpt,
                 'sourceId' => (string) $row['source_id'],
                 'parentSourceId' => null !== $row['parent_source_id'] ? (string) $row['parent_source_id'] : null,
+                'placeSlug' => null !== $row['place_slug'] ? (string) $row['place_slug'] : null,
             ];
         }
 

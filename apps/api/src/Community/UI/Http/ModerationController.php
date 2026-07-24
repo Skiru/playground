@@ -50,13 +50,12 @@ final class ModerationController
         }
 
         $statusFilter = $request->query->get('status');
-        $page = $request->query->get('page');
-        $pageSize = $request->query->get('pageSize');
+        $cursor = $request->query->get('cursor');
+        $limit = $request->query->get('limit');
 
-        $pageInt = null !== $page && is_numeric($page) ? max(1, (int) $page) : 1;
-        $pageSizeInt = null !== $pageSize && is_numeric($pageSize) ? min(50, max(1, (int) $pageSize)) : 20;
+        $limitInt = null !== $limit && is_numeric($limit) ? min(100, max(1, (int) $limit)) : 50;
 
-        $result = $this->listQueueUseCase->execute($statusFilter, $pageInt, $pageSizeInt);
+        $result = $this->listQueueUseCase->execute($statusFilter, $cursor, $limitInt);
 
         return new JsonResponse($result);
     }

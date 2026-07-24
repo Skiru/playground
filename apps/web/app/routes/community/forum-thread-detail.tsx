@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useParams, Link } from "react-router"
+import { useParams, Link, useNavigate } from "react-router"
 import {
   getForumThread,
   listForumPosts,
@@ -10,6 +10,7 @@ import {
   deleteOwnForumPost,
 } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "~/components/ui/card"
@@ -43,6 +44,11 @@ interface Post {
   updatedAt: string
 }
 
+interface CursorPagination {
+  nextCursor?: string | null
+  hasNextPage?: boolean
+}
+
 interface Thread {
   id: string
   categoryId: string
@@ -59,11 +65,16 @@ interface Thread {
 
 export default function ForumThreadDetailPage() {
   const { threadId } = useParams()
-  const { session } = React.useContext(useSession as any) || useSession()
+  const navigate = useNavigate()
+  const { session } = useSession()
   const [thread, setThread] = React.useState<Thread | null>(null)
   const [posts, setPosts] = React.useState<Post[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+
+  // Delete confirmation states
+  const [isDeleteThreadConfirmOpen, setIsDeleteThreadConfirmOpen] = React.useState(false)
+  const [deletePostId, setDeletePostId] = React.useState<string | null>(null)
 
   // Reply state
   const [replyBody, setReplyBody] = React.useState("")
@@ -83,6 +94,11 @@ export default function ForumThreadDetailPage() {
   const [editPostError, setEditPostError] = React.useState<string | null>(null)
   const [editingPost, setEditingPost] = React.useState(false)
 
+  // Posts Pagination states
+  const [postsNextCursor, setPostsNextCursor] = React.useState<string | null>(null)
+  const [postsHasNextPage, setPostsHasNextPage] = React.useState(false)
+  const [loadingMorePosts, setLoadingMorePosts] = React.useState(false)
+
   const loadThreadAndPosts = React.useCallback(async () => {
     if (!threadId) return
     setLoading(true)
@@ -90,13 +106,19 @@ export default function ForumThreadDetailPage() {
     try {
       const [threadRes, postsRes] = await Promise.all([
         getForumThread({ path: { threadId } }),
-        listForumPosts({ path: { threadId } }),
+        listForumPosts({
+          path: { threadId },
+          query: { limit: 20 },
+        }),
       ])
 
       if (threadRes.data && postsRes.data) {
         setThread(threadRes.data as Thread)
         setPosts((postsRes.data.items || []) as Post[])
         setEditTitle(threadRes.data.title as string)
+        const pagination = postsRes.data.pagination as CursorPagination | undefined
+        setPostsNextCursor(pagination?.nextCursor || null)
+        setPostsHasNextPage(pagination?.hasNextPage || false)
       } else {
         setError("Wątek nie istnieje lub został usunięty.")
       }
@@ -106,6 +128,35 @@ export default function ForumThreadDetailPage() {
       setLoading(false)
     }
   }, [threadId])
+
+  const loadMorePosts = async () => {
+    if (!postsNextCursor || loadingMorePosts) return
+    setLoadingMorePosts(true)
+    try {
+      const res = await listForumPosts({
+        path: { threadId: threadId! },
+        query: {
+          limit: 20,
+          cursor: postsNextCursor,
+        }
+      })
+      if (res.data) {
+        const fetchedItems = (res.data.items || []) as Post[]
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map(p => p.id))
+          const uniqueNew = fetchedItems.filter(p => !existingIds.has(p.id))
+          return [...prev, ...uniqueNew]
+        })
+        const pagination = res.data.pagination as CursorPagination | undefined
+        setPostsNextCursor(pagination?.nextCursor || null)
+        setPostsHasNextPage(pagination?.hasNextPage || false)
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+    } finally {
+      setLoadingMorePosts(false)
+    }
+  }
 
   React.useEffect(() => {
     loadThreadAndPosts()
@@ -132,8 +183,8 @@ export default function ForumThreadDetailPage() {
         setReplyToPostId(null)
         loadThreadAndPosts()
       } else {
-        const errorData = res.error as any
-        setReplyError(errorData?.detail || "Nie udało się dodać odpowiedzi.")
+        const errorData = mapApiError(res.error)
+        setReplyError(errorData.detail || "Nie udało się dodać odpowiedzi.")
       }
     } catch (err: unknown) {
       setReplyError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -159,8 +210,8 @@ export default function ForumThreadDetailPage() {
         setIsEditThreadOpen(false)
         loadThreadAndPosts()
       } else {
-        const errorData = res.error as any
-        setEditThreadError(errorData?.detail || "Nie udało się edytować wątku.")
+        const errorData = mapApiError(res.error)
+        setEditThreadError(errorData.detail || "Nie udało się edytować wątku.")
       }
     } catch (err: unknown) {
       setEditThreadError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -169,9 +220,10 @@ export default function ForumThreadDetailPage() {
     }
   }
 
-  const handleDeleteThread = async () => {
+  const executeDeleteThread = async () => {
     if (!thread) return
-    if (!window.confirm("Czy na pewno chcesz usunąć ten wątek? Ta operacja jest nieodwracalna.")) return
+    setEditingThread(true)
+    setError(null)
 
     try {
       const res = await deleteOwnForumThread({
@@ -180,12 +232,16 @@ export default function ForumThreadDetailPage() {
       })
 
       if (res.response.status === 204) {
-        window.location.href = "/forum"
+        setIsDeleteThreadConfirmOpen(false)
+        navigate("/forum")
       } else {
-        alert("Nie udało się usunąć wątku.")
+        const errorData = mapApiError(res.error)
+        setError(errorData.detail || "Nie udało się usunąć wątku.")
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Wystąpił błąd.")
+      setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+    } finally {
+      setEditingThread(false)
     }
   }
 
@@ -205,8 +261,8 @@ export default function ForumThreadDetailPage() {
         setEditPostId(null)
         loadThreadAndPosts()
       } else {
-        const errorData = res.error as any
-        setEditPostError(errorData?.detail || "Nie udało się edytować posta.")
+        const errorData = mapApiError(res.error)
+        setEditPostError(errorData.detail || "Nie udało się edytować posta.")
       }
     } catch (err: unknown) {
       setEditPostError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -215,22 +271,28 @@ export default function ForumThreadDetailPage() {
     }
   }
 
-  const handleDeletePost = async (postId: string) => {
-    if (!window.confirm("Czy na pewno chcesz usunąć tę odpowiedź?")) return
+  const executeDeletePost = async () => {
+    if (!deletePostId) return
+    setEditingPost(true)
+    setError(null)
 
     try {
       const res = await deleteOwnForumPost({
-        path: { postId },
+        path: { postId: deletePostId },
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
       if (res.response.status === 204) {
+        setDeletePostId(null)
         loadThreadAndPosts()
       } else {
-        alert("Nie udało się usunąć posta.")
+        const errorData = mapApiError(res.error)
+        setError(errorData.detail || "Nie udało się usunąć posta.")
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Wystąpił błąd.")
+      setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+    } finally {
+      setEditingPost(false)
     }
   }
 
@@ -282,7 +344,12 @@ export default function ForumThreadDetailPage() {
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                       {thread.status === "DELETED_BY_AUTHOR" ? "Wątek usunięty przez autora" : thread.title}
                     </h1>
-                    {thread.lockedAt && <Lock className="h-4 w-4 text-muted-foreground shrink-0 ml-1" />}
+                    {thread.lockedAt && (
+                      <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" aria-label="Wątek zablokowany">
+                        <Lock className="h-4 w-4 shrink-0" />
+                        <span className="sr-only">Wątek zablokowany</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
@@ -306,7 +373,7 @@ export default function ForumThreadDetailPage() {
                         <Edit2 className="h-3.5 w-3.5" />
                         <span>Edytuj</span>
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleDeleteThread} className="flex items-center gap-1.5 text-destructive hover:bg-destructive/10">
+                      <Button variant="outline" size="sm" onClick={() => setIsDeleteThreadConfirmOpen(true)} className="flex items-center gap-1.5 text-destructive hover:bg-destructive/10">
                         <Trash2 className="h-3.5 w-3.5" />
                         <span>Usuń</span>
                       </Button>
@@ -421,7 +488,7 @@ export default function ForumThreadDetailPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeletePost(post.id)}
+                                onClick={() => setDeletePostId(post.id)}
                                 className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -476,6 +543,20 @@ export default function ForumThreadDetailPage() {
                 })}
               </div>
 
+              {postsHasNextPage && (
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadMorePosts}
+                    disabled={loadingMorePosts}
+                    className="font-semibold px-6"
+                  >
+                    {loadingMorePosts ? "Ładowanie..." : "Wczytaj więcej odpowiedzi"}
+                  </Button>
+                </div>
+              )}
+
               {/* Reply Form */}
               {session.authenticated && !thread.lockedAt && (
                 <div id="reply-form" className="pt-6 border-t">
@@ -526,6 +607,45 @@ export default function ForumThreadDetailPage() {
               )}
             </div>
           )}
+
+          {/* Accessible Custom Delete Confirmation Dialogs */}
+          <Dialog open={isDeleteThreadConfirmOpen} onOpenChange={setIsDeleteThreadConfirmOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Usuń wątek</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 text-sm text-muted-foreground">
+                Czy na pewno chcesz usunąć ten wątek? Ta operacja jest nieodwracalna.
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setIsDeleteThreadConfirmOpen(false)}>
+                  Anuluj
+                </Button>
+                <Button variant="destructive" size="sm" onClick={executeDeleteThread} disabled={editingThread}>
+                  {editingThread ? "Usuwanie..." : "Usuń wątek"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={deletePostId !== null} onOpenChange={(open) => { if (!open) setDeletePostId(null); }}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Usuń odpowiedź</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 text-sm text-muted-foreground">
+                Czy na pewno chcesz usunąć tę odpowiedź?
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setDeletePostId(null)}>
+                  Anuluj
+                </Button>
+                <Button variant="destructive" size="sm" onClick={executeDeletePost} disabled={editingPost}>
+                  {editingPost ? "Usuwanie..." : "Usuń odpowiedź"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </PageContainer>
     </AppShell>

@@ -19,18 +19,69 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
     ) {
     }
 
-    public function getQueue(?string $statusFilter, int $page, int $pageSize): array
+    public function getQueue(?string $statusFilter, ?string $cursor, int $limit): array
     {
-        $offset = ($page - 1) * $pageSize;
         $params = [
-            'limit' => $pageSize,
-            'offset' => $offset,
+            'limit' => $limit + 1,
         ];
 
         $where = [];
         if (null !== $statusFilter && '' !== trim($statusFilter)) {
             $where[] = 'status = :status';
             $params['status'] = $statusFilter;
+        }
+
+        // Decode and parse cursor
+        $cursorData = null;
+        if (null !== $cursor && '' !== trim($cursor)) {
+            $decoded = base64_decode($cursor, true);
+            if ($decoded !== false) {
+                $cursorData = json_decode($decoded, true);
+            }
+        }
+
+        // Validate statusFilter in cursor matches requested statusFilter
+        if (null !== $cursorData) {
+            if (($cursorData['statusFilter'] ?? null) !== $statusFilter) {
+                $cursorData = null;
+            }
+        }
+
+        if (null !== $cursorData) {
+            $lastPriority = (int) $cursorData['priority'];
+            $lastCreatedAt = (string) $cursorData['createdAt'];
+            $lastId = (string) $cursorData['id'];
+
+            $where[] = '(
+                (CASE status 
+                    WHEN \'OPEN\' THEN 1 
+                    WHEN \'IN_REVIEW\' THEN 2 
+                    WHEN \'RESOLVED\' THEN 3 
+                    WHEN \'DISMISSED\' THEN 4 
+                    ELSE 5 END > :last_priority)
+                OR (
+                    CASE status 
+                        WHEN \'OPEN\' THEN 1 
+                        WHEN \'IN_REVIEW\' THEN 2 
+                        WHEN \'RESOLVED\' THEN 3 
+                        WHEN \'DISMISSED\' THEN 4 
+                        ELSE 5 END = :last_priority 
+                    AND created_at < :last_created_at
+                )
+                OR (
+                    CASE status 
+                        WHEN \'OPEN\' THEN 1 
+                        WHEN \'IN_REVIEW\' THEN 2 
+                        WHEN \'RESOLVED\' THEN 3 
+                        WHEN \'DISMISSED\' THEN 4 
+                        ELSE 5 END = :last_priority 
+                    AND created_at = :last_created_at 
+                    AND id < :last_id
+                )
+            )';
+            $params['last_priority'] = $lastPriority;
+            $params['last_created_at'] = $lastCreatedAt;
+            $params['last_id'] = $lastId;
         }
 
         $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -45,20 +96,31 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                 WHEN 'DISMISSED' THEN 4 
                 ELSE 5 END ASC, 
              created_at DESC, id DESC 
-             LIMIT :limit OFFSET :offset",
+             LIMIT :limit",
             $params,
             [
                 'limit' => \Doctrine\DBAL\ParameterType::INTEGER,
-                'offset' => \Doctrine\DBAL\ParameterType::INTEGER,
             ]
         );
 
+        // Bounded count query (without cursor condition)
+        $countParams = [];
+        $countWhere = [];
+        if (null !== $statusFilter && '' !== trim($statusFilter)) {
+            $countWhere[] = 'status = :status';
+            $countParams['status'] = $statusFilter;
+        }
+        $countWhereSql = !empty($countWhere) ? 'WHERE ' . implode(' AND ', $countWhere) : '';
         $totalItems = (int) $this->connection->fetchOne(
-            "SELECT COUNT(*) FROM content_reports {$whereSql}",
-            $params
+            "SELECT COUNT(*) FROM content_reports {$countWhereSql}",
+            $countParams
         );
 
-        $totalPages = (int) ceil($totalItems / $pageSize);
+        $hasNextPage = false;
+        if (\count($rows) > $limit) {
+            $hasNextPage = true;
+            array_pop($rows);
+        }
 
         // 1. Group target IDs by type to batch load
         $targetIdsByType = [
@@ -105,7 +167,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                 ['ids' => ArrayParameterType::STRING]
             );
             foreach ($commentRows as $c) {
-                $comments[$r['id'] ?? $c['id']] = $c;
+                $comments[(string) $c['id']] = $c;
                 $placeIds[] = $c['place_id'];
             }
         }
@@ -288,13 +350,32 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
             ];
         }
 
+        $nextCursor = null;
+        if (!empty($rows) && $hasNextPage) {
+            $lastRow = end($rows);
+            $lastStatus = (string) $lastRow['status'];
+            $lastPriority = match ($lastStatus) {
+                'OPEN' => 1,
+                'IN_REVIEW' => 2,
+                'RESOLVED' => 3,
+                'DISMISSED' => 4,
+                default => 5,
+            };
+            $cursorPayload = [
+                'priority' => $lastPriority,
+                'createdAt' => (string) $lastRow['created_at'],
+                'id' => (string) $lastRow['id'],
+                'statusFilter' => $statusFilter,
+            ];
+            $nextCursor = base64_encode(json_encode($cursorPayload));
+        }
+
         return [
             'items' => $items,
             'pagination' => [
-                'page' => $page,
-                'pageSize' => $pageSize,
+                'nextCursor' => $nextCursor,
+                'hasNextPage' => $hasNextPage,
                 'totalItems' => $totalItems,
-                'totalPages' => max(1, $totalPages),
             ],
         ];
     }

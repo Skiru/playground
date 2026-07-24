@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Link } from "react-router"
 import { getCommunityFeed } from "@family-places/api-client"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
@@ -17,6 +18,12 @@ interface FeedItem {
   excerpt?: string
   sourceId: string
   parentSourceId?: string | null
+  placeSlug?: string | null
+}
+
+interface CursorPagination {
+  nextCursor?: string | null
+  hasNextPage?: boolean
 }
 
 export default function CommunityFeedPage() {
@@ -27,6 +34,30 @@ export default function CommunityFeedPage() {
   const [hasNextPage, setHasNextPage] = React.useState(false)
   const [typeFilter, setTypeFilter] = React.useState<string>("ALL")
   const [error, setError] = React.useState<string | null>(null)
+
+  const getSourceLink = (item: FeedItem) => {
+    switch (item.type) {
+      case "forum_thread":
+        return `/forum/watek/${item.id}`
+      case "forum_post":
+        return `/forum/watek/${item.sourceId}#post-${item.id}`
+      case "review":
+        if (!item.placeSlug) return null
+        return `/miejsca/${item.placeSlug}#reviews`
+      case "place_comment":
+        if (!item.placeSlug) return null
+        return `/miejsca/${item.placeSlug}#discussion`
+      default:
+        return null
+    }
+  }
+
+  const validItems = items.filter((item) => {
+    if (!item.sourceId) return false
+    if (item.type === "review" && !item.placeSlug) return false
+    if (item.type === "place_comment" && !item.placeSlug) return false
+    return getSourceLink(item) !== null
+  })
 
   const loadFeed = React.useCallback(async (cursor: string | null = null, append = false) => {
     if (cursor) {
@@ -48,8 +79,9 @@ export default function CommunityFeedPage() {
       if (res.data) {
         const fetchedItems = (res.data.items || []) as FeedItem[]
         setItems((prev) => (append ? [...prev, ...fetchedItems] : fetchedItems))
-        setNextCursor(res.data.pagination?.nextCursor || null)
-        setHasNextPage(res.data.pagination?.hasNextPage || false)
+        const pagination = res.data.pagination as CursorPagination | undefined
+        setNextCursor(pagination?.nextCursor || null)
+        setHasNextPage(pagination?.hasNextPage || false)
       } else {
         setError("Wystąpił błąd podczas ładowania społeczności.")
       }
@@ -147,7 +179,7 @@ export default function CommunityFeedPage() {
                 </Card>
               ))}
             </div>
-          ) : items.length === 0 ? (
+          ) : validItems.length === 0 ? (
             <Card className="text-center py-12">
               <CardContent className="space-y-4">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />
@@ -159,7 +191,7 @@ export default function CommunityFeedPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {items.map((item) => (
+              {validItems.map((item) => (
                 <Card key={item.id} className="overflow-hidden border-muted hover:border-muted-foreground/30 transition-all">
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
                     <div className="flex items-center gap-3">
@@ -189,9 +221,16 @@ export default function CommunityFeedPage() {
                       </h3>
                     )}
                     {item.excerpt && (
-                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line mb-3">
                         {item.excerpt}
                       </p>
+                    )}
+                    {getSourceLink(item) && (
+                      <div className="text-xs text-primary font-semibold hover:underline mt-2">
+                        <Link to={getSourceLink(item)!}>
+                          Przejdź do źródła &rarr;
+                        </Link>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

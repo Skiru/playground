@@ -1,6 +1,7 @@
 import * as React from "react"
 import { listReviews, addReview, updateReview, deleteReview } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import { Button } from "~/components/ui/button"
 import { RatingSummary } from "./RatingSummary"
 import { ReviewForm } from "./ReviewForm"
@@ -94,8 +95,8 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
           setEditingReview(null)
           loadReviews()
         } else {
-          const errorData = res.error as any
-          setFormError(errorData?.detail || "Nie udało się zaktualizować opinii.")
+          const errorData = mapApiError(res.error)
+          setFormError(errorData.detail || "Nie udało się zaktualizować opinii.")
         }
       } else {
         // Create
@@ -113,8 +114,8 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
           setShowForm(false)
           loadReviews()
         } else {
-          const errorData = res.error as any
-          setFormError(errorData?.detail || "Nie udało się dodać opinii.")
+          const errorData = mapApiError(res.error)
+          setFormError(errorData.detail || "Nie udało się dodać opinii.")
         }
       }
     } catch (err: unknown) {
@@ -125,6 +126,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
   }
 
   const handleDelete = async (reviewId: string) => {
+    setFormError(null)
     try {
       const res = await deleteReview({
         path: { reviewId },
@@ -134,10 +136,11 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
         setDeleteTargetId(null)
         loadReviews()
       } else {
-        alert("Nie udało się usunąć opinii.")
+        const errorData = mapApiError(res.error)
+        setFormError(errorData.detail || "Nie udało się usunąć opinii.")
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Wystąpił błąd.")
+      setFormError(err instanceof Error ? err.message : "Wystąpił błąd.")
     }
   }
 
@@ -186,11 +189,17 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
         />
       )}
 
+      {formError && !showForm && (
+        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded flex items-center gap-2" role="alert">
+          <span className="font-semibold">Błąd:</span>
+          <span>{formError}</span>
+        </div>
+      )}
+
       {/* Accessible delete dialog fallback */}
       {deleteTargetId && (
         <div className="border border-destructive/20 bg-destructive/5 p-4 rounded-lg flex items-center justify-between gap-4 text-sm" role="alert">
           <div className="flex items-center gap-2 text-destructive">
-            <ShieldAlert className="h-5 w-5 shrink-0" />
             <span>Czy na pewno chcesz usunąć tę opinię?</span>
           </div>
           <div className="flex gap-2">
@@ -212,7 +221,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
                 className="bg-background border rounded px-1.5 py-0.5"
                 value={sort}
                 onChange={(e) => {
-                  setSort(e.target.value as any)
+                  setSort(e.target.value as "newest" | "highest" | "lowest")
                   setPage(1)
                 }}
               >

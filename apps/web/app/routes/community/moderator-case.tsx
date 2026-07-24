@@ -1,6 +1,8 @@
 import * as React from "react"
 import { useParams, Link } from "react-router"
+import { getModerationCase, claimModerationCase, moderateContent } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
+import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "~/components/ui/card"
@@ -28,6 +30,8 @@ interface CaseDetails {
   } | null
 }
 
+type ModerationAction = "HIDE" | "REMOVE" | "RESTORE" | "LOCK" | "UNLOCK" | "PIN" | "UNPIN" | "DISMISS_REPORT" | "RESOLVE_REPORT"
+
 export default function ModeratorCasePage() {
   const { reportId } = useParams()
   const { session } = useSession()
@@ -36,7 +40,7 @@ export default function ModeratorCasePage() {
   const [error, setError] = React.useState<string | null>(null)
 
   // Action Form state
-  const [action, setAction] = React.useState<string>("")
+  const [action, setAction] = React.useState<ModerationAction | "">("")
   const [reason, setReason] = React.useState("")
   const [actionError, setActionError] = React.useState<string | null>(null)
   const [submittingAction, setSubmittingAction] = React.useState(false)
@@ -51,14 +55,11 @@ export default function ModeratorCasePage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/v1/moderation/case/${reportId}`, {
-        headers: {
-          "Accept": "application/json",
-        }
+      const res = await getModerationCase({
+        path: { reportId },
       })
-      if (res.ok) {
-        const data = await res.json()
-        setCaseData(data as CaseDetails)
+      if (res.data) {
+        setCaseData(res.data as CaseDetails)
       } else {
         setError("Zgłoszenie nie istnieje lub zostało usunięte.")
       }
@@ -77,17 +78,17 @@ export default function ModeratorCasePage() {
     if (!reportId) return
     setActionError(null)
     try {
-      const res = await fetch(`/api/v1/moderation/case/${reportId}/claim`, {
-        method: "POST",
+      const res = await claimModerationCase({
+        path: { reportId },
         headers: {
           "X-CSRF-Token": session.csrfToken || "",
         }
       })
-      if (res.ok) {
+      if (res.response.status === 200) {
         loadCase()
       } else {
-        const data = await res.json()
-        setActionError(data?.detail || "Nie udało się przypisać zgłoszenia.")
+        const errorData = mapApiError(res.error)
+        setActionError(errorData.detail || "Nie udało się przypisać zgłoszenia.")
       }
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : "Wystąpił błąd.")
@@ -109,20 +110,18 @@ export default function ModeratorCasePage() {
     setSubmittingAction(true)
 
     try {
-      const res = await fetch("/api/v1/moderation/action", {
-        method: "POST",
+      const res = await moderateContent({
+        body: {
+          reportId,
+          action: action as ModerationAction,
+          reason: reason.trim(),
+        },
         headers: {
-          "Content-Type": "application/json",
           "X-CSRF-Token": session.csrfToken || "",
         },
-        body: JSON.stringify({
-          reportId,
-          action,
-          reason: reason.trim(),
-        }),
       })
 
-      if (res.ok) {
+      if (res.response.status === 200) {
         setActionSuccess(true)
         setTimeout(() => {
           setActionSuccess(false)
@@ -131,8 +130,8 @@ export default function ModeratorCasePage() {
           loadCase()
         }, 2000)
       } else {
-        const data = await res.json()
-        setActionError(data?.detail || "Wystąpił błąd podczas zapisywania decyzji.")
+        const errorData = mapApiError(res.error)
+        setActionError(errorData.detail || "Wystąpił błąd podczas zapisywania decyzji.")
       }
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : "Wystąpił błąd.")
