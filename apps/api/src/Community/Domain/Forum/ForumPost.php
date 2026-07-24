@@ -88,7 +88,7 @@ final class ForumPost
 
     public function advanceVersion(): void
     {
-        $this->version++;
+        ++$this->version;
     }
 
     public function id(): Uuid

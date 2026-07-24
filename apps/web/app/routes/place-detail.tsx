@@ -43,7 +43,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ]
 }
 
-export function PlaceDetailView({ place, session }: { place: GetPlaceBySlugResponse, session: any }) {
+export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
   return (
     <article className="flex flex-col gap-8 pb-16">
       {/* Breadcrumbs */}
@@ -355,7 +355,7 @@ export default function PlaceDetail({ loaderData }: Route.ComponentProps) {
   return (
     <AppShell>
       <PageContainer className="py-6">
-        <PlaceDetailView place={loaderData.place} session={loaderData.session} />
+        <PlaceDetailView place={loaderData.place} />
       </PageContainer>
     </AppShell>
   )

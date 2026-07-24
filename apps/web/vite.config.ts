@@ -8,4 +8,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: process.env.API_BASE_URL || "http://api",
+        changeOrigin: true,
+      },
+    },
+  },
 });

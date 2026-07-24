@@ -108,7 +108,7 @@ test.describe("Real Playwright Image Fallbacks", () => {
       const imgs = Array.from(document.querySelectorAll("img"));
       return imgs.filter(imgEl => imgEl.complete && imgEl.naturalWidth === 0 && imgEl.style.display !== "none").map(imgEl => imgEl.src);
     });
-    console.log("BROKEN IMAGE SRCS ARE:", brokenSrcs);
+    expect(brokenSrcs).toEqual([]);
 
     // No visible image has naturalWidth === 0 after fallback (if it has completed loading)
     const visibleImages = await page.locator("img").all();

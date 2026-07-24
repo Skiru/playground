@@ -26,16 +26,25 @@ test("admin login and edit have no serious or critical axe violations", async ({
 async function assertAccessible(page: Page) {
   await page.addScriptTag({ path: axePath });
   const violations = await page.evaluate(async () => {
-    const result = await (window as any).axe.run();
+    type AxeNode = { target: string[] };
+    type AxeViolation = {
+      id: string;
+      impact: string | null;
+      nodes: AxeNode[];
+    };
+    const axeWindow = window as typeof window & {
+      axe: { run: () => Promise<{ violations: AxeViolation[] }> };
+    };
+    const result = await axeWindow.axe.run();
     
     // Filter out known WCAG violations inside third-party EasyAdmin vendor layout details
     return result.violations
-      .map((v: any) => {
+      .map((v) => {
         if (v.impact !== "critical" && v.impact !== "serious") {
           return null;
         }
 
-        const nonVendorNodes = v.nodes.filter((node: any) => {
+        const nonVendorNodes = v.nodes.filter((node) => {
           const selector = node.target.join(" ");
           
           if (v.id === "color-contrast") {
@@ -75,7 +84,7 @@ async function assertAccessible(page: Page) {
           nodes: nonVendorNodes
         };
       })
-      .filter((v: any) => v !== null);
+      .filter((v) => v !== null);
   });
   expect(violations).toEqual([]);
 }

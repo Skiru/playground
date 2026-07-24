@@ -1,4 +1,12 @@
 {
+  "certifiedAt": "2026-07-24T21:43:00+02:00",
+  "communityResult": {
+    "desktop": "PASS",
+    "mobile": "PASS",
+    "criticalViolations": 0,
+    "seriousViolations": 0,
+    "scope": "Place reviews and discussions, report dialog, feed, forum categories and threads, moderator queue, and moderator case."
+  },
   "exceptions": [
     {
       "violation": "color-contrast",

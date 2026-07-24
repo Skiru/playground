@@ -1,19 +1,33 @@
 {
+  "certifiedAt": "2026-07-24T21:43:00+02:00",
+  "node": "24.18.0",
   "testSuites": {
     "phpunit": {
-      "totalTests": 131,
-      "assertions": 966,
+      "totalTests": 137,
+      "assertions": 1016,
+      "failures": 0,
       "keyTestCases": [
         "App\\Tests\\Community\\UI\\Http\\PlaceDiscussionControllerTest",
         "App\\Tests\\Community\\UI\\Http\\CommunityControllerTest",
-        "App\\Tests\\Community\\UI\\Http\\ForumAndModerationSecurityTest"
+        "App\\Tests\\Community\\UI\\Http\\ForumAndModerationSecurityTest",
+        "App\\Tests\\Community\\UI\\Http\\C5DForumModerationRegressionTest"
       ]
     },
     "vitest": {
-      "totalTests": 34,
-      "keyTestCases": [
-        "app/lib/hardened-fetch.server.test.ts"
-      ]
-    }
+      "totalTests": 40,
+      "failures": 0
+    },
+    "playwright": {
+      "totalTests": 48,
+      "desktopTests": 24,
+      "mobileTests": 24,
+      "failures": 0,
+      "skipped": 0,
+      "retries": 0,
+      "axeCommunityJourneys": "PASS"
+    },
+    "repositoryCheck": "PASS",
+    "migrationRehearsal": "PASS",
+    "openApiDrift": "PASS"
   }
 }

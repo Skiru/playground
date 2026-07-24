@@ -1,13 +1,12 @@
 import * as React from "react"
 import { listModerationQueue } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
-import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
+import { Card, CardContent } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Shield, Eye, Calendar, User, MessageSquare } from "lucide-react"
+import { Shield, Eye, Calendar, User } from "lucide-react"
 import { Link } from "react-router"
 
 interface Report {
@@ -45,32 +44,6 @@ export default function ModeratorQueuePage() {
     session.user?.roles.includes("ROLE_MODERATOR") || session.user?.roles.includes("ROLE_ADMIN")
   )
 
-  const loadQueue = React.useCallback(async () => {
-    if (!isModerator) return
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await listModerationQueue({
-        query: {
-          status: statusFilter === "ALL" ? undefined : statusFilter,
-          limit: 15,
-        },
-      })
-      if (res.data) {
-        setReports((res.data.items || []) as Report[])
-        const pagination = res.data.pagination as CursorPagination | undefined
-        setNextCursor(pagination?.nextCursor || null)
-        setHasNextPage(pagination?.hasNextPage || false)
-      } else {
-        setError("Nie udało się pobrać kolejki moderatora.")
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Wystąpił błąd.")
-    } finally {
-      setLoading(false)
-    }
-  }, [isModerator, statusFilter])
-
   const handleLoadMore = async () => {
     if (!nextCursor || !isModerator || loadingMore) return
     setLoadingMore(true)
@@ -98,8 +71,40 @@ export default function ModeratorQueuePage() {
   }
 
   React.useEffect(() => {
-    loadQueue()
-  }, [loadQueue])
+    if (!isModerator) return
+    let ignore = false
+    async function init() {
+      setError(null)
+      try {
+        const res = await listModerationQueue({
+          query: {
+            status: statusFilter === "ALL" ? undefined : statusFilter,
+            limit: 15,
+          },
+        })
+        if (!ignore && res.data) {
+          setReports((res.data.items || []) as Report[])
+          const pagination = res.data.pagination as CursorPagination | undefined
+          setNextCursor(pagination?.nextCursor || null)
+          setHasNextPage(pagination?.hasNextPage || false)
+        } else if (!ignore) {
+          setError("Nie udało się pobrać kolejki moderatora.")
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+    init()
+    return () => {
+      ignore = true
+    }
+  }, [isModerator, statusFilter])
 
   if (!isModerator) {
     return (
@@ -150,7 +155,7 @@ export default function ModeratorQueuePage() {
 
             <div className="flex items-center gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px]" aria-label="Filtruj zgłoszenia według statusu">
                   <SelectValue placeholder="Status zgłoszenia" />
                 </SelectTrigger>
                 <SelectContent>

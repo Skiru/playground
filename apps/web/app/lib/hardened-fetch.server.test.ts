@@ -1,9 +1,8 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, test, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest"
 import { hardenedFetch } from "./hardened-fetch.server"
 
 describe("hardenedFetch and typed body policy", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let fetchSpy: any
+  let fetchSpy: MockInstance<typeof fetch>
 
   beforeEach(() => {
     vi.stubEnv("API_BASE_URL", "http://test-api")
@@ -42,9 +41,9 @@ describe("hardenedFetch and typed body policy", () => {
     expect(response.status).toBe(200)
     expect(fetchSpy).toHaveBeenCalledOnce()
     
-    const [url, init] = fetchSpy.mock.calls[0]
+    const [url, init] = fetchSpy.mock.calls[0]!
     expect(url).toBe("http://test-api/api/v1/me/favorites")
-    const sentHeaders = init.headers as Headers
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("cookie")).toBe("session=abc")
     expect(sentHeaders.get("x-correlation-id")).toBe("corr-123")
   })
@@ -57,8 +56,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: payload,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBe("application/json")
   })
 
@@ -70,8 +69,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: payload,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBe("application/json")
   })
 
@@ -82,8 +81,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: "plain text message, not json",
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBeNull()
   })
 
@@ -96,8 +95,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: formData,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBeNull()
   })
 
@@ -110,8 +109,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: params,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBeNull()
   })
 
@@ -123,8 +122,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: blob,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBeNull()
   })
 
@@ -136,8 +135,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: buffer,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBeNull()
   })
 
@@ -149,8 +148,8 @@ describe("hardenedFetch and typed body policy", () => {
       body: typedArray,
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBeNull()
   })
 
@@ -164,8 +163,8 @@ describe("hardenedFetch and typed body policy", () => {
       },
     })
     
-    const [, init] = fetchSpy.mock.calls[0]
-    const sentHeaders = init.headers as Headers
+    const [, init] = fetchSpy.mock.calls[0]!
+    const sentHeaders = init?.headers as Headers
     expect(sentHeaders.get("Content-Type")).toBe("text/custom-json")
   })
 })

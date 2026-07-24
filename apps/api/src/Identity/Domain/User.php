@@ -18,7 +18,7 @@ final class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $googleSubject = null;
     /** @var list<string> */
     private array $roles;
-    private UserStatus $status = UserStatus::ACTIVE;
+    private UserStatus $status;
     private \DateTimeImmutable $updatedAt;
     private ?\DateTimeImmutable $lastLoginAt = null;
 
@@ -28,6 +28,7 @@ final class User implements UserInterface, PasswordAuthenticatedUserInterface
         private string $displayName,
         private readonly \DateTimeImmutable $createdAt,
         array $roles = ['ROLE_USER'],
+        UserStatus $status = UserStatus::ACTIVE,
     ) {
         if ('' === trim($displayName)) {
             throw new \InvalidArgumentException('Display name is required.');
@@ -36,6 +37,7 @@ final class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->id = Uuid::v7();
         $this->email = $email->value;
         $this->roles = array_values(array_unique($roles));
+        $this->status = $status;
         $this->updatedAt = $createdAt;
     }
 

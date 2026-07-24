@@ -1,0 +1,29 @@
+{
+  "taskId": "PLAYGROUND_C5D_PRODUCTION_CERTIFICATION_V4",
+  "certifiedAt": "2026-07-24T21:43:00+02:00",
+  "branch": "feat/family-places-c5d-forum-moderation-production-grade",
+  "seedCommit": "7a756e11c169ccd19c8bad8b58d5b4e23e746cd6",
+  "localStatus": "PASS",
+  "remoteStatus": "PENDING_COMMIT_PUSH_AND_CI_VERIFICATION",
+  "gates": {
+    "repositoryCheck": "PASS",
+    "phpunit": "PASS - 137 tests, 1016 assertions",
+    "vitest": "PASS - 40 tests",
+    "playwright": "PASS - 48 tests, zero retries, zero skips",
+    "axeCommunity": "PASS - zero serious or critical violations",
+    "migrationRehearsal": "PASS - clean schema and forward upgrade",
+    "openApiDrift": "PASS",
+    "composeValidation": "PASS",
+    "gitleaks": "PASS",
+    "dependencyAudits": "PASS",
+    "forbiddenPatternSweep": "PASS",
+    "independentReview": "PASS - P0 0, P1 0"
+  },
+  "residualRisks": [
+    "Accepted low-risk PHPUnit 13 mock-hygiene notices in unrelated legacy tests; all tests and assertions pass."
+  ],
+  "supersedes": [
+    "c5d-final-certification-superseded.json",
+    "c5d-v2-final-certification.json"
+  ]
+}

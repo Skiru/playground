@@ -6,9 +6,8 @@ namespace App\Community\Infrastructure\Query;
 
 use App\Community\Application\Port\ModerationQueueQuery;
 use App\Community\Application\Port\PublicAuthorProfileLookup;
-use App\Community\Domain\Moderation\TargetType;
-use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
@@ -35,7 +34,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
         $cursorData = null;
         if (null !== $cursor && '' !== trim($cursor)) {
             $decoded = base64_decode($cursor, true);
-            if ($decoded !== false) {
+            if (false !== $decoded) {
                 $cursorData = json_decode($decoded, true);
             }
         }
@@ -84,7 +83,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
             $params['last_id'] = $lastId;
         }
 
-        $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $whereSql = !empty($where) ? 'WHERE '.implode(' AND ', $where) : '';
 
         // Deterministic order: status priority (OPEN, IN_REVIEW, RESOLVED, DISMISSED), creation timestamp, unique ID
         $rows = $this->connection->fetchAllAssociative(
@@ -110,7 +109,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
             $countWhere[] = 'status = :status';
             $countParams['status'] = $statusFilter;
         }
-        $countWhereSql = !empty($countWhere) ? 'WHERE ' . implode(' AND ', $countWhere) : '';
+        $countWhereSql = !empty($countWhere) ? 'WHERE '.implode(' AND ', $countWhere) : '';
         $totalItems = (int) $this->connection->fetchOne(
             "SELECT COUNT(*) FROM content_reports {$countWhereSql}",
             $countParams
@@ -227,7 +226,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
         // Batch load previous moderation history
         $modActionsByTarget = [];
         if (!empty($allTargetIds)) {
-            $targetIdStrings = array_map(fn ($id) => $id->toRfc4122(), $allTargetIds);
+            $targetIdStrings = array_map(static fn ($id) => $id->toRfc4122(), $allTargetIds);
             $modRows = $this->connection->fetchAllAssociative(
                 'SELECT * FROM moderation_actions WHERE target_id IN (:ids) ORDER BY created_at DESC',
                 ['ids' => $targetIdStrings],
@@ -261,7 +260,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
             $userIds[] = Uuid::fromString($p['author_id']);
         }
 
-        $profiles = $this->authorProfileLookup->getProfiles(array_unique($userIds));
+        $profiles = $this->authorProfileLookup->getProfiles(array_values(array_unique($userIds)));
 
         $items = [];
         foreach ($rows as $row) {
@@ -367,7 +366,8 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                 'id' => (string) $lastRow['id'],
                 'statusFilter' => $statusFilter,
             ];
-            $nextCursor = base64_encode(json_encode($cursorPayload));
+            $json = json_encode($cursorPayload);
+            $nextCursor = false !== $json ? base64_encode($json) : null;
         }
 
         return [

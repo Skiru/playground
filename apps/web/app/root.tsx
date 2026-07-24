@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  data as routeData,
 } from "react-router"
 
 import type { Route } from "./+types/root"
@@ -21,6 +22,7 @@ import { SessionProvider } from "./lib/session-context"
 import { LoginRequiredActionProvider } from "~/features/auth/LoginRequiredActionContext"
 
 export const links: Route.LinksFunction = () => []
+export const meta: Route.MetaFunction = () => [{ title: content.common.siteTitle }]
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { data, setCookie } = await fetchSession(request.headers)
@@ -47,7 +49,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     headers.set("Set-Cookie", setCookie)
   }
 
-  return Response.json({ initialSession: data, publicRuntimeConfig }, { headers })
+  return routeData({ initialSession: data, publicRuntimeConfig }, { headers })
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -69,8 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function App({ loaderData }: any) {
+export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <SessionProvider initialSession={loaderData.initialSession}>
       <LoginRequiredActionProvider>

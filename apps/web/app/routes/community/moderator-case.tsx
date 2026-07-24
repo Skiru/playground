@@ -5,11 +5,11 @@ import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "~/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Shield, ArrowLeft, CheckCircle2, AlertTriangle, AlertCircle, Info, Trash2, EyeOff, Check, XCircle } from "lucide-react"
+import { Shield, ArrowLeft, CheckCircle2, AlertTriangle, AlertCircle, Info, Check } from "lucide-react"
 
 interface CaseDetails {
   id: string
@@ -32,6 +32,30 @@ interface CaseDetails {
 
 type ModerationAction = "HIDE" | "REMOVE" | "RESTORE" | "LOCK" | "UNLOCK" | "PIN" | "UNPIN" | "DISMISS_REPORT" | "RESOLVE_REPORT"
 
+function toCaseDetails(data: Record<string, unknown>): CaseDetails {
+  const preview = data.targetPreview
+  const previewRating = preview && typeof preview === "object" ? Reflect.get(preview, "rating") : undefined
+
+  return {
+    id: String(data.id),
+    reporterId: String(data.reporterId),
+    targetId: String(data.targetId),
+    targetType: String(data.targetType),
+    reason: String(data.reason),
+    details: typeof data.details === "string" ? data.details : null,
+    status: String(data.status),
+    createdAt: String(data.createdAt),
+    resolvedAt: typeof data.resolvedAt === "string" ? data.resolvedAt : null,
+    resolvedBy: typeof data.resolvedBy === "string" ? data.resolvedBy : null,
+    targetPreview: preview && typeof preview === "object" ? {
+      title: String(Reflect.get(preview, "title")),
+      body: String(Reflect.get(preview, "body")),
+      rating: typeof previewRating === "number" ? previewRating : undefined,
+      status: String(Reflect.get(preview, "status")),
+    } : null,
+  }
+}
+
 export default function ModeratorCasePage() {
   const { reportId } = useParams()
   const { session } = useSession()
@@ -52,14 +76,13 @@ export default function ModeratorCasePage() {
 
   const loadCase = React.useCallback(async () => {
     if (!reportId || !isModerator) return
-    setLoading(true)
     setError(null)
     try {
       const res = await getModerationCase({
         path: { reportId },
       })
       if (res.data) {
-        setCaseData(res.data as CaseDetails)
+        setCaseData(toCaseDetails(res.data))
       } else {
         setError("Zgłoszenie nie istnieje lub zostało usunięte.")
       }
@@ -71,8 +94,34 @@ export default function ModeratorCasePage() {
   }, [reportId, isModerator])
 
   React.useEffect(() => {
-    loadCase()
-  }, [loadCase])
+    if (!reportId || !isModerator) return
+    let ignore = false
+
+    async function init() {
+      setError(null)
+      try {
+        const res = await getModerationCase({ path: { reportId: reportId! } })
+        if (!ignore && res.data) {
+          setCaseData(toCaseDetails(res.data))
+        } else if (!ignore) {
+          setError("Zgłoszenie nie istnieje lub zostało usunięte.")
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void init()
+    return () => {
+      ignore = true
+    }
+  }, [reportId, isModerator])
 
   const handleClaim = async () => {
     if (!reportId) return
@@ -84,8 +133,8 @@ export default function ModeratorCasePage() {
           "X-CSRF-Token": session.csrfToken || "",
         }
       })
-      if (res.response.status === 200) {
-        loadCase()
+      if (res.response?.status === 200) {
+        await loadCase()
       } else {
         const errorData = mapApiError(res.error)
         setActionError(errorData.detail || "Nie udało się przypisać zgłoszenia.")
@@ -121,7 +170,7 @@ export default function ModeratorCasePage() {
         },
       })
 
-      if (res.response.status === 200) {
+      if (res.response?.status === 200) {
         setActionSuccess(true)
         setTimeout(() => {
           setActionSuccess(false)
@@ -218,10 +267,10 @@ export default function ModeratorCasePage() {
                       </span>
                       <span className="text-xs text-muted-foreground">Utworzono: {new Date(caseData.createdAt).toLocaleString("pl-PL")}</span>
                     </div>
-                    <CardTitle className="text-xl font-bold flex items-center gap-2">
+                    <h1 className="text-xl font-bold flex items-center gap-2">
                       <span>Zgłoszenie naruszenia:</span>
                       <span className="text-destructive font-extrabold">{getReasonLabel(caseData.reason)}</span>
-                    </CardTitle>
+                    </h1>
                     {caseData.details && (
                       <CardDescription className="bg-muted/40 p-3 rounded text-sm italic mt-2">
                         "{caseData.details}"
@@ -301,7 +350,7 @@ export default function ModeratorCasePage() {
 
                         <div className="space-y-1.5">
                           <Label htmlFor="moderator-action-select">Wybierz akcję</Label>
-                          <Select value={action} onValueChange={setAction} required>
+                          <Select value={action} onValueChange={(val) => setAction(val as ModerationAction | "")} required>
                             <SelectTrigger id="moderator-action-select">
                               <SelectValue placeholder="Wybierz akcję..." />
                             </SelectTrigger>

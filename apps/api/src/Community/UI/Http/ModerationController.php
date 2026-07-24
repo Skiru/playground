@@ -57,7 +57,10 @@ final class ModerationController
 
         $result = $this->listQueueUseCase->execute($statusFilter, $cursor, $limitInt);
 
-        return new JsonResponse($result);
+        $response = new JsonResponse($result);
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
     }
 
     #[Route('/api/v1/moderation/case/{reportId}', name: 'api_moderation_case_get', methods: ['GET'])]
@@ -77,7 +80,10 @@ final class ModerationController
 
         $result = $this->getCaseUseCase->execute($reportUuid);
 
-        return new JsonResponse($result);
+        $response = new JsonResponse($result);
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
     }
 
     #[Route('/api/v1/moderation/case/{reportId}/claim', name: 'api_moderation_case_claim', methods: ['POST'])]

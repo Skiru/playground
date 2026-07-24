@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Community\Application\UseCase;
 
 use App\Community\Domain\Moderation\ContentReportRepository;
-use App\Community\Domain\Moderation\ReportStatus;
 use App\Shared\Application\Clock;
 use App\Shared\Application\Exception\ApiException;
 use App\Shared\Application\TransactionManager;

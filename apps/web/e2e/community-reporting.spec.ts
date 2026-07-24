@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-async function loginAs(page: any, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
+async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
   await page.goto("/");
-  await page.evaluate(async (data) => {
+  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -43,12 +43,11 @@ test.describe("Community Reporting E2E Real Journey", () => {
 
     await expect(bobPage.getByText(`Reporting Thread ${uniqueSuffix}`)).toBeVisible();
     await bobPage.locator("a", { hasText: `Reporting Thread ${uniqueSuffix}` }).first().click();
+    await expect(bobPage).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
     const threadUrl = bobPage.url();
-    const threadId = threadUrl.split("/").pop();
-
     // 3. Alice reports Bob's thread
     await alicePage.goto(threadUrl);
-    await expect(alicePage.getByText(`This is the content to be reported`)).toBeVisible();
+    await expect(alicePage.getByText(`This is the content to be reported ${uniqueSuffix}`, { exact: true })).toBeVisible();
 
     // Alice clicks report button
     const reportBtn = alicePage.getByRole("button", { name: "Zgłoś" }).first();
@@ -71,7 +70,7 @@ test.describe("Community Reporting E2E Real Journey", () => {
     // 5. Duplicate report returns 409
     // Alice attempts to report Bob's thread again - she shouldn't even be able to open dialog since we show reported state or we can call API directly
     await alicePage.goto(threadUrl);
-    await reportBtn.click();
+    await alicePage.getByRole("button", { name: "Zgłoś" }).first().click();
     await expect(alicePage.getByRole("heading", { name: "Zgłoś naruszenie regulaminu" })).toBeVisible();
     await alicePage.locator("#reason-select").click();
     await alicePage.getByRole("option", { name: "Spam lub reklama" }).click();

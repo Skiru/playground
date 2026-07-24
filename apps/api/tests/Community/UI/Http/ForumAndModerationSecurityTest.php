@@ -21,13 +21,9 @@ final class ForumAndModerationSecurityTest extends WebTestCase
             email: new \App\Identity\Domain\ValueObject\EmailAddress($email),
             displayName: $displayName,
             createdAt: new \DateTimeImmutable(),
-            roles: $roles
+            roles: $roles,
+            status: $status,
         );
-
-        // We set status via reflection since it is private with no public setter
-        $ref = new \ReflectionClass($user);
-        $prop = $ref->getProperty('status');
-        $prop->setValue($user, $status);
 
         $this->em->persist($user);
         $this->em->flush();

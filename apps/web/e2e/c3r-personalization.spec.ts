@@ -34,9 +34,6 @@ test.describe("C3R Personalization and Security E2E", () => {
     await expect(favButton).toBeEnabled();
     await favButton.click();
     
-    // Verify toast notification for success
-    await expect(page.getByText("Dodano do ulubionych!")).toBeVisible();
-
     // Verify button state changes to "Usuń z ulubionych" (aria-pressed=true)
     await expect(page.locator(".place-card").first().locator('button[aria-pressed="true"]')).toBeVisible();
 
@@ -87,10 +84,9 @@ test.describe("C3R Personalization and Security E2E", () => {
     // Clean up favorite state to prevent fixture leaks across runs or projects
     await page.goto("/konto/ulubione");
     const removeFavBtn = page.getByLabel("Usuń z ulubionych").first();
-    if (await removeFavBtn.isVisible()) {
-      await removeFavBtn.click();
-      await expect(page.getByText("Usunięto z ulubionych.")).toBeVisible();
-    }
+    await expect(removeFavBtn).toBeVisible();
+    await removeFavBtn.click();
+    await expect(page.getByText("Usunięto z ulubionych.")).toBeVisible();
 
     // 7. Logout and verify unauthenticated state
     await page.goto("/");

@@ -11,6 +11,8 @@ This document summarizes the files, structure, and architecture of the newly del
 
 ## 2. Testing and Quality
 
-* **PHPUnit Integration Suite:** 131 tests and 966 assertions completely green covering security, permissions, rate limiting, and duplication rules.
-* **Vitest Suite:** 34 tests completely green covering `hardenedFetch` typed body policy.
-* **TypeScript compilation:** `tsc` builds the workspace and generated API client with 0 errors.
+* **PHPUnit Integration Suite:** 137 tests and 1,016 assertions pass, covering security, permissions, rate limiting, concurrency, and duplication rules.
+* **Vitest Suite:** 40 tests pass, including `hardenedFetch`, route, image fallback, and rendering behavior.
+* **Playwright Suite:** 48 real desktop/mobile journeys pass with zero retries and zero skips, including community Axe scans.
+* **Static and Build Gates:** TypeScript, ESLint, production build, PHP-CS-Fixer, PHPStan, and Deptrac pass with zero errors.
+* **Operational Gates:** Clean/upgrade migration rehearsal, OpenAPI drift, Compose validation, Gitleaks, pnpm audit, and Composer audit pass.

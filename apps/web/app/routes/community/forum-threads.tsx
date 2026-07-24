@@ -5,7 +5,7 @@ import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "~/components/ui/dialog"
@@ -69,7 +69,7 @@ export default function ForumThreadsPage() {
     setError(null)
     try {
       const res = await listCategoryThreads({
-        path: { categorySlug },
+        path: { slug: categorySlug },
         query: {
           limit: 10,
           cursor: cursor || undefined,
@@ -78,14 +78,14 @@ export default function ForumThreadsPage() {
       if (res.data) {
         setCategory(res.data.category as Category)
         const fetchedItems = (res.data.items || []) as Thread[]
-        
+
         setThreads((prev) => {
           if (!append) return fetchedItems
           const existingIds = new Set(prev.map(t => t.id))
           const uniqueNew = fetchedItems.filter(t => !existingIds.has(t.id))
           return [...prev, ...uniqueNew]
         })
-        
+
         const pagination = res.data.pagination as CursorPagination | undefined
         setNextCursor(pagination?.nextCursor || null)
         setHasNextPage(pagination?.hasNextPage || false)
@@ -101,8 +101,42 @@ export default function ForumThreadsPage() {
   }, [categorySlug])
 
   React.useEffect(() => {
-    loadThreads()
-  }, [loadThreads])
+    if (!categorySlug) return
+    let ignore = false
+    async function init() {
+      setError(null)
+      try {
+        const res = await listCategoryThreads({
+          path: { slug: categorySlug! },
+          query: {
+            limit: 10,
+          }
+        })
+        if (!ignore && res.data) {
+          setCategory(res.data.category as Category)
+          const fetchedItems = (res.data.items || []) as Thread[]
+          setThreads(fetchedItems)
+          const pagination = res.data.pagination as CursorPagination | undefined
+          setNextCursor(pagination?.nextCursor || null)
+          setHasNextPage(pagination?.hasNextPage || false)
+        } else if (!ignore) {
+          setError("Nie znaleziono podanej kategorii forum.")
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+    init()
+    return () => {
+      ignore = true
+    }
+  }, [categorySlug])
 
   const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,7 +151,7 @@ export default function ForumThreadsPage() {
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 201) {
+      if (res.response?.status === 201) {
         setIsOpen(false)
         setNewTitle("")
         setNewBody("")

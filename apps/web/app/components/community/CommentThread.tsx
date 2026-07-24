@@ -87,7 +87,7 @@ export function CommentThread({
             onCancel={() => setEditingCommentId(null)}
           />
         ) : (
-          <p className={`text-xs sm:text-sm pl-8 leading-relaxed whitespace-pre-wrap ${isParentDeleted ? "text-muted-foreground italic font-light animate-pulse" : "text-foreground"}`}>
+          <p className={`text-xs sm:text-sm pl-8 leading-relaxed whitespace-pre-wrap ${isParentDeleted ? "text-muted-foreground italic" : "text-foreground"}`}>
             {isParentDeleted ? "Treść usunięta przez autora" : parent.body}
           </p>
         )}

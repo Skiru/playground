@@ -18,10 +18,33 @@ interface Comment {
   updatedAt: string
   version: number
   author?: { id: string; displayName: string; initials: string } | null
+  replies?: Comment[]
 }
 
 interface PlaceDiscussionSectionProps {
   placeId: string
+}
+
+function toComment(item: Record<string, unknown>): Comment {
+  const author = item.author
+
+  return {
+    id: String(item.id),
+    placeId: String(item.placeId),
+    authorId: String(item.authorId),
+    parentId: typeof item.parentId === "string" ? item.parentId : null,
+    body: String(item.body),
+    status: String(item.status),
+    createdAt: String(item.createdAt),
+    updatedAt: String(item.updatedAt),
+    version: Number(item.version),
+    author: author && typeof author === "object" ? {
+      id: String(Reflect.get(author, "id")),
+      displayName: String(Reflect.get(author, "displayName")),
+      initials: String(Reflect.get(author, "initials")),
+    } : null,
+    replies: Array.isArray(item.replies) ? item.replies.map(toComment) : [],
+  }
 }
 
 export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps) {
@@ -45,8 +68,9 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         query: { page },
       })
       if (res.data) {
-        setComments((res.data.items || []) as Comment[])
-        setTotalPages(res.data.pagination?.totalPages || 1)
+        setComments((res.data.items || []).map(toComment))
+        const totalPages = (res.data.pagination as { totalPages?: number } | undefined)?.totalPages
+        setTotalPages(totalPages || 1)
       }
     } catch (err: unknown) {
       console.error(err)
@@ -56,8 +80,31 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
   }, [placeId, page])
 
   React.useEffect(() => {
-    loadComments()
-  }, [loadComments])
+    let ignore = false
+    async function init() {
+      try {
+        const res = await listComments({
+          path: { placeId },
+          query: { page },
+        })
+        if (!ignore && res.data) {
+          setComments((res.data.items || []).map(toComment))
+          const totalPages = (res.data.pagination as { totalPages?: number } | undefined)?.totalPages
+          setTotalPages(totalPages || 1)
+        }
+      } catch (err: unknown) {
+        console.error(err)
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+    init()
+    return () => {
+      ignore = true
+    }
+  }, [placeId, page])
 
   const handleMainCommentSubmit = async (body: string) => {
     setSubmitting(true)
@@ -69,7 +116,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 201) {
+      if (res.response?.status === 201) {
         setShowMainForm(false)
         loadComments()
       } else {
@@ -93,7 +140,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 201) {
+      if (res.response?.status === 201) {
         loadComments()
       } else {
         const errorData = mapApiError(res.error)
@@ -116,7 +163,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 200) {
+      if (res.response?.status === 200) {
         loadComments()
       } else {
         const errorData = mapApiError(res.error)
@@ -136,7 +183,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         path: { commentId },
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
-      if (res.response.status === 204) {
+      if (res.response?.status === 204) {
         setDeleteTargetId(null)
         loadComments()
       } else {
@@ -208,7 +255,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
       ) : rootComments.length > 0 ? (
         <div className="flex flex-col gap-6">
           {rootComments.map((parent) => {
-            const replies = comments.filter((c) => c.parentId === parent.id)
+            const replies = parent.replies || []
             return (
               <CommentThread
                 key={parent.id}

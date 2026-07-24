@@ -63,7 +63,7 @@ describe("Community Frontend Vitest Suite", () => {
 
   it("renders forum category and supports thread list loading with pagination", async () => {
     vi.mocked(listCategoryThreads).mockResolvedValue({
-      response: { status: 200 } as any,
+      response: new Response(null, { status: 200 }),
       data: {
         category: { id: "cat-1", slug: "warszawa", name: "Warszawa", description: "Forum dla Warszawy" },
         items: [
@@ -74,13 +74,13 @@ describe("Community Frontend Vitest Suite", () => {
           hasNextPage: true,
         }
       }
-    });
+    } as never);
 
     render(
         <MemoryRouter initialEntries={["/forum/warszawa"]}>
           <Routes>
             <Route path="/forum/:categorySlug" element={
-              <SessionProvider initialSession={{ authenticated: true, user: { id: "user-1", displayName: "Jan", initials: "J", email: "jan@test.com", roles: ["ROLE_USER"] }, csrfToken: "csrf-abc" }}>
+              <SessionProvider initialSession={{ authenticated: true, user: { id: "user-1", displayName: "Jan", initials: "J", roles: ["ROLE_USER"] }, csrfToken: "csrf-abc" }}>
                 <LoginRequiredActionProvider>
                   <ForumThreadsPage />
                 </LoginRequiredActionProvider>
@@ -101,25 +101,25 @@ describe("Community Frontend Vitest Suite", () => {
 
   it("handles thread locked state and tombstone post rendering", async () => {
     vi.mocked(getForumThread).mockResolvedValue({
-      response: { status: 200 } as any,
+      response: new Response(null, { status: 200 }),
       data: { id: "thread-1", categoryId: "cat-1", authorId: "user-1", title: "Locked Thread", status: "PUBLISHED", lockedAt: "2026-07-20T13:00:00Z", author: { id: "user-1", displayName: "Jan", initials: "J" } }
-    });
+    } as never);
 
     vi.mocked(listForumPosts).mockResolvedValue({
-      response: { status: 200 } as any,
+      response: new Response(null, { status: 200 }),
       data: {
         items: [
           { id: "post-1", threadId: "thread-1", authorId: "user-2", body: "A reply", status: "DELETED_BY_AUTHOR", createdAt: "2026-07-20T12:05:00Z", author: { id: "user-2", displayName: "Anna", initials: "A" } }
         ],
         pagination: { nextCursor: null, hasNextPage: false }
       }
-    });
+    } as never);
 
     render(
         <MemoryRouter initialEntries={["/forum/watek/thread-1"]}>
           <Routes>
             <Route path="/forum/watek/:threadId" element={
-              <SessionProvider initialSession={{ authenticated: true, user: { id: "user-1", displayName: "Jan", initials: "J", email: "jan@test.com", roles: ["ROLE_USER"] }, csrfToken: "csrf-abc" }}>
+              <SessionProvider initialSession={{ authenticated: true, user: { id: "user-1", displayName: "Jan", initials: "J", roles: ["ROLE_USER"] }, csrfToken: "csrf-abc" }}>
                 <LoginRequiredActionProvider>
                   <ForumThreadDetailPage />
                 </LoginRequiredActionProvider>
@@ -138,7 +138,7 @@ describe("Community Frontend Vitest Suite", () => {
 
   it("renders community feed and builds correct source links", async () => {
     vi.mocked(getCommunityFeed).mockResolvedValue({
-      response: { status: 200 } as any,
+      response: new Response(null, { status: 200 }),
       data: {
         items: [
           { id: "thread-1", type: "forum_thread", activityAt: "2026-07-20T12:00:00Z", author: { id: "user-1", displayName: "Jan", initials: "J" }, title: "Interesting Thread", excerpt: "Excerpt of thread", sourceId: "cat-1", placeSlug: null },
@@ -146,7 +146,7 @@ describe("Community Frontend Vitest Suite", () => {
         ],
         pagination: { nextCursor: null, hasNextPage: false }
       }
-    });
+    } as never);
 
     render(
       <MemoryRouter>
@@ -167,18 +167,18 @@ describe("Community Frontend Vitest Suite", () => {
 
   it("renders moderator queue with correct status filters and cursor pagination", async () => {
     vi.mocked(listModerationQueue).mockResolvedValue({
-      response: { status: 200 } as any,
+      response: new Response(null, { status: 200 }),
       data: {
         items: [
           { id: "report-1", reporterId: "user-2", reporter: { id: "user-2", displayName: "Anna", initials: "A" }, targetType: "REVIEW", targetId: "rev-1", reason: "SPAM", details: "Spam details", status: "OPEN", createdAt: "2026-07-20T12:00:00Z", evidence: "Inappropriate review content" }
         ],
         pagination: { nextCursor: "cursor-123", hasNextPage: true, totalItems: 1 }
       }
-    });
+    } as never);
 
     render(
       <MemoryRouter>
-        <SessionProvider initialSession={{ authenticated: true, user: { id: "mod-1", email: "mod@test.com", roles: ["ROLE_MODERATOR"], displayName: "Moderator", initials: "M" }, csrfToken: "csrf-abc" }}>
+        <SessionProvider initialSession={{ authenticated: true, user: { id: "mod-1", roles: ["ROLE_MODERATOR"], displayName: "Moderator", initials: "M" }, csrfToken: "csrf-abc" }}>
           <LoginRequiredActionProvider>
             <ModeratorQueuePage />
           </LoginRequiredActionProvider>
@@ -195,12 +195,12 @@ describe("Community Frontend Vitest Suite", () => {
 
   it("handles reporting success and error flows (409 & 429)", async () => {
     vi.mocked(reportContent).mockResolvedValue({
-      response: { status: 201 } as any,
+      response: new Response(null, { status: 201 }),
       data: {}
-    });
+    } as never);
 
     render(
-      <SessionProvider initialSession={{ authenticated: true, user: { id: "user-1", email: "jan@test.com", roles: ["ROLE_USER"], displayName: "Jan", initials: "J" }, csrfToken: "csrf-abc" }}>
+      <SessionProvider initialSession={{ authenticated: true, user: { id: "user-1", roles: ["ROLE_USER"], displayName: "Jan", initials: "J" }, csrfToken: "csrf-abc" }}>
         <LoginRequiredActionProvider>
           <ReportContentDialog targetId="post-1" targetType="FORUM_POST" trigger={<button>Report</button>} />
         </LoginRequiredActionProvider>

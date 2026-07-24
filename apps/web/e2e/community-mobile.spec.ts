@@ -1,10 +1,10 @@
-import { expect, test, devices } from "@playwright/test";
+import { expect, test, devices, type Page } from "@playwright/test";
 
 test.use({ ...devices["iPhone 14"] });
 
-async function loginAs(page: any, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
+async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
   await page.goto("/");
-  await page.evaluate(async (data) => {
+  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -45,14 +45,19 @@ test.describe("Community Mobile Viewport E2E Real Journey", () => {
     // 4. Open Thread and Submit Reply
     await expect(page.getByText(threadTitle)).toBeVisible();
     await page.locator("a", { hasText: threadTitle }).first().click();
+    await expect(page).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
+    const threadUrl = page.url();
     await expect(page.getByText(threadBody)).toBeVisible();
 
     await page.locator("textarea").fill(replyBody);
     await page.getByRole("button", { name: "Wyślij" }).click();
     await expect(page.getByText(replyBody)).toBeVisible();
 
-    // 5. Open report dialog and submit report
-    const reportBtn = page.getByRole("button", { name: "Zgłoś" }).first();
+    // 5. A different mobile user reports the reply.
+    await loginAs(page, `mobile_reporter_${uniqueSuffix}@example.com`, "MobileReporter");
+    await page.goto(threadUrl);
+    const replyCard = page.locator('[data-slot="card"]', { hasText: replyBody });
+    const reportBtn = replyCard.getByRole("button", { name: "Zgłoś" });
     await reportBtn.click();
     await expect(page.getByRole("heading", { name: "Zgłoś naruszenie regulaminu" })).toBeVisible();
 

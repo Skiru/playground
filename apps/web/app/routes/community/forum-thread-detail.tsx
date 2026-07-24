@@ -42,6 +42,7 @@ interface Post {
   status: string
   createdAt: string
   updatedAt: string
+  version: number
 }
 
 interface CursorPagination {
@@ -61,6 +62,68 @@ interface Thread {
   lastActivityAt: string
   lockedAt?: string | null
   pinnedAt?: string | null
+  version: number
+}
+
+function toAuthor(value: unknown) {
+  return value && typeof value === "object" ? {
+    id: String(Reflect.get(value, "id")),
+    displayName: String(Reflect.get(value, "displayName")),
+    initials: String(Reflect.get(value, "initials")),
+  } : { id: "", displayName: "", initials: "" }
+}
+
+function toThread(data: Record<string, unknown>): Thread {
+  return {
+    id: String(data.id),
+    categoryId: String(data.categoryId),
+    authorId: String(data.authorId),
+    author: toAuthor(data.author),
+    title: String(data.title),
+    status: String(data.status),
+    createdAt: String(data.createdAt),
+    updatedAt: String(data.updatedAt),
+    lastActivityAt: String(data.lastActivityAt),
+    lockedAt: typeof data.lockedAt === "string" ? data.lockedAt : null,
+    pinnedAt: typeof data.pinnedAt === "string" ? data.pinnedAt : null,
+    version: Number(data.version),
+  }
+}
+
+function toPost(data: Record<string, unknown>): Post {
+  return {
+    id: String(data.id),
+    threadId: String(data.threadId),
+    authorId: String(data.authorId),
+    author: toAuthor(data.author),
+    parentId: typeof data.parentId === "string" ? data.parentId : null,
+    body: String(data.body),
+    status: String(data.status),
+    createdAt: String(data.createdAt),
+    updatedAt: String(data.updatedAt),
+    version: Number(data.version),
+  }
+}
+
+function toCursorPagination(data: Record<string, unknown>): CursorPagination {
+  return {
+    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
+    hasNextPage: data.hasNextPage === true,
+  }
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {}
+}
+
+function toRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter(isRecord)
+    : []
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
 export default function ForumThreadDetailPage() {
@@ -113,10 +176,11 @@ export default function ForumThreadDetailPage() {
       ])
 
       if (threadRes.data && postsRes.data) {
-        setThread(threadRes.data as Thread)
-        setPosts((postsRes.data.items || []) as Post[])
-        setEditTitle(threadRes.data.title as string)
-        const pagination = postsRes.data.pagination as CursorPagination | undefined
+        const nextThread = toThread(threadRes.data)
+        setThread(nextThread)
+        setPosts(toRecordArray(postsRes.data.items).map(toPost))
+        setEditTitle(nextThread.title)
+        const pagination = toCursorPagination(toRecord(postsRes.data.pagination))
         setPostsNextCursor(pagination?.nextCursor || null)
         setPostsHasNextPage(pagination?.hasNextPage || false)
       } else {
@@ -141,13 +205,13 @@ export default function ForumThreadDetailPage() {
         }
       })
       if (res.data) {
-        const fetchedItems = (res.data.items || []) as Post[]
+        const fetchedItems = toRecordArray(res.data.items).map(toPost)
         setPosts((prev) => {
           const existingIds = new Set(prev.map(p => p.id))
           const uniqueNew = fetchedItems.filter(p => !existingIds.has(p.id))
           return [...prev, ...uniqueNew]
         })
-        const pagination = res.data.pagination as CursorPagination | undefined
+        const pagination = toCursorPagination(toRecord(res.data.pagination))
         setPostsNextCursor(pagination?.nextCursor || null)
         setPostsHasNextPage(pagination?.hasNextPage || false)
       }
@@ -159,8 +223,43 @@ export default function ForumThreadDetailPage() {
   }
 
   React.useEffect(() => {
-    loadThreadAndPosts()
-  }, [loadThreadAndPosts])
+    if (!threadId) return
+    let ignore = false
+
+    async function init() {
+      setError(null)
+      try {
+        const [threadRes, postsRes] = await Promise.all([
+          getForumThread({ path: { threadId: threadId! } }),
+          listForumPosts({ path: { threadId: threadId! }, query: { limit: 20 } }),
+        ])
+        if (!ignore && threadRes.data && postsRes.data) {
+          const nextThread = toThread(threadRes.data)
+          const pagination = toCursorPagination(toRecord(postsRes.data.pagination))
+          setThread(nextThread)
+          setPosts(toRecordArray(postsRes.data.items).map(toPost))
+          setEditTitle(nextThread.title)
+          setPostsNextCursor(pagination.nextCursor || null)
+          setPostsHasNextPage(pagination.hasNextPage || false)
+        } else if (!ignore) {
+          setError("Wątek nie istnieje lub został usunięty.")
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void init()
+    return () => {
+      ignore = true
+    }
+  }, [threadId])
 
   const handleCreateReply = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -178,7 +277,7 @@ export default function ForumThreadDetailPage() {
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 201) {
+      if (res.response?.status === 201) {
         setReplyBody("")
         setReplyToPostId(null)
         loadThreadAndPosts()
@@ -202,11 +301,11 @@ export default function ForumThreadDetailPage() {
     try {
       const res = await editOwnForumThread({
         path: { threadId: thread.id },
-        body: { title: editTitle },
+        body: { title: editTitle, version: thread.version || 1 },
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 200) {
+      if (res.response?.status === 200) {
         setIsEditThreadOpen(false)
         loadThreadAndPosts()
       } else {
@@ -231,7 +330,7 @@ export default function ForumThreadDetailPage() {
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 204) {
+      if (res.response?.status === 204) {
         setIsDeleteThreadConfirmOpen(false)
         navigate("/forum")
       } else {
@@ -250,14 +349,15 @@ export default function ForumThreadDetailPage() {
     setEditPostError(null)
     setEditingPost(true)
 
+    const targetPost = posts.find(p => p.id === postId)
     try {
       const res = await editOwnForumPost({
         path: { postId },
-        body: { body: editPostBody },
+        body: { body: editPostBody, version: targetPost?.version || 1 },
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 200) {
+      if (res.response?.status === 200) {
         setEditPostId(null)
         loadThreadAndPosts()
       } else {
@@ -282,7 +382,7 @@ export default function ForumThreadDetailPage() {
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
 
-      if (res.response.status === 204) {
+      if (res.response?.status === 204) {
         setDeletePostId(null)
         loadThreadAndPosts()
       } else {
@@ -475,6 +575,7 @@ export default function ForumThreadDetailPage() {
                           {isPostAuthor && !isDeleted && post.status === "PUBLISHED" && (
                             <>
                               <Button
+                                aria-label="Edytuj post"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
@@ -486,6 +587,7 @@ export default function ForumThreadDetailPage() {
                                 <Edit2 className="h-3.5 w-3.5" />
                               </Button>
                               <Button
+                                aria-label="Usuń post"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setDeletePostId(post.id)}
@@ -501,7 +603,7 @@ export default function ForumThreadDetailPage() {
                               targetId={post.id}
                               targetType="FORUM_POST"
                               trigger={
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
+                                <Button aria-label="Zgłoś" variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
                                   <Flag className="h-3.5 w-3.5" />
                                 </Button>
                               }

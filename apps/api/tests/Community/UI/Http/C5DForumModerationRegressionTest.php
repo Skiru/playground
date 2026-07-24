@@ -4,27 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Community\UI\Http;
 
-use App\Community\Domain\Forum\ForumCategory;
-use App\Community\Domain\Forum\ForumCategoryRepository;
-use App\Community\Domain\Forum\ForumPost;
-use App\Community\Domain\Forum\ForumPostRepository;
-use App\Community\Domain\Forum\ForumPostStatus;
-use App\Community\Domain\Forum\ForumThread;
-use App\Community\Domain\Forum\ForumThreadRepository;
-use App\Community\Domain\Forum\ForumThreadStatus;
-use App\Community\Domain\Moderation\ContentReport;
-use App\Community\Domain\Moderation\ContentReportRepository;
-use App\Community\Domain\Moderation\ReportReason;
-use App\Community\Domain\Moderation\ReportStatus;
-use App\Community\Domain\Moderation\TargetType;
-use App\Community\Domain\PlaceDiscussion\PlaceComment;
-use App\Community\Domain\PlaceDiscussion\PlaceCommentRepository;
-use App\Community\Domain\PlaceDiscussion\PlaceCommentStatus;
 use App\Community\Domain\Review\Review;
-use App\Community\Domain\Review\ReviewRepository;
-use App\Community\Domain\Review\ReviewStatus;
 use App\Identity\Domain\User;
-use App\Identity\Domain\UserStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,14 +21,8 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             email: new \App\Identity\Domain\ValueObject\EmailAddress($email),
             displayName: $displayName,
             createdAt: new \DateTimeImmutable(),
-            roles: $roles
+            roles: $roles,
         );
-
-        // Reflection setting for UserStatus
-        $ref = new \ReflectionClass($user);
-        $prop = $ref->getProperty('status');
-        $prop->setAccessible(true);
-        $prop->setValue($user, UserStatus::ACTIVE);
 
         $this->em->persist($user);
         $this->em->flush();
@@ -80,10 +55,10 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $csrfHeaders = $this->getCsrfHeaders($csrfToken);
 
         // Secrets markers for test verification
-        $secretThreadTitle = 'SECRET_MARKER_HIDDEN_THREAD_' . random_int(10000, 99999);
-        $secretPostText = 'SECRET_MARKER_POST_IN_INACTIVE_CAT_' . random_int(10000, 99999);
-        $secretReviewText = 'SECRET_MARKER_REVIEW_UNPUBLISHED_PLACE_' . random_int(10000, 99999);
-        $secretCommentText = 'SECRET_MARKER_COMMENT_UNPUBLISHED_PLACE_' . random_int(10000, 99999);
+        $secretThreadTitle = 'SECRET_MARKER_HIDDEN_THREAD_'.random_int(10000, 99999);
+        $secretPostText = 'SECRET_MARKER_POST_IN_INACTIVE_CAT_'.random_int(10000, 99999);
+        $secretReviewText = 'SECRET_MARKER_REVIEW_UNPUBLISHED_PLACE_'.random_int(10000, 99999);
+        $secretCommentText = 'SECRET_MARKER_COMMENT_UNPUBLISHED_PLACE_'.random_int(10000, 99999);
 
         // 1. Inactive category and a published thread/post inside it
         $inactiveCategoryUuid = Uuid::v7();
@@ -91,7 +66,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, :display_order, :active)',
             [
                 'id' => $inactiveCategoryUuid->toRfc4122(),
-                'slug' => 'inactive-cat-' . random_int(1000, 9999),
+                'slug' => 'inactive-cat-'.random_int(1000, 9999),
                 'name' => 'Inactive Cat',
                 'description' => 'Inactive',
                 'display_order' => 10,
@@ -146,13 +121,13 @@ final class C5DForumModerationRegressionTest extends WebTestCase
                 'id' => $unpublishedPlaceUuid->toRfc4122(),
                 'city_id' => '00000000-0000-7000-8000-000000000100', // Valid City ID from DB
                 'primary_category_id' => '00000000-0000-7000-8000-000000000201', // Valid Category ID from DB
-                'slug' => 'secret-playroom-' . random_int(100, 999),
+                'slug' => 'secret-playroom-'.random_int(100, 999),
                 'name' => 'Secret Playroom',
                 'normalized_name' => 'secret playroom',
                 'short_description' => 'Short draft',
                 'description' => 'Draft description',
                 'status' => 'draft', // NOT published!
-                'verification_status' => 'verified',
+                'verification_status' => 'admin_verified',
                 'address_line1' => 'Street 1',
                 'postal_code' => '00-000',
                 'country_code' => 'PL',
@@ -233,7 +208,6 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         ]));
 
         $content = $client->getResponse()->getContent();
-        \fwrite(STDERR, "\n--- INACCESSIBLE REPORT RESPONSE ---\n" . $content . "\n-------------------\n");
 
         self::assertSame(Response::HTTP_NOT_FOUND, $client->getResponse()->getStatusCode());
         $res = json_decode($content, true);
@@ -260,7 +234,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, :display_order, :active)',
             [
                 'id' => $categoryUuid->toRfc4122(),
-                'slug' => 'test-cat-reply-' . random_int(1000, 9999),
+                'slug' => 'test-cat-reply-'.random_int(1000, 9999),
                 'name' => 'Active Category',
                 'description' => 'Active',
                 'display_order' => 1,
@@ -350,9 +324,8 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'reason' => 'SPAM',
             'details' => 'Spamming',
         ]));
-        
+
         $content1 = $client->getResponse()->getContent();
-        \fwrite(STDERR, "\n--- FIRST REPORT RESPONSE ---\n" . $content1 . "\n-------------------\n");
         self::assertSame(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
 
         // Submit duplicate report immediately and check 409
@@ -362,9 +335,8 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'reason' => 'SPAM',
             'details' => 'Spamming again',
         ]));
-        
+
         $content2 = $client->getResponse()->getContent();
-        \fwrite(STDERR, "\n--- SECOND REPORT RESPONSE ---\n" . $content2 . "\n-------------------\n");
         self::assertSame(Response::HTTP_CONFLICT, $client->getResponse()->getStatusCode());
         $res = json_decode($content2, true);
         self::assertSame('REPORT_ALREADY_EXISTS', $res['code']);
@@ -378,7 +350,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
 
         $rand = random_int(10000, 99999);
         $moderator = $this->createUser(\sprintf('mod-queue-test-%d@example.com', $rand), 'ModQueue', ['ROLE_MODERATOR']);
-        
+
         $author1 = $this->createUser(\sprintf('auth1-%d@example.com', $rand), 'Author One');
         $author2 = $this->createUser(\sprintf('auth2-%d@example.com', $rand), 'Author Two');
         $author3 = $this->createUser(\sprintf('auth3-%d@example.com', $rand), 'Author Three');
@@ -401,7 +373,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, :display_order, :active)',
             [
                 'id' => $categoryUuid->toRfc4122(),
-                'slug' => 'queue-cat-' . random_int(1000, 9999),
+                'slug' => 'queue-cat-'.random_int(1000, 9999),
                 'name' => 'Queue Category',
                 'description' => 'Desc',
                 'display_order' => 1,
@@ -480,10 +452,10 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $reportPostUuid = Uuid::v7();
 
         $this->em->getConnection()->executeStatement(
-            'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at) VALUES ' .
-            '(:id1, :rep1, \'REVIEW\', :tid1, \'SPAM\', \'Spam review\', \'OPEN\', :created_at), ' .
-            '(:id2, :rep2, \'PLACE_COMMENT\', :tid2, \'HARASSMENT\', \'Harassment comment\', \'OPEN\', :created_at), ' .
-            '(:id3, :rep3, \'FORUM_THREAD\', :tid3, \'OFF_TOPIC\', \'Offtopic thread\', \'OPEN\', :created_at), ' .
+            'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at) VALUES '.
+            '(:id1, :rep1, \'REVIEW\', :tid1, \'SPAM\', \'Spam review\', \'OPEN\', :created_at), '.
+            '(:id2, :rep2, \'PLACE_COMMENT\', :tid2, \'HARASSMENT\', \'Harassment comment\', \'OPEN\', :created_at), '.
+            '(:id3, :rep3, \'FORUM_THREAD\', :tid3, \'OFF_TOPIC\', \'Offtopic thread\', \'OPEN\', :created_at), '.
             '(:id4, :rep4, \'FORUM_POST\', :tid4, \'SPAM\', \'Spam post\', \'OPEN\', :created_at)',
             [
                 'id1' => $reportReviewUuid->toRfc4122(),
@@ -573,16 +545,16 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $reporter = $this->createUser(\sprintf('rep-cursor-%d@example.com', $rand), 'RepCursor');
 
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        
+
         $this->em->getConnection()->beginTransaction();
         try {
-            for ($i = 1; $i <= 125; $i++) {
+            for ($i = 1; $i <= 125; ++$i) {
                 $targetId = Uuid::v7();
                 $reportId = Uuid::v7();
                 $createdAt = (new \DateTimeImmutable(\sprintf('-%d seconds', $i)))->format('Y-m-d H:i:s');
 
                 $this->em->getConnection()->executeStatement(
-                    'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at) VALUES ' .
+                    'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at) VALUES '.
                     '(:id, :reporter_id, \'REVIEW\', :target_id, \'SPAM\', :details, \'OPEN\', :created_at)',
                     [
                         'id' => $reportId->toRfc4122(),
@@ -610,7 +582,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         self::assertNotNull($page1['pagination']['nextCursor']);
 
         $page1Ids = array_column($page1['items'], 'id');
-        
+
         // Fetch second page of 50 reports using cursor
         $cursor1 = $page1['pagination']['nextCursor'];
         $client->request('GET', "/api/v1/moderation/queue?status=OPEN&limit=50&cursor={$cursor1}");
@@ -630,12 +602,12 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $page3 = json_decode($client->getResponse()->getContent(), true);
 
         self::assertGreaterThanOrEqual(25, \count($page3['items']));
-        
+
         $page3Ids = array_column($page3['items'], 'id');
 
         // Verify NO duplicates across any of the pages!
         $allFetchedIds = array_merge($page1Ids, $page2Ids, $page3Ids);
         $uniqueFetchedIds = array_unique($allFetchedIds);
-        self::assertCount(\count($allFetchedIds), $uniqueFetchedIds, "Detected duplicate report IDs across cursor paginated pages!");
+        self::assertCount(\count($allFetchedIds), $uniqueFetchedIds, 'Detected duplicate report IDs across cursor paginated pages!');
     }
 }

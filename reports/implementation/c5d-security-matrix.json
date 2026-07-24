@@ -1,4 +1,10 @@
 {
+  "certifiedAt": "2026-07-24T21:43:00+02:00",
+  "dependencyAudits": {
+    "pnpmProductionAudit": "PASS - no known vulnerabilities",
+    "composerLockedAudit": "PASS - no security vulnerability advisories",
+    "gitleaksFullHistory": "PASS - no leaks found"
+  },
   "actors": {
     "anonymous": {
       "GET /api/v1/forum/categories": "ALLOW",
@@ -22,7 +28,8 @@
     },
     "moderator": {
       "GET /api/v1/moderation/queue": "ALLOW",
-      "POST /api/v1/moderation/action": "ALLOW"
+      "POST /api/v1/moderation/action": "ALLOW",
+      "moderationReadCachePolicy": "private, no-store"
     }
   }
 }

@@ -53,7 +53,7 @@ export function ReportContentDialog({ targetId, targetType, trigger }: ReportCon
         },
       })
 
-      if (res.response.status === 201) {
+      if (res.response?.status === 201) {
         setSuccess(true)
         setTimeout(() => {
           setOpen(false)
@@ -63,9 +63,9 @@ export function ReportContentDialog({ targetId, targetType, trigger }: ReportCon
         }, 2000)
       } else {
         const errorData = mapApiError(res.error)
-        if (res.response.status === 409) {
+        if (res.response?.status === 409) {
           setError("Ta treść została już przez Ciebie zgłoszona i jest weryfikowana.")
-        } else if (res.response.status === 429) {
+        } else if (res.response?.status === 429) {
           setError("Przekroczono limit zgłoszeń. Spróbuj ponownie później.")
         } else {
           setError(errorData.detail || "Nie udało się przesłać zgłoszenia.")

@@ -3,11 +3,11 @@ import { Link } from "react-router"
 import { getCommunityFeed } from "@family-places/api-client"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { MessageSquare, Calendar, Filter, Star } from "lucide-react"
+import { MessageSquare, Calendar, Filter } from "lucide-react"
 
 interface FeedItem {
   type: string
@@ -94,8 +94,41 @@ export default function CommunityFeedPage() {
   }, [typeFilter])
 
   React.useEffect(() => {
-    loadFeed(null, false)
-  }, [loadFeed])
+    let ignore = false
+    async function init() {
+      setError(null)
+      try {
+        const res = await getCommunityFeed({
+          query: {
+            limit: 10,
+            type: typeFilter === "ALL" ? undefined : typeFilter,
+          },
+        })
+
+        if (!ignore && res.data) {
+          const fetchedItems = (res.data.items || []) as FeedItem[]
+          setItems(fetchedItems)
+          const pagination = res.data.pagination as CursorPagination | undefined
+          setNextCursor(pagination?.nextCursor || null)
+          setHasNextPage(pagination?.hasNextPage || false)
+        } else if (!ignore) {
+          setError("Wystąpił błąd podczas ładowania społeczności.")
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.")
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+    init()
+    return () => {
+      ignore = true
+    }
+  }, [typeFilter])
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -141,7 +174,7 @@ export default function CommunityFeedPage() {
             <div className="flex items-center gap-3">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val)}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[200px]" aria-label="Filtruj aktywności">
                   <SelectValue placeholder="Filtruj aktywności" />
                 </SelectTrigger>
                 <SelectContent>

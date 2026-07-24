@@ -23,7 +23,12 @@ export default function ForumCategoriesPage() {
       try {
         const res = await listForumCategories()
         if (res.data) {
-          setCategories((res.data || []) as Category[])
+          setCategories(res.data.map((category) => ({
+            id: String(category.id),
+            slug: String(category.slug),
+            name: String(category.name),
+            description: String(category.description),
+          })))
         } else {
           setError("Nie udało się pobrać kategorii forum.")
         }

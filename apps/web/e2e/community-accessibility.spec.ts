@@ -6,7 +6,7 @@ const axePath = require.resolve("axe-core/axe.min.js");
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
   await page.goto("/");
-  await page.evaluate(async (data) => {
+  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -20,7 +20,18 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
 async function assertAccessible(page: Page) {
   await page.addScriptTag({ path: axePath });
   const violations = await page.evaluate(async () => {
-    const result = await (window as any).axe.run({
+    type AxeNode = { target: string[] };
+    type AxeViolation = {
+      id: string;
+      impact: string | null;
+      description: string;
+      help: string;
+      nodes: AxeNode[];
+    };
+    const axeWindow = window as typeof window & {
+      axe: { run: (options: object) => Promise<{ violations: AxeViolation[] }> };
+    };
+    const result = await axeWindow.axe.run({
       runOnly: {
         type: "tag",
         values: ["wcag2a", "wcag2aa", "best-practice"]
@@ -29,13 +40,13 @@ async function assertAccessible(page: Page) {
     
     // Filter to only serious and critical violations
     return result.violations
-      .filter((v: any) => v.impact === "critical" || v.impact === "serious")
-      .map((v: any) => ({
-        id: v.id,
-        impact: v.impact,
-        description: v.description,
-        help: v.help,
-        nodes: v.nodes.map((node: any) => node.target.join(" "))
+      .filter((violation) => violation.impact === "critical" || violation.impact === "serious")
+      .map((violation) => ({
+        id: violation.id,
+        impact: violation.impact,
+        description: violation.description,
+        help: violation.help,
+        nodes: violation.nodes.map((node) => node.target.join(" "))
       }));
   });
   expect(violations).toEqual([]);
@@ -45,29 +56,38 @@ test.describe("Community Accessibility Axe Scan Real Journey", () => {
   test("Run actual Axe scans across all required community pages and dialogs", async ({ page }) => {
     const uniqueSuffix = Math.random().toString(36).substring(7);
 
-    // 1. Log in as Moderator so we can access queue and cases
-    await loginAs(page, `mod_axe_${uniqueSuffix}@example.com`, "Moderator", ["ROLE_MODERATOR"]);
-
-    // 2. Go to first place details page to get review/comment sections
+    // 1. Create reportable community content with an ordinary user.
+    await loginAs(page, `author_axe_${uniqueSuffix}@example.com`, "AxeAuthor");
     await page.goto("/miejsca?city=warszawa");
     await expect(page.locator(".place-card").first()).toBeVisible();
     await page.locator(".place-card h2 a").first().click();
-    await expect(page.getByRole("heading", { name: "Oceny i opinie" }).first()).toBeVisible();
-
+    await expect(page).toHaveURL(/\/miejsca\/[^/?#]+$/);
+    await expect(page.getByRole("heading", { name: "Opinie i oceny rodziców" }).first()).toBeVisible();
     const placeUrl = page.url();
+    await page.getByRole("button", { name: "Dodaj opinię" }).click();
+    await page.locator("form button:has-text('★')").nth(3).click();
+    await page.locator("#review-form-body").fill(`Opinia do testu dostępności zgłoszenia ${uniqueSuffix}.`);
+    await page.getByRole("button", { name: "Zapisz opinię" }).click();
+    await expect(page.getByText(`Opinia do testu dostępności zgłoszenia ${uniqueSuffix}.`, { exact: true })).toBeVisible();
+
+    // 2. Log in as moderator and scan the rendered place community UI.
+    await loginAs(page, `mod_axe_${uniqueSuffix}@example.com`, "Moderator", ["ROLE_MODERATOR"]);
+    await page.goto(placeUrl);
+    await expect(page.getByText(`Opinia do testu dostępności zgłoszenia ${uniqueSuffix}.`, { exact: true })).toBeVisible();
 
     // Scan Place Review and Discussion Sections
     await assertAccessible(page);
 
     // Open Report dialog and scan
     const reportBtn = page.getByRole("button", { name: "Zgłoś" }).first();
-    if (await reportBtn.isVisible()) {
-      await reportBtn.click();
-      await expect(page.getByRole("heading", { name: "Zgłoś naruszenie regulaminu" })).toBeVisible();
-      await assertAccessible(page);
-      // Close report dialog
-      await page.keyboard.press("Escape");
-    }
+    await expect(reportBtn).toBeVisible();
+    await reportBtn.click();
+    await expect(page.getByRole("heading", { name: "Zgłoś naruszenie regulaminu" })).toBeVisible();
+    await assertAccessible(page);
+    await page.locator("#reason-select").click();
+    await page.getByRole("option", { name: "Spam lub reklama" }).click();
+    await page.getByRole("button", { name: "Wyślij zgłoszenie" }).click();
+    await expect(page.getByText("Zgłoszenie wysłane")).toBeVisible();
 
     // 3. Community Feed
     await page.goto("/spolecznosc");
@@ -76,23 +96,21 @@ test.describe("Community Accessibility Axe Scan Real Journey", () => {
 
     // 4. Forum Categories
     await page.goto("/forum");
-    await expect(page.getByRole("heading", { name: "Kategorie forum" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Forum Społeczności" })).toBeVisible();
     await assertAccessible(page);
 
     // 5. Forum Thread List (first category)
     await page.locator("a[href^='/forum/']").first().click();
-    const categoryUrl = page.url();
+    await expect(page).toHaveURL(/\/forum\/[^/]+$/);
     await assertAccessible(page);
 
     // Open Create Thread dialog and scan
     const newThreadBtn = page.getByRole("button", { name: "Nowy wątek" });
-    if (await newThreadBtn.isVisible()) {
-      await newThreadBtn.click();
-      await expect(page.getByRole("heading", { name: "Utwórz nowy wątek" })).toBeVisible();
-      await assertAccessible(page);
-      // Close dialog
-      await page.keyboard.press("Escape");
-    }
+    await expect(newThreadBtn).toBeVisible();
+    await newThreadBtn.click();
+    await expect(page.getByRole("heading", { name: "Utwórz nowy wątek" })).toBeVisible();
+    await assertAccessible(page);
+    await page.keyboard.press("Escape");
 
     // 6. Moderator Queue
     await page.goto("/moderator/queue");
@@ -101,10 +119,9 @@ test.describe("Community Accessibility Axe Scan Real Journey", () => {
 
     // 7. Moderation Case Detail (first case)
     const reportLink = page.locator("a[href^='/moderator/case/']").first();
-    if (await reportLink.isVisible()) {
-      await reportLink.click();
-      await expect(page.getByRole("heading", { name: "Zgłoszenie naruszenia" })).toBeVisible();
-      await assertAccessible(page);
-    }
+    await expect(reportLink).toBeVisible();
+    await reportLink.click();
+    await expect(page.getByRole("heading", { name: "Zgłoszenie naruszenia" })).toBeVisible();
+    await assertAccessible(page);
   });
 });

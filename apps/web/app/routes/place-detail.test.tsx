@@ -29,7 +29,7 @@ describe("place detail route", () => {
       <MemoryRouter>
         <SessionProvider initialSession={{ authenticated: false, user: null, csrfToken: null }}>
           <LoginRequiredActionProvider>
-            <PlaceDetailView session={{ authenticated: false, user: null }} place={{
+            <PlaceDetailView place={{
               id: "00000000-0000-7000-8000-000000000400",
               slug: "demo-bawialnia",
               name: "Demo Bawialnia",

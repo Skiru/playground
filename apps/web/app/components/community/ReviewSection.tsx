@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button"
 import { RatingSummary } from "./RatingSummary"
 import { ReviewForm } from "./ReviewForm"
 import { ReportContentDialog } from "./ReportContentDialog"
-import { Flag, Trash2, Edit2, ShieldAlert } from "lucide-react"
+import { Flag, Trash2, Edit2 } from "lucide-react"
 
 interface Review {
   id: string
@@ -23,6 +23,27 @@ interface Review {
 
 interface ReviewSectionProps {
   placeId: string
+}
+
+function toReview(item: Record<string, unknown>): Review {
+  const author = item.author
+
+  return {
+    id: String(item.id),
+    placeId: String(item.placeId),
+    authorId: String(item.authorId),
+    author: author && typeof author === "object" ? {
+      id: String(Reflect.get(author, "id")),
+      displayName: String(Reflect.get(author, "displayName")),
+      initials: String(Reflect.get(author, "initials")),
+    } : null,
+    rating: Number(item.rating),
+    body: String(item.body),
+    visitedOn: typeof item.visitedOn === "string" ? item.visitedOn : null,
+    status: String(item.status),
+    createdAt: String(item.createdAt),
+    version: Number(item.version),
+  }
 }
 
 export function ReviewSection({ placeId }: ReviewSectionProps) {
@@ -55,9 +76,24 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
         query: { page, sort },
       })
       if (res.data) {
-        setReviews((res.data.items || []) as Review[])
-        setSummary(res.data.summary || { averageRating: 0, totalReviews: 0, histogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } })
-        setTotalPages(res.data.pagination?.totalPages || 1)
+        setReviews((res.data.items || []).map(toReview))
+        const s = res.data.summary
+        const itemsCount = res.data.items?.length || 0
+        const totalCount = Math.max(Number(s?.totalReviews ?? 0), itemsCount)
+        const avgRating = Number(s?.averageRating ?? 0)
+        setSummary({
+          averageRating: avgRating,
+          totalReviews: totalCount,
+          histogram: {
+            1: Number(s?.histogram?.[1] || 0),
+            2: Number(s?.histogram?.[2] || 0),
+            3: Number(s?.histogram?.[3] || 0),
+            4: Number(s?.histogram?.[4] || 0),
+            5: Number(s?.histogram?.[5] || 0),
+          }
+        })
+        const totalPages = (res.data.pagination as { totalPages?: number } | undefined)?.totalPages
+        setTotalPages(totalPages || 1)
       } else {
         setError("Nie udało się załadować opinii.")
       }
@@ -69,8 +105,51 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
   }, [placeId, page, sort])
 
   React.useEffect(() => {
-    loadReviews()
-  }, [loadReviews])
+    let ignore = false
+    async function init() {
+      setError(null)
+      try {
+        const res = await listReviews({
+          path: { placeId },
+          query: { page, sort },
+        })
+        if (!ignore && res.data) {
+          setReviews((res.data.items || []).map(toReview))
+          const s = res.data.summary
+          const itemsCount = res.data.items?.length || 0
+          const totalCount = Math.max(Number(s?.totalReviews ?? 0), itemsCount)
+          const avgRating = Number(s?.averageRating ?? 0)
+          setSummary({
+            averageRating: avgRating,
+            totalReviews: totalCount,
+            histogram: {
+              1: Number(s?.histogram?.[1] || 0),
+              2: Number(s?.histogram?.[2] || 0),
+              3: Number(s?.histogram?.[3] || 0),
+              4: Number(s?.histogram?.[4] || 0),
+              5: Number(s?.histogram?.[5] || 0),
+            }
+          })
+          const totalPages = (res.data.pagination as { totalPages?: number } | undefined)?.totalPages
+          setTotalPages(totalPages || 1)
+        } else if (!ignore) {
+          setError("Nie udało się załadować opinii.")
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+    init()
+    return () => {
+      ignore = true
+    }
+  }, [placeId, page, sort])
 
   const handleFormSubmit = async (data: { rating: number; body: string; visitedOn: string | null }) => {
     setSubmitting(true)
@@ -90,7 +169,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
           headers: { "X-CSRF-Token": session.csrfToken || "" },
         })
 
-        if (res.response.status === 200) {
+        if (res.response?.status === 200) {
           setShowForm(false)
           setEditingReview(null)
           loadReviews()
@@ -110,7 +189,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
           headers: { "X-CSRF-Token": session.csrfToken || "" },
         })
 
-        if (res.response.status === 201) {
+        if (res.response?.status === 201) {
           setShowForm(false)
           loadReviews()
         } else {
@@ -132,7 +211,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
         path: { reviewId },
         headers: { "X-CSRF-Token": session.csrfToken || "" },
       })
-      if (res.response.status === 204) {
+      if (res.response?.status === 204) {
         setDeleteTargetId(null)
         loadReviews()
       } else {
@@ -189,6 +268,12 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
         />
       )}
 
+      {error && (
+        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded" role="alert">
+          {error}
+        </div>
+      )}
+
       {formError && !showForm && (
         <div className="text-sm text-destructive bg-destructive/10 p-3 rounded flex items-center gap-2" role="alert">
           <span className="font-semibold">Błąd:</span>
@@ -218,6 +303,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Sortuj:</span>
               <select
+                aria-label="Sortuj opinie"
                 className="bg-background border rounded px-1.5 py-0.5"
                 value={sort}
                 onChange={(e) => {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect, Link } from "react-router"
 import { fetchSession } from "../../lib/api-session.server"
 import { hardenedFetch } from "../../lib/hardened-fetch.server"
@@ -12,6 +11,22 @@ import { Heart, Trash2, ArrowLeft, ArrowRight, ShieldAlert } from "lucide-react"
 import { PlaceImage } from "../../components/media/PlaceImage"
 import { toast } from "sonner"
 import * as React from "react"
+
+interface FavoriteItem {
+  id: string
+  placeId: string
+  place?: {
+    published?: boolean
+    name?: string
+    slug?: string
+    city?: string
+    shortDescription?: string
+    category?: string
+    categories?: Array<{ slug?: string }>
+    main_photo?: { thumbnail?: string; thumbnail_mini?: string; card?: string }
+    ageSummary?: string
+  }
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { data } = await fetchSession(request.headers)
@@ -41,7 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
   const { session, favoritesList } = loaderData
-  const [items, setItems] = React.useState<any[]>(favoritesList.items || [])
+  const [items, setItems] = React.useState<FavoriteItem[]>(favoritesList.items || [])
 
   const handleRemoveFavorite = async (placeId: string) => {
     try {
@@ -108,7 +123,7 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
                           mainPhotoUrl={place.main_photo?.thumbnail}
                           srcSet={place.main_photo ? `${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w` : undefined}
                           sizes="(max-width: 640px) 100vw, 144px"
-                          placeName={place.name}
+                          placeName={place.name || "Miejsce"}
                           categorySlug={place.categories?.[0]?.slug}
                           className="h-full w-full object-cover"
                         />

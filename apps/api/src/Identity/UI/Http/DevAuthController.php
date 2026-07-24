@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Identity\UI\Http;
 
-use App\Identity\Application\UserRepository;
-use App\Shared\Application\Clock;
+use App\Identity\Application\Exception\AccountInactiveException;
+use App\Identity\Application\ProvisionDevUser;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,10 +17,9 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 final class DevAuthController
 {
     public function __construct(
-        private readonly UserRepository $userRepository,
+        private readonly ProvisionDevUser $provisionDevUser,
         private readonly Security $security,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
-        private readonly Clock $clock,
         #[Autowire(env: 'DEV_AUTH_ENABLED')]
         private readonly string $devAuthEnabled,
         #[Autowire('%kernel.environment%')]
@@ -42,58 +41,28 @@ final class DevAuthController
         $reqData = json_decode($request->getContent(), true) ?? [];
         $emailStr = isset($reqData['email']) ? (string) $reqData['email'] : 'dev-user@example.com';
         $displayNameStr = isset($reqData['displayName']) ? (string) $reqData['displayName'] : 'Developer User';
-        $rolesArray = isset($reqData['roles']) && is_array($reqData['roles']) ? $reqData['roles'] : ['ROLE_USER'];
+        $rolesArray = isset($reqData['roles']) && \is_array($reqData['roles']) ? $reqData['roles'] : ['ROLE_USER'];
         $statusStr = isset($reqData['status']) ? (string) $reqData['status'] : 'ACTIVE';
 
-        // Dynamically instantiate to bypass Deptrac boundaries
-        $emailClass = 'App\Identity\Domain\ValueObject\EmailAddress';
-        $userClass = 'App\Identity\Domain\User';
-
-        $emailObj = new $emailClass($emailStr);
-        /** @var \Symfony\Component\Security\Core\User\UserInterface|null $user */ // @phpstan-ignore varTag.nativeType
-        $user = $this->userRepository->findByEmail($emailObj);
-
-        if (null !== $user && method_exists($user, 'status')) {
-            $status = $user->status();
-            $dbStatusStr = $status instanceof \BackedEnum ? $status->value : (string) $status;
-            if ('ACTIVE' !== $dbStatusStr) {
-                return new JsonResponse([
-                    'type' => 'https://familyplaces.example/problems/auth_failed',
-                    'title' => 'Authentication Failed',
-                    'status' => Response::HTTP_FORBIDDEN,
-                    'detail' => 'User account is not active.',
-                    'code' => 'ACCOUNT_INACTIVE',
-                ], Response::HTTP_FORBIDDEN, [
-                    'Content-Type' => 'application/problem+json',
-                    'Cache-Control' => 'private, no-store',
-                    'Vary' => 'Cookie',
-                ]);
-            }
-        }
-
-        if (null === $user) {
-            /** @var \Symfony\Component\Security\Core\User\UserInterface $user */ // @phpstan-ignore varTag.nativeType
-            $user = new $userClass(
-                $emailObj,
+        try {
+            $user = $this->provisionDevUser->provision(
+                $emailStr,
                 $displayNameStr,
-                $this->clock->now(),
-                $rolesArray
+                array_values(array_map('strval', $rolesArray)),
+                $statusStr,
             );
-
-            if ('ACTIVE' !== $statusStr) {
-                // Set non-active status via reflection if requested
-                $ref = new \ReflectionClass($user);
-                if ($ref->hasProperty('status')) {
-                    $prop = $ref->getProperty('status');
-                    $prop->setAccessible(true);
-                    $enumClass = 'App\Identity\Domain\UserStatus';
-                    if (class_exists($enumClass)) {
-                        $prop->setValue($user, $statusStr === 'SUSPENDED' ? $enumClass::SUSPENDED : $enumClass::DELETED);
-                    }
-                }
-            }
-
-            $this->userRepository->save($user); // @phpstan-ignore argument.type
+        } catch (AccountInactiveException) {
+            return new JsonResponse([
+                'type' => 'https://familyplaces.example/problems/auth_failed',
+                'title' => 'Authentication Failed',
+                'status' => Response::HTTP_FORBIDDEN,
+                'detail' => 'User account is not active.',
+                'code' => 'ACCOUNT_INACTIVE',
+            ], Response::HTTP_FORBIDDEN, [
+                'Content-Type' => 'application/problem+json',
+                'Cache-Control' => 'private, no-store',
+                'Vary' => 'Cookie',
+            ]);
         }
 
         // Programmatically log in user to Symfony Security session
@@ -104,8 +73,8 @@ final class DevAuthController
             $request->getSession()->migrate(true);
         }
 
-        $displayName = method_exists($user, 'getDisplayName') ? $user->getDisplayName() : $user->getUserIdentifier();
-        $id = method_exists($user, 'getId') ? $user->getId()->toString() : $user->getUserIdentifier();
+        $displayName = $user->getDisplayName();
+        $id = $user->getId()->toString();
         $initials = $this->calculateInitials($displayName);
         $csrfToken = $this->csrfTokenManager->getToken('api_session')->getValue();
 

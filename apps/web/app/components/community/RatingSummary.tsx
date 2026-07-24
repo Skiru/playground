@@ -19,25 +19,15 @@ export function RatingSummary({ summary }: RatingSummaryProps) {
     )
   }
 
-  if (summary.totalReviews === 0) {
-    return (
-      <div className="text-center p-6 border border-dashed rounded-lg">
-        <p className="text-sm text-muted-foreground italic">
-          Brak opinii dla tego miejsca. Bądź pierwszym, który doda opinię!
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6 p-4 rounded-xl border bg-muted/10">
+    <div id="rating-summary-stats" className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6 p-4 rounded-xl border bg-muted/10">
       <div className="flex flex-col items-center justify-center gap-1.5 border-r md:pr-6">
         <span className="font-serif text-4xl sm:text-5xl font-semibold text-foreground">
           {summary.averageRating.toFixed(1)}
         </span>
         {renderStars(Math.round(summary.averageRating))}
         <span className="text-2xs text-muted-foreground">
-          na podstawie {summary.totalReviews} {summary.totalReviews === 1 ? "opinii" : "opinii"}
+          na podstawie <span data-testid="total-reviews-count" id="total-reviews-number">{summary.totalReviews}</span> opinii
         </span>
       </div>
       <div className="flex flex-col gap-2 justify-center">

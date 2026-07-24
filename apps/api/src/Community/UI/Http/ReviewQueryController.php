@@ -44,7 +44,10 @@ final class ReviewQueryController
 
         $result = $this->listReviewsUseCase->execute($placeUuid, $pageInt, $pageSizeInt, $sort);
 
-        return new JsonResponse($result);
+        $response = new JsonResponse($result);
+        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+        return $response;
     }
 
     #[Route('/api/v1/me/reviews', name: 'api_me_reviews', methods: ['GET'])]

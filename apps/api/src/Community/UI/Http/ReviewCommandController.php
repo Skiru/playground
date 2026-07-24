@@ -61,13 +61,13 @@ final class ReviewCommandController
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Length(min: 20, max: 5000),
             ],
-            'visitedOn' => [
+            'visitedOn' => new \Symfony\Component\Validator\Constraints\Optional([
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Regex(
                     pattern: '/^\d{4}-\d{2}-\d{2}$/',
                     message: 'Date must be in exact Y-m-d format.'
                 ),
-            ],
+            ]),
         ];
 
         $data = $this->parseAndValidateJson($request, $this->validator, $constraints);
@@ -127,13 +127,13 @@ final class ReviewCommandController
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Length(min: 20, max: 5000),
             ],
-            'visitedOn' => [
+            'visitedOn' => new \Symfony\Component\Validator\Constraints\Optional([
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Regex(
                     pattern: '/^\d{4}-\d{2}-\d{2}$/',
                     message: 'Date must be in exact Y-m-d format.'
                 ),
-            ],
+            ]),
             'version' => [
                 new \Symfony\Component\Validator\Constraints\NotBlank(),
                 new \Symfony\Component\Validator\Constraints\Type('integer'),
