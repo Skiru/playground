@@ -6,6 +6,7 @@ namespace App\Community\UI\Http;
 
 use App\Identity\Domain\User;
 use App\Shared\Application\Exception\ApiException;
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -26,11 +27,13 @@ trait ControllerHelperTrait
         return $user;
     }
 
-    private function validateCsrf(Request $request): void
+    private function validateCsrf(Request $request, CsrfValidator $csrfValidator): void
     {
-        $token = $request->headers->get('X-CSRF-Token');
-        if (null === $token || '' === trim($token)) {
-            throw new ApiException(403, 'CSRF token is missing.', 'CSRF_TOKEN_MISSING');
+        try {
+            $csrfValidator->validate($request);
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $exception) {
+            $missing = 'CSRF token is missing.' === $exception->getMessage();
+            throw new ApiException(403, $missing ? 'CSRF token is missing.' : 'CSRF token is invalid.', $missing ? 'CSRF_TOKEN_MISSING' : 'CSRF_TOKEN_INVALID', previous: $exception);
         }
     }
 
@@ -73,7 +76,7 @@ trait ControllerHelperTrait
         $collectionConstraint = new \Symfony\Component\Validator\Constraints\Collection(
             fields: $constraints,
             allowExtraFields: false,
-            allowMissingFields: true
+            allowMissingFields: false
         );
         $violations = $validator->validate($data, $collectionConstraint);
 

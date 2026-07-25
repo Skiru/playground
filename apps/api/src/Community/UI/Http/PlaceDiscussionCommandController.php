@@ -10,6 +10,7 @@ use App\Community\Application\UseCase\CreateReply;
 use App\Community\Application\UseCase\DeleteComment;
 use App\Community\Application\UseCase\UpdateComment;
 use App\Shared\Application\Exception\ApiException;
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,6 +32,7 @@ final class PlaceDiscussionCommandController
         private readonly Security $security,
         private readonly ActiveCommunityUserLookup $userLookup,
         private readonly ValidatorInterface $validator,
+        private readonly CsrfValidator $csrfValidator,
         private readonly RateLimiterFactory $commentWrite,
     ) {
     }
@@ -38,8 +40,8 @@ final class PlaceDiscussionCommandController
     #[Route('/api/v1/places/{placeId}/comments', name: 'api_places_add_comment', methods: ['POST'])]
     public function addComment(string $placeId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->commentWrite, 'user_'.$user->getId()->toString());
@@ -78,8 +80,8 @@ final class PlaceDiscussionCommandController
     #[Route('/api/v1/place-comments/{commentId}/replies', name: 'api_place_comments_add_reply', methods: ['POST'])]
     public function addReply(string $commentId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->commentWrite, 'user_'.$user->getId()->toString());
@@ -118,8 +120,8 @@ final class PlaceDiscussionCommandController
     #[Route('/api/v1/me/place-comments/{commentId}', name: 'api_me_update_comment', methods: ['PATCH'])]
     public function updateComment(string $commentId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->commentWrite, 'user_'.$user->getId()->toString());
@@ -167,8 +169,8 @@ final class PlaceDiscussionCommandController
     #[Route('/api/v1/me/place-comments/{commentId}', name: 'api_me_delete_comment', methods: ['DELETE'])]
     public function deleteComment(string $commentId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         try {
             $commentUuid = Uuid::fromString($commentId);

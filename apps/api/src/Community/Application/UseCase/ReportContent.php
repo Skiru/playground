@@ -50,6 +50,7 @@ final class ReportContent
                 if (!$this->placeLookup->isPublished($target->placeId())) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
+                $targetAuthorId = $target->authorId();
                 break;
 
             case TargetType::PLACE_COMMENT:
@@ -60,6 +61,7 @@ final class ReportContent
                 if (!$this->placeLookup->isPublished($target->placeId())) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
+                $targetAuthorId = $target->authorId();
                 break;
 
             case TargetType::FORUM_THREAD:
@@ -71,6 +73,7 @@ final class ReportContent
                 if (null === $category || !$category->isActive()) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
+                $targetAuthorId = $target->authorId();
                 break;
 
             case TargetType::FORUM_POST:
@@ -86,7 +89,12 @@ final class ReportContent
                 if (null === $category || !$category->isActive()) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
+                $targetAuthorId = $target->authorId();
                 break;
+        }
+
+        if ($targetAuthorId->equals($reporterId)) {
+            throw new ApiException(403, 'You cannot report your own content.', 'SELF_REPORT_FORBIDDEN');
         }
 
         // 2. Prevent duplicate open reports by the same reporter for the same target

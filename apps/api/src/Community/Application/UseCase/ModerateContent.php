@@ -51,9 +51,22 @@ final class ModerateContent
             $this->transactionManager->transactional(function () use ($moderatorId, $reportId, $action, $trimmedReason, $correlationId): void {
                 $now = $this->clock->now();
 
+                if (null !== $correlationId) {
+                    $existingReportId = $this->connection->fetchOne(
+                        'SELECT report_id FROM moderation_actions WHERE correlation_id = :correlation_id',
+                        ['correlation_id' => $correlationId],
+                    );
+                    if (false !== $existingReportId) {
+                        if ($reportId->toRfc4122() === (string) $existingReportId) {
+                            return;
+                        }
+                        throw new ApiException(409, 'Idempotency key was already used for another moderation case.', 'MODERATION_CONFLICT');
+                    }
+                }
+
                 // 1. Pessimistic lock on the report
                 $reportRow = $this->connection->fetchAssociative(
-                    'SELECT status, target_id, target_type FROM content_reports WHERE id = :id FOR UPDATE',
+                    'SELECT status, target_id, target_type, claimed_by FROM content_reports WHERE id = :id FOR UPDATE',
                     ['id' => $reportId->toRfc4122()]
                 );
 
@@ -65,6 +78,9 @@ final class ModerateContent
                 if ('RESOLVED' === $reportStatus || 'DISMISSED' === $reportStatus) {
                     throw new ApiException(409, 'This report has already been resolved or dismissed.', 'MODERATION_CONFLICT');
                 }
+                if ('IN_REVIEW' !== $reportStatus || $moderatorId->toRfc4122() !== (string) $reportRow['claimed_by']) {
+                    throw new ApiException(409, 'Only the moderator who claimed this case can process it.', 'MODERATION_OWNERSHIP_CONFLICT');
+                }
 
                 $targetId = Uuid::fromString((string) $reportRow['target_id']);
                 $targetType = TargetType::from((string) $reportRow['target_type']);
@@ -73,8 +89,9 @@ final class ModerateContent
                 $resultingStatus = '';
 
                 // 2. Pessimistic lock on the target and change state
-                if (ModerationActionType::DISMISS_REPORT === $action) {
-                    $resultingStatus = 'DISMISSED';
+                if (ModerationActionType::DISMISS_REPORT === $action || ModerationActionType::RESOLVE_REPORT === $action) {
+                    $previousStatus = $this->lockAndReadTargetStatus($targetType, $targetId);
+                    $resultingStatus = $previousStatus;
                 } else {
                     switch ($targetType) {
                         case TargetType::REVIEW:
@@ -232,6 +249,27 @@ final class ModerateContent
             });
         } catch (UniqueConstraintViolationException $e) {
             throw new ApiException(409, 'This action is duplicate or already processed.', 'MODERATION_CONFLICT');
+        } catch (\LogicException $e) {
+            throw new ApiException(409, $e->getMessage(), 'MODERATION_STATE_CONFLICT', previous: $e);
         }
+    }
+
+    private function lockAndReadTargetStatus(TargetType $targetType, Uuid $targetId): string
+    {
+        $table = match ($targetType) {
+            TargetType::REVIEW => 'reviews',
+            TargetType::PLACE_COMMENT => 'place_comments',
+            TargetType::FORUM_THREAD => 'forum_threads',
+            TargetType::FORUM_POST => 'forum_posts',
+        };
+        $status = $this->connection->fetchOne(
+            "SELECT status FROM {$table} WHERE id = :id FOR UPDATE",
+            ['id' => $targetId->toRfc4122()],
+        );
+        if (false === $status) {
+            throw new ApiException(404, 'Moderation target not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+
+        return (string) $status;
     }
 }

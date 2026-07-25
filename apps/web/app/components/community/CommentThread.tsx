@@ -94,7 +94,7 @@ export function CommentThread({
 
         {!isParentDeleted && !editingCommentId && (
           <div className="flex gap-2.5 justify-end text-[10px] font-semibold text-muted-foreground pl-8 items-center">
-            {session.authenticated && (
+            {session.authenticated && !isOwnParent && (
               <Button
                 variant="ghost"
                 size="xs"
@@ -234,7 +234,7 @@ export function CommentThread({
                         </Button>
                       </>
                     )}
-                    {session.authenticated && (
+                    {session.authenticated && !isOwnReply && (
                       <>
                         <span className="text-muted-foreground/30">|</span>
                         <ReportContentDialog

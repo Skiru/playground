@@ -51,8 +51,6 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
   const { session } = useSession()
   const [comments, setComments] = React.useState<Comment[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [page, setPage] = React.useState(1)
-  const [totalPages, setTotalPages] = React.useState(1)
   const [showMainForm, setShowMainForm] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [formError, setFormError] = React.useState<string | null>(null)
@@ -65,19 +63,17 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
     try {
       const res = await listComments({
         path: { placeId },
-        query: { page },
+        query: { limit: 50 },
       })
       if (res.data) {
         setComments((res.data.items || []).map(toComment))
-        const totalPages = (res.data.pagination as { totalPages?: number } | undefined)?.totalPages
-        setTotalPages(totalPages || 1)
       }
     } catch (err: unknown) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [placeId, page])
+  }, [placeId])
 
   React.useEffect(() => {
     let ignore = false
@@ -85,12 +81,10 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
       try {
         const res = await listComments({
           path: { placeId },
-          query: { page },
+          query: { limit: 50 },
         })
         if (!ignore && res.data) {
           setComments((res.data.items || []).map(toComment))
-          const totalPages = (res.data.pagination as { totalPages?: number } | undefined)?.totalPages
-          setTotalPages(totalPages || 1)
         }
       } catch (err: unknown) {
         console.error(err)
@@ -104,7 +98,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
     return () => {
       ignore = true
     }
-  }, [placeId, page])
+  }, [placeId])
 
   const handleMainCommentSubmit = async (body: string) => {
     setSubmitting(true)
@@ -279,29 +273,6 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-4 border-t pt-4">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage(page - 1)}
-          >
-            Poprzednia
-          </Button>
-          <span className="text-xs text-muted-foreground mt-1 font-mono">
-            Strona {page} z {totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            Następna
-          </Button>
-        </div>
-      )}
     </div>
   )
 }

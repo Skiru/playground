@@ -102,6 +102,8 @@ final class ForumAndModerationSecurityTest extends WebTestCase
 
         // 5. Alice successfully creates a thread
         $client->loginUser($alice);
+        $client->request('GET', '/api/v1/session');
+        $csrfHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
         $client->request('POST', \sprintf('/api/v1/forum/categories/%s/threads', $categoryUuid->toRfc4122()), [], [], $csrfHeaders, json_encode([
             'title' => 'Valid Thread Title by Alice',
             'body' => 'Initial post body for Alice thread.',
@@ -131,6 +133,8 @@ final class ForumAndModerationSecurityTest extends WebTestCase
 
         // 8. Bob tries to edit or delete Alice's thread (403 expected)
         $client->loginUser($bob);
+        $client->request('GET', '/api/v1/session');
+        $csrfHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
         $client->request('PATCH', \sprintf('/api/v1/me/forum-threads/%s', $threadId), [], [], $csrfHeaders, json_encode([
             'title' => 'Malicious edit by Bob',
             'version' => 1,
@@ -143,6 +147,8 @@ final class ForumAndModerationSecurityTest extends WebTestCase
 
         // 9. Alice can successfully edit her own thread
         $client->loginUser($alice);
+        $client->request('GET', '/api/v1/session');
+        $csrfHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
         $client->request('PATCH', \sprintf('/api/v1/me/forum-threads/%s', $threadId), [], [], $csrfHeaders, json_encode([
             'title' => 'Updated Thread Title by Alice',
             'version' => 1,
@@ -151,6 +157,8 @@ final class ForumAndModerationSecurityTest extends WebTestCase
 
         // 10. Reporting: Bob reports Alice's thread
         $client->loginUser($bob);
+        $client->request('GET', '/api/v1/session');
+        $csrfHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
         $client->request('POST', '/api/v1/content-reports', [], [], $csrfHeaders, json_encode([
             'targetId' => $threadId,
             'targetType' => 'FORUM_THREAD',
@@ -176,15 +184,27 @@ final class ForumAndModerationSecurityTest extends WebTestCase
 
         // 13. Moderator role is enforced and can view queue and moderate
         $client->loginUser($moderator);
+        $client->request('GET', '/api/v1/session');
+        $csrfHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
         $client->request('GET', '/api/v1/moderation/queue');
         self::assertResponseIsSuccessful();
         $queueData = json_decode($client->getResponse()->getContent(), true);
         self::assertGreaterThanOrEqual(1, \count($queueData['items']));
 
+        $threadReportId = null;
+        foreach ($queueData['items'] as $item) {
+            if ($threadId === $item['targetId'] && 'FORUM_THREAD' === $item['targetType']) {
+                $threadReportId = $item['id'];
+                break;
+            }
+        }
+        self::assertNotNull($threadReportId);
+        $client->request('POST', \sprintf('/api/v1/moderation/case/%s/claim', $threadReportId), [], [], $csrfHeaders);
+        self::assertResponseIsSuccessful();
+
         // Moderator hides Alice's thread
         $client->request('POST', '/api/v1/moderation/action', [], [], $csrfHeaders, json_encode([
-            'targetId' => $threadId,
-            'targetType' => 'FORUM_THREAD',
+            'reportId' => $threadReportId,
             'action' => 'HIDE',
             'reason' => 'Thread contains spam as reported by Bob.',
         ]));

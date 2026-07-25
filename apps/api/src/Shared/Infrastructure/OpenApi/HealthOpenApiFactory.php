@@ -272,7 +272,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                                 'totalReviews' => ['type' => 'integer'],
                                 'histogram' => ['type' => 'object'],
                             ]],
-                            'items' => ['type' => 'array', 'items' => ['type' => 'object']],
+                            'items' => ['type' => 'array', 'items' => self::reviewSchema()],
                             'pagination' => ['type' => 'object'],
                         ],
                     ]]])),
@@ -284,6 +284,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Review body', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -296,7 +297,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '201' => new Response('Review created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '201' => new Response('Review created.', new \ArrayObject(['application/json' => ['schema' => self::reviewSchema()]])),
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Add review for a place',
@@ -310,6 +311,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('reviewId', 'path', 'Review UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Update review body', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -323,7 +325,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '200' => new Response('Review updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Review updated.', new \ArrayObject(['application/json' => ['schema' => self::reviewSchema()]])),
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Update review',
@@ -333,6 +335,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('reviewId', 'path', 'Review UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 responses: [
                     '204' => new Response('Success (no content)'),
@@ -352,7 +355,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
                 ],
                 responses: [
-                    '200' => new Response('My reviews list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('My reviews list.', new \ArrayObject(['application/json' => ['schema' => self::reviewCollectionSchema()]])),
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Get my reviews',
@@ -366,16 +369,16 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
-                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer', 'minimum' => 1]),
-                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                    new Parameter('limit', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
                 ],
                 responses: [
                     '200' => new Response('List of comments.', new \ArrayObject(['application/json' => ['schema' => [
                         'type' => 'object',
                         'required' => ['items', 'pagination'],
                         'properties' => [
-                            'items' => ['type' => 'array', 'items' => ['type' => 'object']],
-                            'pagination' => ['type' => 'object'],
+                            'items' => ['type' => 'array', 'items' => self::commentSchema()],
+                            'pagination' => self::cursorPaginationSchema(),
                         ],
                     ]]])),
                 ],
@@ -386,6 +389,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Comment body', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -396,7 +400,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '201' => new Response('Comment created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '201' => new Response('Comment created.', new \ArrayObject(['application/json' => ['schema' => self::commentSchema()]])),
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Add a comment to place discussion',
@@ -420,7 +424,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '201' => new Response('Reply created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '201' => new Response('Reply created.', new \ArrayObject(['application/json' => ['schema' => self::commentSchema()]])),
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Reply to a comment',
@@ -434,6 +438,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('commentId', 'path', 'Comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Update comment body', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -445,7 +450,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '200' => new Response('Comment updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Comment updated.', new \ArrayObject(['application/json' => ['schema' => self::commentSchema()]])),
                     '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
                 ],
                 summary: 'Update comment',
@@ -455,6 +460,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Community'],
                 parameters: [
                     new Parameter('commentId', 'path', 'Comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 responses: [
                     '204' => new Response('Success (no content)'),
@@ -470,7 +476,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 operationId: 'listForumCategories',
                 tags: ['Forum'],
                 responses: [
-                    '200' => new Response('Forum categories list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'array', 'items' => ['type' => 'object']]]])),
+                    '200' => new Response('Forum categories list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'array', 'items' => self::forumCategorySchema()]]])),
                 ],
                 summary: 'Get all forum categories',
             )
@@ -486,7 +492,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
                 ],
                 responses: [
-                    '200' => new Response('Category threads list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Category threads list.', new \ArrayObject(['application/json' => ['schema' => self::threadCollectionSchema()]])),
                 ],
                 summary: 'Get category threads',
             )
@@ -498,6 +504,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Forum'],
                 parameters: [
                     new Parameter('categoryId', 'path', 'Category UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Thread content', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -508,7 +515,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '201' => new Response('Thread created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '201' => new Response('Thread created.', new \ArrayObject(['application/json' => ['schema' => self::threadSchema()]])),
                 ],
                 summary: 'Create forum thread',
             )
@@ -522,7 +529,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
                 ],
                 responses: [
-                    '200' => new Response('Thread detail.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Thread detail.', new \ArrayObject(['application/json' => ['schema' => self::threadSchema()]])),
                 ],
                 summary: 'Get forum thread by ID',
             )
@@ -534,6 +541,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Forum'],
                 parameters: [
                     new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Edit thread body', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -544,7 +552,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '200' => new Response('Thread updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Thread updated.', new \ArrayObject(['application/json' => ['schema' => self::threadSchema()]])),
                 ],
                 summary: 'Edit own forum thread',
             ),
@@ -553,6 +561,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Forum'],
                 parameters: [
                     new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 responses: [
                     '204' => new Response('Success (no content)'),
@@ -571,7 +580,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
                 ],
                 responses: [
-                    '200' => new Response('Posts list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Posts list.', new \ArrayObject(['application/json' => ['schema' => self::postCollectionSchema()]])),
                 ],
                 summary: 'Get posts in thread',
             ),
@@ -580,6 +589,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Forum'],
                 parameters: [
                     new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 requestBody: new RequestBody('Post body', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
@@ -590,7 +600,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '201' => new Response('Post created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '201' => new Response('Post created.', new \ArrayObject(['application/json' => ['schema' => self::postSchema()]])),
                 ],
                 summary: 'Create forum post',
             )
@@ -612,7 +622,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '200' => new Response('Post updated.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Post updated.', new \ArrayObject(['application/json' => ['schema' => self::postSchema()]])),
                 ],
                 summary: 'Edit own forum post',
             ),
@@ -621,6 +631,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Forum'],
                 parameters: [
                     new Parameter('postId', 'path', 'Post UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 responses: [
                     '204' => new Response('Success (no content)'),
@@ -641,7 +652,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('categoryId', 'query', 'Filter by category UUID.', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 ],
                 responses: [
-                    '200' => new Response('Community activity feed.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Community activity feed.', new \ArrayObject(['application/json' => ['schema' => self::communityFeedSchema()]])),
                 ],
                 summary: 'Get community activity feed',
             )
@@ -651,6 +662,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'reportContent',
                 tags: ['Moderation'],
+                parameters: [self::csrfParameter()],
                 requestBody: new RequestBody('Report details', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
                     'required' => ['targetId', 'targetType', 'reason'],
@@ -662,7 +674,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     ],
                 ]]])),
                 responses: [
-                    '201' => new Response('Report created.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '201' => new Response('Report created.', new \ArrayObject(['application/json' => ['schema' => self::reportSchema()]])),
                 ],
                 summary: 'Report offensive content',
             )
@@ -678,7 +690,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('limit', 'query', 'Limit of items per page.', false, schema: ['type' => 'integer']),
                 ],
                 responses: [
-                    '200' => new Response('Moderation queue reports list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Moderation queue reports list.', new \ArrayObject(['application/json' => ['schema' => self::moderationQueueSchema()]])),
                 ],
                 summary: 'Get moderator queue of reports',
             )
@@ -692,7 +704,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     new Parameter('reportId', 'path', 'The report UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
                 ],
                 responses: [
-                    '200' => new Response('Moderation case details.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Moderation case details.', new \ArrayObject(['application/json' => ['schema' => self::moderationCaseSchema()]])),
                 ],
                 summary: 'Get moderation case details by report ID',
             )
@@ -704,9 +716,10 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 tags: ['Moderation'],
                 parameters: [
                     new Parameter('reportId', 'path', 'The report UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
                 ],
                 responses: [
-                    '200' => new Response('Case claimed successfully.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Case claimed successfully.', new \ArrayObject(['application/json' => ['schema' => self::successSchema()]])),
                 ],
                 summary: 'Claim a moderation case by report ID',
             )
@@ -716,19 +729,19 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'moderateContent',
                 tags: ['Moderation'],
+                parameters: [self::csrfParameter(), new Parameter('X-Correlation-ID', 'header', 'UUID idempotency and audit correlation key.', false, schema: ['type' => 'string', 'format' => 'uuid', 'maxLength' => 36])],
                 requestBody: new RequestBody('Moderation action details', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
-                    'required' => ['action', 'reason'],
+                    'additionalProperties' => false,
+                    'required' => ['reportId', 'action', 'reason'],
                     'properties' => [
                         'reportId' => ['type' => 'string', 'format' => 'uuid'],
-                        'targetId' => ['type' => 'string', 'format' => 'uuid'],
-                        'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
                         'action' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']],
                         'reason' => ['type' => 'string', 'minLength' => 1],
                     ],
                 ]]])),
                 responses: [
-                    '200' => new Response('Perform moderator action.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'object']]])),
+                    '200' => new Response('Perform moderator action.', new \ArrayObject(['application/json' => ['schema' => self::successSchema()]])),
                 ],
                 summary: 'Perform moderator action on content',
             )
@@ -754,6 +767,11 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
         return new Parameter($name, 'query', $name.' filter.', $required, schema: $schema);
     }
 
+    private static function csrfParameter(): Parameter
+    {
+        return new Parameter('X-CSRF-Token', 'header', 'Current api_session CSRF token.', true, schema: ['type' => 'string', 'minLength' => 1, 'maxLength' => 255]);
+    }
+
     /**
      * @param array<string, mixed> $schema
      *
@@ -774,6 +792,232 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
         }
 
         return $responses;
+    }
+
+    /** @return array<string, mixed> */
+    private static function publicAuthorSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'displayName', 'initials'], 'additionalProperties' => false, 'properties' => [
+            'id' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'displayName' => ['type' => 'string'],
+            'initials' => ['type' => 'string'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function forumCategorySchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'slug', 'name', 'description', 'displayOrder'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'slug' => ['type' => 'string'],
+            'name' => ['type' => 'string'],
+            'description' => ['type' => ['string', 'null']],
+            'displayOrder' => ['type' => 'integer'],
+            'cityId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function reviewSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'rating', 'body', 'visitedOn', 'createdAt', 'updatedAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'placeId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
+            'body' => ['type' => 'string'],
+            'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function commentSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'placeId', 'authorId', 'parentId', 'body', 'status', 'createdAt', 'updatedAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'placeId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'parentId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'body' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+            'replies' => ['type' => 'array', 'items' => ['type' => 'object']],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function threadSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'categoryId', 'authorId', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'categoryId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'title' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'lastActivityAt' => ['type' => 'string', 'format' => 'date-time'],
+            'lockedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'pinnedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+            'firstPost' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'body' => ['type' => 'string']]],
+            'category' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string']]],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function postSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'threadId', 'authorId', 'parentId', 'body', 'status', 'createdAt', 'updatedAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'threadId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'parentId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'body' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function cursorPaginationSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['nextCursor', 'hasNextPage'], 'properties' => [
+            'nextCursor' => ['type' => ['string', 'null']],
+            'hasNextPage' => ['type' => 'boolean'],
+            'totalItems' => ['type' => 'integer'],
+            'rootCount' => ['type' => 'integer'],
+            'replyCount' => ['type' => 'integer'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function reviewCollectionSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => ['items' => ['type' => 'array', 'items' => self::reviewSchema()], 'pagination' => ['type' => 'object']]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function threadCollectionSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['category', 'items', 'pagination'], 'properties' => [
+            'category' => ['type' => 'object', 'required' => ['id', 'slug', 'name', 'description'], 'properties' => [
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'slug' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+                'description' => ['type' => ['string', 'null']],
+            ]],
+            'items' => ['type' => 'array', 'items' => self::threadSchema()],
+            'pagination' => self::cursorPaginationSchema(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function postCollectionSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => ['items' => ['type' => 'array', 'items' => self::postSchema()], 'pagination' => self::cursorPaginationSchema()]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function communityFeedSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => [
+            'items' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['type', 'id', 'activityAt', 'author', 'title', 'excerpt', 'sourceId', 'parentSourceId', 'placeSlug'], 'properties' => [
+                'type' => ['type' => 'string', 'enum' => ['forum_thread', 'forum_post', 'review', 'place_comment']],
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'activityAt' => ['type' => 'string', 'format' => 'date-time'],
+                'author' => self::publicAuthorSchema(),
+                'title' => ['type' => ['string', 'null']],
+                'excerpt' => ['type' => 'string'],
+                'sourceId' => ['type' => 'string', 'format' => 'uuid'],
+                'parentSourceId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'placeSlug' => ['type' => ['string', 'null']],
+            ]]],
+            'pagination' => self::cursorPaginationSchema(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function reportSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'targetId', 'targetType', 'reason', 'details', 'status', 'createdAt'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'targetId' => ['type' => 'string', 'format' => 'uuid'],
+            'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+            'reason' => ['type' => 'string'],
+            'details' => ['type' => ['string', 'null']],
+            'status' => ['type' => 'string', 'enum' => ['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function moderationCaseSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt', 'claimedBy', 'claimedAt'], 'properties' => [
+            ...self::reportSchema()['properties'],
+            'reporterId' => ['type' => 'string', 'format' => 'uuid'],
+            'claimedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'claimedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'resolvedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'resolvedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'targetPreview' => ['oneOf' => [
+                ['type' => 'null'],
+                ['type' => 'object', 'required' => ['title', 'body', 'status'], 'properties' => ['title' => ['type' => 'string'], 'body' => ['type' => 'string'], 'status' => ['type' => 'string'], 'rating' => ['type' => 'integer']]],
+            ]],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function moderationQueueSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => [
+            'items' => ['type' => 'array', 'items' => self::moderationQueueItemSchema()],
+            'pagination' => self::cursorPaginationSchema(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function moderationQueueItemSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'reporterId', 'reporter', 'targetId', 'targetType', 'reason', 'details', 'status', 'createdAt', 'resolvedAt', 'resolvedBy', 'claimedAt', 'claimedBy', 'evidence', 'author', 'publicLink', 'adminLink', 'moderationHistory'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'reporterId' => ['type' => 'string', 'format' => 'uuid'],
+            'reporter' => self::publicAuthorSchema(),
+            'targetId' => ['type' => 'string', 'format' => 'uuid'],
+            'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+            'reason' => ['type' => 'string'],
+            'details' => ['type' => ['string', 'null']],
+            'status' => ['type' => 'string', 'enum' => ['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'resolvedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'resolvedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'claimedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'claimedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'evidence' => ['type' => 'string'],
+            'author' => ['oneOf' => [['type' => 'null'], self::publicAuthorSchema()]],
+            'publicLink' => ['type' => 'string'],
+            'adminLink' => ['type' => 'string'],
+            'moderationHistory' => ['type' => 'array', 'items' => ['type' => 'object']],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function successSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['status'], 'additionalProperties' => false, 'properties' => ['status' => ['type' => 'string', 'enum' => ['success']]]];
     }
 
     /** @return array<string, mixed> */

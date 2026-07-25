@@ -64,24 +64,36 @@ final class ForumPost
 
     public function softDelete(\DateTimeImmutable $now): void
     {
+        if (!\in_array($this->status, [ForumPostStatus::PUBLISHED, ForumPostStatus::HIDDEN], true)) {
+            throw new \LogicException('Only published or hidden posts can be deleted by their author.');
+        }
         $this->status = ForumPostStatus::DELETED_BY_AUTHOR;
         $this->updatedAt = $now;
     }
 
     public function hide(\DateTimeImmutable $now): void
     {
+        if (ForumPostStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published posts can be hidden.');
+        }
         $this->status = ForumPostStatus::HIDDEN;
         $this->updatedAt = $now;
     }
 
     public function publish(\DateTimeImmutable $now): void
     {
+        if (ForumPostStatus::HIDDEN !== $this->status) {
+            throw new \LogicException('Only hidden posts can be restored.');
+        }
         $this->status = ForumPostStatus::PUBLISHED;
         $this->updatedAt = $now;
     }
 
     public function removeByModerator(\DateTimeImmutable $now): void
     {
+        if (ForumPostStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published posts can be removed.');
+        }
         $this->status = ForumPostStatus::REMOVED_BY_MODERATOR;
         $this->updatedAt = $now;
     }

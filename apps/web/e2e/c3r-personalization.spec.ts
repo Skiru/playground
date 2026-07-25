@@ -30,8 +30,12 @@ test.describe("C3R Personalization and Security E2E", () => {
     const firstPlaceName = await firstPlaceLink.textContent();
     
     // Toggle favorite on the list card
-    const favButton = page.locator(".place-card").first().locator('button[title="Dodaj do ulubionych"]');
+    const favButton = page.locator(".place-card").first().locator('button[aria-pressed]');
     await expect(favButton).toBeEnabled();
+    if (await favButton.getAttribute("aria-pressed") === "true") {
+      await favButton.click();
+      await expect(favButton).toHaveAttribute("aria-pressed", "false");
+    }
     await favButton.click();
     
     // Verify button state changes to "Usuń z ulubionych" (aria-pressed=true)

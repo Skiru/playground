@@ -10,6 +10,7 @@ use App\Community\Application\UseCase\DeleteReview;
 use App\Community\Application\UseCase\UpdateReview;
 use App\Shared\Application\Clock;
 use App\Shared\Application\Exception\ApiException;
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,6 +32,7 @@ final class ReviewCommandController
         private readonly ActiveCommunityUserLookup $userLookup,
         private readonly Clock $clock,
         private readonly ValidatorInterface $validator,
+        private readonly CsrfValidator $csrfValidator,
         private readonly RateLimiterFactory $reviewWrite,
     ) {
     }
@@ -38,8 +40,8 @@ final class ReviewCommandController
     #[Route('/api/v1/places/{placeId}/reviews', name: 'api_places_add_review', methods: ['POST'])]
     public function addReview(string $placeId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->reviewWrite, 'user_'.$user->getId()->toString());
@@ -106,8 +108,8 @@ final class ReviewCommandController
     #[Route('/api/v1/me/reviews/{reviewId}', name: 'api_me_update_review', methods: ['PATCH'])]
     public function updateReview(string $reviewId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->reviewWrite, 'user_'.$user->getId()->toString());
@@ -119,14 +121,16 @@ final class ReviewCommandController
         }
 
         $constraints = [
-            'rating' => [
+            'rating' => new \Symfony\Component\Validator\Constraints\Optional([
+                new \Symfony\Component\Validator\Constraints\NotNull(),
                 new \Symfony\Component\Validator\Constraints\Type('integer'),
                 new \Symfony\Component\Validator\Constraints\Range(min: 1, max: 5),
-            ],
-            'body' => [
+            ]),
+            'body' => new \Symfony\Component\Validator\Constraints\Optional([
+                new \Symfony\Component\Validator\Constraints\NotNull(),
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Length(min: 20, max: 5000),
-            ],
+            ]),
             'visitedOn' => new \Symfony\Component\Validator\Constraints\Optional([
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Regex(
@@ -141,6 +145,10 @@ final class ReviewCommandController
         ];
 
         $data = $this->parseAndValidateJson($request, $this->validator, $constraints);
+
+        if (!\array_key_exists('rating', $data) && !\array_key_exists('body', $data) && !\array_key_exists('visitedOn', $data)) {
+            throw new ApiException(400, 'At least one mutable review field is required.', 'VALIDATION_FAILURE');
+        }
 
         // Load existing to merge updated fields
         $visitedOn = null;
@@ -161,8 +169,9 @@ final class ReviewCommandController
             $user->getId(),
             $reviewUuid,
             (int) $data['version'],
-            (int) ($data['rating'] ?? 5), // will fall back inside updateReview if not set
-            (string) ($data['body'] ?? ''),
+            \array_key_exists('rating', $data) ? (int) $data['rating'] : null,
+            \array_key_exists('body', $data) ? (string) $data['body'] : null,
+            \array_key_exists('visitedOn', $data),
             $visitedOn
         );
 
@@ -180,8 +189,8 @@ final class ReviewCommandController
     #[Route('/api/v1/me/reviews/{reviewId}', name: 'api_me_delete_review', methods: ['DELETE'])]
     public function deleteReview(string $reviewId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         try {
             $reviewUuid = Uuid::fromString($reviewId);

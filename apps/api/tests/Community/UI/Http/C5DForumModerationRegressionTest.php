@@ -66,7 +66,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, :display_order, :active)',
             [
                 'id' => $inactiveCategoryUuid->toRfc4122(),
-                'slug' => 'inactive-cat-'.random_int(1000, 9999),
+                'slug' => 'inactive-cat-'.$inactiveCategoryUuid->toRfc4122(),
                 'name' => 'Inactive Cat',
                 'description' => 'Inactive',
                 'display_order' => 10,
@@ -121,7 +121,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
                 'id' => $unpublishedPlaceUuid->toRfc4122(),
                 'city_id' => '00000000-0000-7000-8000-000000000100', // Valid City ID from DB
                 'primary_category_id' => '00000000-0000-7000-8000-000000000201', // Valid Category ID from DB
-                'slug' => 'secret-playroom-'.random_int(100, 999),
+                'slug' => 'secret-playroom-'.$unpublishedPlaceUuid->toRfc4122(),
                 'name' => 'Secret Playroom',
                 'normalized_name' => 'secret playroom',
                 'short_description' => 'Short draft',
@@ -234,7 +234,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, :display_order, :active)',
             [
                 'id' => $categoryUuid->toRfc4122(),
-                'slug' => 'test-cat-reply-'.random_int(1000, 9999),
+                'slug' => 'test-cat-reply-'.$categoryUuid->toRfc4122(),
                 'name' => 'Active Category',
                 'description' => 'Active',
                 'display_order' => 1,
@@ -282,6 +282,28 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         self::assertSame('INVALID_PARENT_STATUS', $res['code']);
     }
 
+    public function testSelfReportIsRejectedServerSide(): void
+    {
+        $client = self::createClient();
+        $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
+        $author = $this->createUser(\sprintf('self-report-%d@example.com', random_int(10000, 99999)), 'Self Reporter');
+        $placeId = (string) $this->em->getConnection()->fetchOne("SELECT id FROM places WHERE status = 'published' LIMIT 1");
+        $reviewId = Uuid::v7();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->em->getConnection()->executeStatement(
+            'INSERT INTO reviews (id, place_id, author_id, rating, body, status, created_at, updated_at) VALUES (:id, :place_id, :author_id, 5, :body, :status, :created_at, :updated_at)',
+            ['id' => $reviewId->toRfc4122(), 'place_id' => $placeId, 'author_id' => $author->getId()->toRfc4122(), 'body' => 'Own review must not be reportable by its author.', 'status' => 'PUBLISHED', 'created_at' => $now, 'updated_at' => $now],
+        );
+
+        $client->loginUser($author);
+        $client->request('GET', '/api/v1/session');
+        $headers = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
+        $client->request('POST', '/api/v1/content-reports', [], [], $headers, json_encode(['targetId' => $reviewId->toRfc4122(), 'targetType' => 'REVIEW', 'reason' => 'OTHER']));
+
+        self::assertSame(Response::HTTP_FORBIDDEN, $client->getResponse()->getStatusCode());
+        self::assertStringContainsString('SELF_REPORT_FORBIDDEN', $client->getResponse()->getContent());
+    }
+
     public function testDuplicateReportAndRace(): void
     {
         $client = self::createClient();
@@ -289,6 +311,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $this->em = $container->get('doctrine.orm.entity_manager');
 
         $alice = $this->createUser(\sprintf('alice-c5d-dupe-%d@example.com', random_int(10000, 99999)), 'Alice');
+        $reviewAuthor = $this->createUser(\sprintf('author-c5d-dupe-%d@example.com', random_int(10000, 99999)), 'Review Author');
         $client->loginUser($alice);
 
         $client->request('GET', '/api/v1/session');
@@ -308,7 +331,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             [
                 'id' => $reviewUuid->toRfc4122(),
                 'place_id' => $placeId,
-                'author_id' => $alice->getId()->toRfc4122(),
+                'author_id' => $reviewAuthor->getId()->toRfc4122(),
                 'rating' => 4,
                 'body' => 'Great place to have fun with children!',
                 'status' => 'PUBLISHED',
@@ -326,7 +349,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         ]));
 
         $content1 = $client->getResponse()->getContent();
-        self::assertSame(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_CREATED, $client->getResponse()->getStatusCode(), $content1);
 
         // Submit duplicate report immediately and check 409
         $client->request('POST', '/api/v1/content-reports', [], [], $csrfHeaders, json_encode([
@@ -373,7 +396,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
             'INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, :display_order, :active)',
             [
                 'id' => $categoryUuid->toRfc4122(),
-                'slug' => 'queue-cat-'.random_int(1000, 9999),
+                'slug' => 'queue-cat-'.$categoryUuid->toRfc4122(),
                 'name' => 'Queue Category',
                 'description' => 'Desc',
                 'display_order' => 1,
@@ -609,5 +632,168 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $allFetchedIds = array_merge($page1Ids, $page2Ids, $page3Ids);
         $uniqueFetchedIds = array_unique($allFetchedIds);
         self::assertCount(\count($allFetchedIds), $uniqueFetchedIds, 'Detected duplicate report IDs across cursor paginated pages!');
+    }
+
+    public function testThreadDeletionTombstonesInitialPostAndPreservesReplies(): void
+    {
+        $client = self::createClient();
+        $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
+        $author = $this->createUser(\sprintf('delete-thread-%d@example.com', random_int(10000, 99999)), 'Delete Thread Author');
+        $categoryId = Uuid::v7();
+        $categorySlug = 'delete-thread-'.random_int(10000, 99999);
+        $this->em->getConnection()->executeStatement('INSERT INTO forum_categories (id, slug, name, description, display_order, active) VALUES (:id, :slug, :name, :description, 1, true)', ['id' => $categoryId->toRfc4122(), 'slug' => $categorySlug, 'name' => 'Deletion category', 'description' => 'Deletion tests']);
+        $client->loginUser($author);
+        $client->request('GET', '/api/v1/session');
+        $headers = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
+        $originalTitle = 'ORIGINAL_THREAD_TITLE_'.random_int(10000, 99999);
+        $originalBody = 'ORIGINAL_THREAD_BODY_'.random_int(10000, 99999);
+        $replyBody = 'Reply remains available beneath the deleted thread.';
+
+        $client->request('POST', \sprintf('/api/v1/forum/categories/%s/threads', $categoryId->toRfc4122()), [], [], $headers, json_encode(['title' => $originalTitle, 'body' => $originalBody]));
+        self::assertSame(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
+        $created = json_decode($client->getResponse()->getContent(), true);
+        $client->request('POST', \sprintf('/api/v1/forum/threads/%s/posts', $created['id']), [], [], $headers, json_encode(['body' => $replyBody, 'replyToPostId' => $created['firstPost']['id']]));
+        self::assertSame(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
+
+        $client->request('DELETE', \sprintf('/api/v1/me/forum-threads/%s', $created['id']), [], [], $headers);
+        self::assertSame(Response::HTTP_NO_CONTENT, $client->getResponse()->getStatusCode());
+
+        $client->request('GET', \sprintf('/api/v1/forum/threads/%s', $created['id']));
+        self::assertResponseIsSuccessful();
+        $thread = json_decode($client->getResponse()->getContent(), true);
+        self::assertSame('DELETED_BY_AUTHOR', $thread['status']);
+        self::assertNull($thread['authorId']);
+        self::assertStringNotContainsString($originalTitle, $client->getResponse()->getContent());
+
+        $client->request('GET', \sprintf('/api/v1/forum/threads/%s/posts', $created['id']));
+        self::assertResponseIsSuccessful();
+        $postsBody = $client->getResponse()->getContent();
+        self::assertStringNotContainsString($originalBody, $postsBody);
+        self::assertStringContainsString($replyBody, $postsBody);
+
+        $client->request('GET', '/api/v1/community/feed');
+        self::assertStringNotContainsString($originalBody, $client->getResponse()->getContent());
+        self::assertStringNotContainsString($originalTitle, $client->getResponse()->getContent());
+        $client->request('GET', \sprintf('/api/v1/forum/categories/%s/threads', $categorySlug));
+        self::assertStringNotContainsString($originalTitle, $client->getResponse()->getContent());
+        self::assertStringNotContainsString($originalBody, $client->getResponse()->getContent());
+    }
+
+    public function testModerationHistoryUsesCompositeTargetIdentity(): void
+    {
+        $client = self::createClient();
+        $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
+        $suffix = random_int(10000, 99999);
+        $moderator = $this->createUser("history-mod-{$suffix}@example.com", 'History Moderator', ['ROLE_MODERATOR']);
+        $author = $this->createUser("history-author-{$suffix}@example.com", 'History Author');
+        $reporter = $this->createUser("history-reporter-{$suffix}@example.com", 'History Reporter');
+        $placeId = (string) $this->em->getConnection()->fetchOne('SELECT id FROM places LIMIT 1');
+        $sharedTargetId = Uuid::v7()->toRfc4122();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $this->em->getConnection()->executeStatement('INSERT INTO reviews (id, place_id, author_id, rating, body, status, created_at, updated_at) VALUES (:id, :place, :author, 4, :body, :status, :now, :now)', ['id' => $sharedTargetId, 'place' => $placeId, 'author' => $author->getId()->toRfc4122(), 'body' => 'Composite review history body.', 'status' => 'PUBLISHED', 'now' => $now]);
+        $this->em->getConnection()->executeStatement('INSERT INTO place_comments (id, place_id, author_id, body, status, created_at, updated_at) VALUES (:id, :place, :author, :body, :status, :now, :now)', ['id' => $sharedTargetId, 'place' => $placeId, 'author' => $author->getId()->toRfc4122(), 'body' => 'Composite comment history body.', 'status' => 'PUBLISHED', 'now' => $now]);
+
+        foreach (['REVIEW' => 'HIDE', 'PLACE_COMMENT' => 'REMOVE'] as $targetType => $action) {
+            $reportId = Uuid::v7()->toRfc4122();
+            $this->em->getConnection()->executeStatement('INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, status, created_at) VALUES (:id, :reporter, :type, :target, :reason, :status, :now)', ['id' => $reportId, 'reporter' => $reporter->getId()->toRfc4122(), 'type' => $targetType, 'target' => $sharedTargetId, 'reason' => 'OTHER', 'status' => 'OPEN', 'now' => $now]);
+            $this->em->getConnection()->executeStatement('INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status, report_id, correlation_id) VALUES (:id, :moderator, :type, :target, :action, :reason, :now, :previous, :resulting, :report, :correlation)', ['id' => Uuid::v7()->toRfc4122(), 'moderator' => $moderator->getId()->toRfc4122(), 'type' => $targetType, 'target' => $sharedTargetId, 'action' => $action, 'reason' => "{$targetType} history", 'now' => $now, 'previous' => 'PUBLISHED', 'resulting' => 'HIDDEN', 'report' => $reportId, 'correlation' => Uuid::v7()->toRfc4122()]);
+        }
+
+        $client->loginUser($moderator);
+        $client->request('GET', '/api/v1/moderation/queue?status=OPEN');
+        self::assertResponseIsSuccessful();
+        $items = json_decode($client->getResponse()->getContent(), true)['items'];
+        $byType = [];
+        foreach ($items as $item) {
+            if ($sharedTargetId === $item['targetId']) {
+                $byType[$item['targetType']] = $item;
+            }
+        }
+        self::assertSame('HIDE', $byType['REVIEW']['moderationHistory'][0]['action']);
+        self::assertSame('REMOVE', $byType['PLACE_COMMENT']['moderationHistory'][0]['action']);
+        self::assertCount(1, $byType['REVIEW']['moderationHistory']);
+        self::assertCount(1, $byType['PLACE_COMMENT']['moderationHistory']);
+    }
+
+    public function testMalformedAndMismatchedCursorsReturnControlledBadRequest(): void
+    {
+        $client = self::createClient();
+        $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
+
+        foreach (['%%%', base64_encode('{"id":'), base64_encode(json_encode(['id' => Uuid::v7()->toRfc4122(), 'activityAt' => 'not-a-date', 'type' => null, 'cityId' => null, 'categoryId' => null]))] as $cursor) {
+            $client->request('GET', '/api/v1/community/feed?cursor='.rawurlencode($cursor));
+            self::assertSame(Response::HTTP_BAD_REQUEST, $client->getResponse()->getStatusCode());
+            self::assertStringContainsString('INVALID_CURSOR', $client->getResponse()->getContent());
+        }
+
+        $mismatched = base64_encode(json_encode(['id' => Uuid::v7()->toRfc4122(), 'activityAt' => '2026-07-25 08:00:00', 'type' => 'review', 'cityId' => null, 'categoryId' => null]));
+        $client->request('GET', '/api/v1/community/feed?type=forum_post&cursor='.rawurlencode($mismatched));
+        self::assertSame(Response::HTTP_BAD_REQUEST, $client->getResponse()->getStatusCode());
+
+        $moderator = $this->createUser(\sprintf('cursor-mod-%d@example.com', random_int(10000, 99999)), 'Cursor Moderator', ['ROLE_MODERATOR']);
+        $client->loginUser($moderator);
+        $wrongType = base64_encode(json_encode(['priority' => 'one', 'createdAt' => '2026-07-25 08:00:00', 'id' => Uuid::v7()->toRfc4122(), 'statusFilter' => 'OPEN']));
+        $client->request('GET', '/api/v1/moderation/queue?status=OPEN&cursor='.rawurlencode($wrongType));
+        self::assertSame(Response::HTTP_BAD_REQUEST, $client->getResponse()->getStatusCode());
+        self::assertStringContainsString('INVALID_CURSOR', $client->getResponse()->getContent());
+    }
+
+    public function testClaimOwnershipResolveWithoutMutationAndIdempotency(): void
+    {
+        $client = self::createClient();
+        $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
+        $suffix = random_int(10000, 99999);
+        $author = $this->createUser("resolve-author-{$suffix}@example.com", 'Resolve Author');
+        $reporter = $this->createUser("resolve-reporter-{$suffix}@example.com", 'Resolve Reporter');
+        $moderator = $this->createUser("resolve-mod-{$suffix}@example.com", 'Resolve Moderator', ['ROLE_MODERATOR']);
+        $otherModerator = $this->createUser("resolve-other-mod-{$suffix}@example.com", 'Other Moderator', ['ROLE_MODERATOR']);
+        $placeId = (string) $this->em->getConnection()->fetchOne("SELECT id FROM places WHERE status = 'published' LIMIT 1");
+        $reviewId = Uuid::v7();
+        $reportId = Uuid::v7();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $this->em->getConnection()->executeStatement(
+            'INSERT INTO reviews (id, place_id, author_id, rating, body, status, created_at, updated_at) VALUES (:id, :place_id, :author_id, 4, :body, :status, :created_at, :updated_at)',
+            ['id' => $reviewId->toRfc4122(), 'place_id' => $placeId, 'author_id' => $author->getId()->toRfc4122(), 'body' => 'Review remains published after report-only resolution.', 'status' => 'PUBLISHED', 'created_at' => $now, 'updated_at' => $now],
+        );
+        $this->em->getConnection()->executeStatement(
+            'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at) VALUES (:id, :reporter_id, :target_type, :target_id, :reason, :details, :status, :created_at)',
+            ['id' => $reportId->toRfc4122(), 'reporter_id' => $reporter->getId()->toRfc4122(), 'target_type' => 'REVIEW', 'target_id' => $reviewId->toRfc4122(), 'reason' => 'OTHER', 'details' => 'Needs review only.', 'status' => 'OPEN', 'created_at' => $now],
+        );
+
+        $client->loginUser($moderator);
+        $client->request('GET', '/api/v1/session');
+        $moderatorHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
+        $client->request('POST', \sprintf('/api/v1/moderation/case/%s/claim', $reportId->toRfc4122()), [], [], $moderatorHeaders);
+        self::assertResponseIsSuccessful();
+
+        $client->loginUser($otherModerator);
+        $client->request('GET', '/api/v1/session');
+        $otherHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
+        $client->request('POST', \sprintf('/api/v1/moderation/case/%s/claim', $reportId->toRfc4122()), [], [], $otherHeaders);
+        self::assertSame(Response::HTTP_CONFLICT, $client->getResponse()->getStatusCode());
+        $client->request('POST', '/api/v1/moderation/action', [], [], $otherHeaders, json_encode(['reportId' => $reportId->toRfc4122(), 'action' => 'RESOLVE_REPORT', 'reason' => 'Not the owner.']));
+        self::assertSame(Response::HTTP_CONFLICT, $client->getResponse()->getStatusCode());
+
+        $client->loginUser($moderator);
+        $client->request('GET', '/api/v1/session');
+        $moderatorHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
+        $correlationId = Uuid::v7()->toRfc4122();
+        $moderatorHeaders['HTTP_X-Correlation-ID'] = $correlationId;
+        $payload = json_encode(['reportId' => $reportId->toRfc4122(), 'action' => 'RESOLVE_REPORT', 'reason' => 'Report reviewed; content stays public.']);
+        $client->request('POST', '/api/v1/moderation/action', [], [], $moderatorHeaders, $payload);
+        self::assertResponseIsSuccessful();
+        $client->request('POST', '/api/v1/moderation/action', [], [], $moderatorHeaders, $payload);
+        self::assertResponseIsSuccessful();
+
+        self::assertSame('RESOLVED', $this->em->getConnection()->fetchOne('SELECT status FROM content_reports WHERE id = :id', ['id' => $reportId->toRfc4122()]));
+        self::assertSame('PUBLISHED', $this->em->getConnection()->fetchOne('SELECT status FROM reviews WHERE id = :id', ['id' => $reviewId->toRfc4122()]));
+        $audit = $this->em->getConnection()->fetchAssociative('SELECT action, previous_status, resulting_status FROM moderation_actions WHERE correlation_id = :correlation_id', ['correlation_id' => $correlationId]);
+        self::assertNotFalse($audit);
+        self::assertSame('RESOLVE_REPORT', $audit['action']);
+        self::assertSame('PUBLISHED', $audit['previous_status']);
+        self::assertSame('PUBLISHED', $audit['resulting_status']);
+        self::assertSame(1, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM moderation_actions WHERE correlation_id = :correlation_id', ['correlation_id' => $correlationId]));
     }
 }

@@ -254,24 +254,24 @@ export const getHealthReady = <ThrowOnError extends boolean = false>(options?: O
 /**
  * Report offensive content
  */
-export const reportContent = <ThrowOnError extends boolean = false>(options?: Options<ReportContentData, ThrowOnError>): RequestResult<ReportContentResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ReportContentResponses, unknown, ThrowOnError>({
+export const reportContent = <ThrowOnError extends boolean = false>(options: Options<ReportContentData, ThrowOnError>): RequestResult<ReportContentResponses, unknown, ThrowOnError> => (options.client ?? client).post<ReportContentResponses, unknown, ThrowOnError>({
     url: '/api/v1/content-reports',
     ...options,
     headers: {
         'Content-Type': 'application/json',
-        ...options?.headers
+        ...options.headers
     }
 });
 
 /**
  * Perform moderator action on content
  */
-export const moderateContent = <ThrowOnError extends boolean = false>(options?: Options<ModerateContentData, ThrowOnError>): RequestResult<ModerateContentResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ModerateContentResponses, unknown, ThrowOnError>({
+export const moderateContent = <ThrowOnError extends boolean = false>(options: Options<ModerateContentData, ThrowOnError>): RequestResult<ModerateContentResponses, unknown, ThrowOnError> => (options.client ?? client).post<ModerateContentResponses, unknown, ThrowOnError>({
     url: '/api/v1/moderation/action',
     ...options,
     headers: {
         'Content-Type': 'application/json',
-        ...options?.headers
+        ...options.headers
     }
 });
 

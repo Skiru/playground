@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Identity\UI\Http;
 
-use App\Identity\UI\Security\CsrfValidator;
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

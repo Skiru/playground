@@ -481,7 +481,7 @@ export default function ForumThreadDetailPage() {
                   )}
 
                   {/* Report Thread */}
-                  {session.authenticated && thread.status === "PUBLISHED" && (
+                  {session.authenticated && thread.authorId !== session.user?.id && thread.status === "PUBLISHED" && (
                     <ReportContentDialog
                       targetId={thread.id}
                       targetType="FORUM_THREAD"

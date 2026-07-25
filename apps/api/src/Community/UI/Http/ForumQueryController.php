@@ -87,15 +87,24 @@ final class ForumQueryController
         if (null !== $typeFilter && '' === trim($typeFilter)) {
             $typeFilter = null;
         }
+        if (null !== $typeFilter && !\in_array($typeFilter, ['forum_thread', 'forum_post', 'review', 'place_comment'], true)) {
+            throw new ApiException(400, 'Invalid community activity type.', 'VALIDATION_FAILURE');
+        }
 
         $cityIdFilter = $request->query->get('cityId');
         if (null !== $cityIdFilter && '' === trim($cityIdFilter)) {
             $cityIdFilter = null;
         }
+        if (null !== $cityIdFilter && !Uuid::isValid($cityIdFilter)) {
+            throw new ApiException(400, 'Invalid cityId format.', 'VALIDATION_FAILURE');
+        }
 
         $categoryIdFilter = $request->query->get('categoryId');
         if (null !== $categoryIdFilter && '' === trim($categoryIdFilter)) {
             $categoryIdFilter = null;
+        }
+        if (null !== $categoryIdFilter && !Uuid::isValid($categoryIdFilter)) {
+            throw new ApiException(400, 'Invalid categoryId format.', 'VALIDATION_FAILURE');
         }
 
         $result = $this->getFeedUseCase->execute($limitInt, $cursorStr, $typeFilter, $cityIdFilter, $categoryIdFilter);

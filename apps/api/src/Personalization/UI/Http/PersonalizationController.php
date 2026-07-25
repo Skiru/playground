@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Personalization\UI\Http;
 
-use App\Identity\UI\Security\CsrfValidator;
 use App\Personalization\Application\FavoriteRepository;
 use App\Personalization\Application\UseCase\AddFavorite;
 use App\Personalization\Application\UseCase\AddVisit;
@@ -12,6 +11,7 @@ use App\Personalization\Application\UseCase\DeleteVisit;
 use App\Personalization\Application\UseCase\RemoveFavorite;
 use App\Personalization\Application\UseCase\UpdateVisit;
 use App\Personalization\Application\VisitRepository;
+use App\Shared\Application\Security\CsrfValidator;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;

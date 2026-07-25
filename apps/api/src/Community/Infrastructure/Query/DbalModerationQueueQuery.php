@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Community\Infrastructure\Query;
 
+use App\Community\Application\Pagination\CursorCodec;
 use App\Community\Application\Port\ModerationQueueQuery;
 use App\Community\Application\Port\PublicAuthorProfileLookup;
 use Doctrine\DBAL\ArrayParameterType;
@@ -33,16 +34,10 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
         // Decode and parse cursor
         $cursorData = null;
         if (null !== $cursor && '' !== trim($cursor)) {
-            $decoded = base64_decode($cursor, true);
-            if (false !== $decoded) {
-                $cursorData = json_decode($decoded, true);
-            }
-        }
-
-        // Validate statusFilter in cursor matches requested statusFilter
-        if (null !== $cursorData) {
-            if (($cursorData['statusFilter'] ?? null) !== $statusFilter) {
-                $cursorData = null;
+            $cursorData = CursorCodec::decode($cursor, ['priority', 'createdAt', 'id', 'statusFilter'], ['statusFilter' => $statusFilter]);
+            \assert(null !== $cursorData);
+            if (!\is_int($cursorData['priority']) || $cursorData['priority'] < 1 || $cursorData['priority'] > 5) {
+                throw new \App\Shared\Application\Exception\ApiException(400, 'Invalid pagination cursor.', 'INVALID_CURSOR');
             }
         }
 
@@ -130,13 +125,13 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
         ];
 
         $reporterIds = [];
-        $allTargetIds = [];
+        $targetKeys = [];
 
         foreach ($rows as $row) {
             $tType = (string) $row['target_type'];
             $tId = (string) $row['target_id'];
             $reporterIds[] = Uuid::fromString((string) $row['reporter_id']);
-            $allTargetIds[] = Uuid::fromString($tId);
+            $targetKeys[$tType][$tId] = $tId;
 
             if (isset($targetIdsByType[$tType])) {
                 $targetIdsByType[$tType][] = $tId;
@@ -225,15 +220,15 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
 
         // Batch load previous moderation history
         $modActionsByTarget = [];
-        if (!empty($allTargetIds)) {
-            $targetIdStrings = array_map(static fn ($id) => $id->toRfc4122(), $allTargetIds);
+        foreach ($targetKeys as $historyTargetType => $historyTargetIds) {
             $modRows = $this->connection->fetchAllAssociative(
-                'SELECT * FROM moderation_actions WHERE target_id IN (:ids) ORDER BY created_at DESC',
-                ['ids' => $targetIdStrings],
-                ['ids' => ArrayParameterType::STRING]
+                'SELECT * FROM moderation_actions WHERE target_type = :target_type AND target_id IN (:ids) ORDER BY created_at DESC, id DESC',
+                ['target_type' => $historyTargetType, 'ids' => array_values($historyTargetIds)],
+                ['ids' => ArrayParameterType::STRING],
             );
             foreach ($modRows as $mRow) {
-                $modActionsByTarget[$mRow['target_id']][] = [
+                $historyKey = $mRow['target_type'].':'.$mRow['target_id'];
+                $modActionsByTarget[$historyKey][] = [
                     'id' => $mRow['id'],
                     'moderatorId' => $mRow['moderator_id'],
                     'action' => $mRow['action'],
@@ -341,11 +336,13 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                 'createdAt' => (new \DateTimeImmutable((string) $row['created_at']))->format(\DateTimeInterface::ATOM),
                 'resolvedAt' => null !== $row['resolved_at'] ? (new \DateTimeImmutable((string) $row['resolved_at']))->format(\DateTimeInterface::ATOM) : null,
                 'resolvedBy' => null !== $row['resolved_by'] ? (string) $row['resolved_by'] : null,
+                'claimedBy' => null !== ($row['claimed_by'] ?? null) ? (string) $row['claimed_by'] : null,
+                'claimedAt' => null !== ($row['claimed_at'] ?? null) ? (new \DateTimeImmutable((string) $row['claimed_at']))->format(\DateTimeInterface::ATOM) : null,
                 'evidence' => $originalContent,
                 'author' => $authorProfile,
                 'publicLink' => $publicLink,
                 'adminLink' => $adminLink,
-                'moderationHistory' => $modActionsByTarget[$targetIdStr] ?? [],
+                'moderationHistory' => $modActionsByTarget[$targetTypeVal.':'.$targetIdStr] ?? [],
             ];
         }
 
@@ -366,8 +363,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                 'id' => (string) $lastRow['id'],
                 'statusFilter' => $statusFilter,
             ];
-            $json = json_encode($cursorPayload);
-            $nextCursor = false !== $json ? base64_encode($json) : null;
+            $nextCursor = CursorCodec::encode($cursorPayload);
         }
 
         return [

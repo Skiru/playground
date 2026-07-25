@@ -70,32 +70,44 @@ final class ForumThread
 
     public function softDelete(\DateTimeImmutable $now): void
     {
+        if (!\in_array($this->status, [ForumThreadStatus::PUBLISHED, ForumThreadStatus::HIDDEN], true)) {
+            throw new \LogicException('Only published or hidden threads can be deleted by their author.');
+        }
         $this->status = ForumThreadStatus::DELETED_BY_AUTHOR;
         $this->updatedAt = $now;
     }
 
     public function hide(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published threads can be hidden.');
+        }
         $this->status = ForumThreadStatus::HIDDEN;
         $this->updatedAt = $now;
     }
 
     public function publish(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::HIDDEN !== $this->status) {
+            throw new \LogicException('Only hidden threads can be restored.');
+        }
         $this->status = ForumThreadStatus::PUBLISHED;
         $this->updatedAt = $now;
     }
 
     public function removeByModerator(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published threads can be removed.');
+        }
         $this->status = ForumThreadStatus::REMOVED_BY_MODERATOR;
         $this->updatedAt = $now;
     }
 
     public function lock(\DateTimeImmutable $now): void
     {
-        if (ForumThreadStatus::PUBLISHED !== $this->status) {
-            throw new \LogicException('Non-public thread cannot be locked.');
+        if (ForumThreadStatus::PUBLISHED !== $this->status || null !== $this->lockedAt) {
+            throw new \LogicException('Only an unlocked published thread can be locked.');
         }
         $this->lockedAt = $now;
         $this->updatedAt = $now;
@@ -103,8 +115,8 @@ final class ForumThread
 
     public function unlock(\DateTimeImmutable $now): void
     {
-        if (ForumThreadStatus::REMOVED_BY_MODERATOR === $this->status) {
-            throw new \LogicException('Removed thread cannot be unlocked into public availability.');
+        if (ForumThreadStatus::PUBLISHED !== $this->status || null === $this->lockedAt) {
+            throw new \LogicException('Only a locked published thread can be unlocked.');
         }
         $this->lockedAt = null;
         $this->updatedAt = $now;
@@ -112,8 +124,8 @@ final class ForumThread
 
     public function pin(\DateTimeImmutable $now): void
     {
-        if (ForumThreadStatus::PUBLISHED !== $this->status) {
-            throw new \LogicException('Hidden, removed, or deleted thread cannot be pinned.');
+        if (ForumThreadStatus::PUBLISHED !== $this->status || null !== $this->pinnedAt) {
+            throw new \LogicException('Only an unpinned published thread can be pinned.');
         }
         $this->pinnedAt = $now;
         $this->updatedAt = $now;
@@ -121,6 +133,9 @@ final class ForumThread
 
     public function unpin(\DateTimeImmutable $now): void
     {
+        if (ForumThreadStatus::PUBLISHED !== $this->status || null === $this->pinnedAt) {
+            throw new \LogicException('Only a pinned published thread can be unpinned.');
+        }
         $this->pinnedAt = null;
         $this->updatedAt = $now;
     }

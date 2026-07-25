@@ -19,7 +19,7 @@ final class UpdateReview
     ) {
     }
 
-    public function execute(Uuid $userId, Uuid $reviewId, int $expectedVersion, int $rating, string $body, ?\DateTimeImmutable $visitedOn): Review
+    public function execute(Uuid $userId, Uuid $reviewId, int $expectedVersion, ?int $rating, ?string $body, bool $visitedOnProvided, ?\DateTimeImmutable $visitedOn): Review
     {
         $review = $this->reviewRepository->findById($reviewId);
         if (null === $review || ReviewStatus::DELETED_BY_AUTHOR === $review->status() || ReviewStatus::REMOVED_BY_MODERATOR === $review->status()) {
@@ -34,7 +34,16 @@ final class UpdateReview
             throw new ApiException(409, 'Review has been modified by another process.', 'CONCURRENCY_CONFLICT');
         }
 
-        $review->edit($rating, $body, $visitedOn, $this->clock->now());
+        if (ReviewStatus::PUBLISHED !== $review->status()) {
+            throw new ApiException(409, 'Only published reviews can be edited.', 'CONTENT_STATE_CONFLICT');
+        }
+
+        $review->edit(
+            $rating ?? $review->rating(),
+            $body ?? $review->body(),
+            $visitedOnProvided ? $visitedOn : $review->visitedOn(),
+            $this->clock->now(),
+        );
 
         try {
             $this->reviewRepository->save($review);

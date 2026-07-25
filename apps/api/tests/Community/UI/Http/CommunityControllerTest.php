@@ -56,6 +56,16 @@ final class CommunityControllerTest extends WebTestCase
             'HTTP_CONTENT_TYPE' => 'application/json',
         ];
 
+        $client->request('POST', \sprintf('/api/v1/places/%s/reviews', $placeId), [], [], [
+            'HTTP_X-CSRF-Token' => 'arbitrary-non-empty-token',
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'rating' => 5,
+            'body' => 'Ta próba ma nieprawidłowy, ale niepusty token zabezpieczający.',
+        ]));
+        self::assertSame(Response::HTTP_FORBIDDEN, $client->getResponse()->getStatusCode());
+        self::assertStringContainsString('CSRF_TOKEN_INVALID', $client->getResponse()->getContent());
+
         // 1. Create a review
         $client->request('POST', \sprintf('/api/v1/places/%s/reviews', $placeId), [], [], $csrfHeaders, json_encode([
             'rating' => 5,
@@ -91,6 +101,7 @@ final class CommunityControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $updatedData = json_decode($client->getResponse()->getContent(), true);
         self::assertSame(4, $updatedData['rating']);
+        self::assertSame('2026-07-18', $updatedData['visitedOn']);
         self::assertSame(2, $updatedData['version']);
 
         // 5. Concurrency check (optimistic lock with old version)
@@ -111,5 +122,44 @@ final class CommunityControllerTest extends WebTestCase
         $resAfterDelete = json_decode($client->getResponse()->getContent(), true);
         self::assertSame(0, $resAfterDelete['summary']['totalReviews']);
         self::assertCount(0, $resAfterDelete['items']);
+    }
+
+    public function testReviewPatchPreservesOmittedFieldsAndClearsExplicitNull(): void
+    {
+        $client = self::createClient();
+        $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
+        $user = $this->createUser(\sprintf('patch-review-%d@example.com', random_int(10000, 99999)), 'Patch Review');
+        $placeId = (string) $this->em->getConnection()->fetchOne("SELECT id FROM places WHERE status = 'published' LIMIT 1");
+        $reviewId = \Symfony\Component\Uid\Uuid::v7()->toRfc4122();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->em->getConnection()->executeStatement('INSERT INTO reviews (id, place_id, author_id, rating, body, visited_on, status, created_at, updated_at, version) VALUES (:id, :place, :author, 4, :body, :visited, :status, :now, :now, 1)', ['id' => $reviewId, 'place' => $placeId, 'author' => $user->getId()->toRfc4122(), 'body' => 'Original review body long enough for validation.', 'visited' => '2026-07-18', 'status' => 'PUBLISHED', 'now' => $now]);
+        $client->loginUser($user);
+        $client->request('GET', '/api/v1/session');
+        $headers = ['HTTP_X-CSRF-Token' => json_decode($client->getResponse()->getContent(), true)['csrfToken'], 'CONTENT_TYPE' => 'application/json'];
+
+        $client->request('PATCH', "/api/v1/me/reviews/{$reviewId}", [], [], $headers, json_encode(['body' => 'Body-only update preserves every omitted review field.', 'version' => 1]));
+        self::assertResponseIsSuccessful();
+        $bodyOnly = json_decode($client->getResponse()->getContent(), true);
+        self::assertSame(4, $bodyOnly['rating']);
+        self::assertSame('2026-07-18', $bodyOnly['visitedOn']);
+
+        $client->request('PATCH', "/api/v1/me/reviews/{$reviewId}", [], [], $headers, json_encode(['rating' => 3, 'version' => 2]));
+        self::assertResponseIsSuccessful();
+        $ratingOnly = json_decode($client->getResponse()->getContent(), true);
+        self::assertSame($bodyOnly['body'], $ratingOnly['body']);
+        self::assertSame('2026-07-18', $ratingOnly['visitedOn']);
+
+        $client->request('PATCH', "/api/v1/me/reviews/{$reviewId}", [], [], $headers, json_encode(['visitedOn' => null, 'version' => 3]));
+        self::assertResponseIsSuccessful();
+        $cleared = json_decode($client->getResponse()->getContent(), true);
+        self::assertNull($cleared['visitedOn']);
+        self::assertSame(3, $cleared['rating']);
+        self::assertSame($bodyOnly['body'], $cleared['body']);
+
+        $client->request('PATCH', "/api/v1/me/reviews/{$reviewId}", [], [], $headers, json_encode(['version' => 4]));
+        self::assertSame(Response::HTTP_BAD_REQUEST, $client->getResponse()->getStatusCode());
+
+        $client->request('PATCH', "/api/v1/me/reviews/{$reviewId}", [], [], $headers, json_encode(['rating' => null, 'version' => 4]));
+        self::assertSame(Response::HTTP_BAD_REQUEST, $client->getResponse()->getStatusCode());
     }
 }

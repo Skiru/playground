@@ -18,6 +18,8 @@ final class ContentReport
     private \DateTimeImmutable $createdAt;
     private ?\DateTimeImmutable $resolvedAt;
     private ?Uuid $resolvedBy;
+    private ?Uuid $claimedBy;
+    private ?\DateTimeImmutable $claimedAt;
 
     public function __construct(
         Uuid $id,
@@ -30,6 +32,8 @@ final class ContentReport
         \DateTimeImmutable $createdAt,
         ?\DateTimeImmutable $resolvedAt = null,
         ?Uuid $resolvedBy = null,
+        ?Uuid $claimedBy = null,
+        ?\DateTimeImmutable $claimedAt = null,
     ) {
         $this->id = $id;
         $this->reporterId = $reporterId;
@@ -41,14 +45,21 @@ final class ContentReport
         $this->createdAt = $createdAt;
         $this->resolvedAt = $resolvedAt;
         $this->resolvedBy = $resolvedBy;
+        $this->claimedBy = $claimedBy;
+        $this->claimedAt = $claimedAt;
     }
 
     public function claim(Uuid $moderatorId, \DateTimeImmutable $now): void
     {
-        if (ReportStatus::OPEN !== $this->status && ReportStatus::IN_REVIEW !== $this->status) {
+        if (ReportStatus::IN_REVIEW === $this->status && null !== $this->claimedBy && $this->claimedBy->equals($moderatorId)) {
+            return;
+        }
+        if (ReportStatus::OPEN !== $this->status) {
             throw new \LogicException('Only OPEN reports can be claimed for review.');
         }
         $this->status = ReportStatus::IN_REVIEW;
+        $this->claimedBy = $moderatorId;
+        $this->claimedAt = $now;
     }
 
     public function resolve(Uuid $moderatorId, \DateTimeImmutable $now): void
@@ -119,5 +130,15 @@ final class ContentReport
     public function resolvedBy(): ?Uuid
     {
         return $this->resolvedBy;
+    }
+
+    public function claimedBy(): ?Uuid
+    {
+        return $this->claimedBy;
+    }
+
+    public function claimedAt(): ?\DateTimeImmutable
+    {
+        return $this->claimedAt;
     }
 }

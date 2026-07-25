@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Community\Application\UseCase;
 
+use App\Community\Application\Pagination\CursorCodec;
 use App\Community\Application\Port\PublicAuthorProfileLookup;
 use App\Community\Application\Port\PublishedPlaceLookup;
 use App\Community\Domain\PlaceDiscussion\PlaceCommentStatus;
@@ -41,7 +42,7 @@ final class ListComments
         );
 
         // Decode cursor
-        $cursor = $this->decodeCursor($cursorStr);
+        $cursor = CursorCodec::decode($cursorStr, ['createdAt', 'id', 'placeId'], ['placeId' => $placeId->toRfc4122()]);
 
         // Fetch roots using cursor
         // Stable order: created_at ASC, id ASC
@@ -115,7 +116,11 @@ final class ListComments
         $nextCursor = null;
         if (!empty($rootComments)) {
             $lastRoot = end($rootComments);
-            $nextCursor = $this->encodeCursor($lastRoot->createdAt()->format('Y-m-d H:i:s'), $lastRoot->id()->toString());
+            $nextCursor = CursorCodec::encode([
+                'createdAt' => $lastRoot->createdAt()->format('Y-m-d H:i:s'),
+                'id' => $lastRoot->id()->toString(),
+                'placeId' => $placeId->toRfc4122(),
+            ]);
         }
 
         return [
@@ -140,7 +145,7 @@ final class ListComments
 
         if (PlaceCommentStatus::DELETED_BY_AUTHOR === $comment->status()) {
             $author = [
-                'id' => $authorIdStr,
+                'id' => null,
                 'displayName' => 'Usunięty użytkownik',
                 'initials' => 'U',
             ];
@@ -157,7 +162,7 @@ final class ListComments
         return [
             'id' => $comment->id()->toString(),
             'placeId' => $comment->placeId()->toString(),
-            'authorId' => $authorIdStr,
+            'authorId' => PlaceCommentStatus::DELETED_BY_AUTHOR === $comment->status() ? null : $authorIdStr,
             'author' => $author,
             'parentId' => $comment->parentId()?->toString(),
             'body' => $body,
@@ -184,30 +189,5 @@ final class ListComments
             new \DateTimeImmutable((string) $row['updated_at']),
             (int) $row['version']
         );
-    }
-
-    private function encodeCursor(?string $createdAt, ?string $id): ?string
-    {
-        if (null === $createdAt || null === $id) {
-            return null;
-        }
-
-        return base64_encode((string) json_encode(['createdAt' => $createdAt, 'id' => $id]));
-    }
-
-    /**
-     * @return array{createdAt: string, id: string}|null
-     */
-    private function decodeCursor(?string $cursor): ?array
-    {
-        if (null === $cursor || '' === $cursor) {
-            return null;
-        }
-        $decoded = json_decode((string) base64_decode($cursor), true);
-        if (!\is_array($decoded) || !isset($decoded['createdAt']) || !isset($decoded['id'])) {
-            return null;
-        }
-
-        return $decoded;
     }
 }

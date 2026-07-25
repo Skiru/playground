@@ -46,7 +46,7 @@ final class ListReviews
             // Tombstone check
             if (ReviewStatus::DELETED_BY_AUTHOR === $review->status()) {
                 $author = [
-                    'id' => $authorIdStr,
+                    'id' => null,
                     'displayName' => 'Usunięty użytkownik',
                     'initials' => 'U',
                 ];
@@ -62,7 +62,7 @@ final class ListReviews
 
             $items[] = [
                 'id' => $review->id()->toString(),
-                'authorId' => $authorIdStr,
+                'authorId' => ReviewStatus::DELETED_BY_AUTHOR === $review->status() ? null : $authorIdStr,
                 'author' => $author,
                 'rating' => $review->rating(),
                 'body' => $body,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Community\Infrastructure\Query;
 
+use App\Community\Application\Pagination\CursorCodec;
 use App\Community\Application\Port\CommunityFeedQuery;
 use App\Community\Application\Port\PublicAuthorProfileLookup;
 use Doctrine\DBAL\Connection;
@@ -22,10 +23,11 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
         // Cursor structure: base64({"activityAt": "Y-m-d H:i:s", "id": "uuid"})
         $cursor = null;
         if (null !== $cursorStr && '' !== $cursorStr) {
-            $decoded = json_decode((string) base64_decode($cursorStr), true);
-            if (\is_array($decoded) && isset($decoded['activityAt'], $decoded['id'])) {
-                $cursor = $decoded;
-            }
+            $cursor = CursorCodec::decode(
+                $cursorStr,
+                ['activityAt', 'id', 'type', 'cityId', 'categoryId'],
+                ['type' => $typeFilter, 'cityId' => $cityIdFilter, 'categoryId' => $categoryIdFilter],
+            );
         }
 
         $subqueries = [];
@@ -197,10 +199,13 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
         $nextCursor = null;
         if (!empty($rows)) {
             $lastRow = end($rows);
-            $nextCursor = base64_encode((string) json_encode([
+            $nextCursor = CursorCodec::encode([
                 'id' => (string) $lastRow['id'],
                 'activityAt' => (string) $lastRow['activity_at'],
-            ]));
+                'type' => $typeFilter,
+                'cityId' => $cityIdFilter,
+                'categoryId' => $categoryIdFilter,
+            ]);
         }
 
         return [

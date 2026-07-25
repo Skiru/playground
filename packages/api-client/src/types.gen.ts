@@ -135,7 +135,28 @@ export type GetCommunityFeedResponses = {
      * Community activity feed.
      */
     200: {
-        [key: string]: unknown;
+        items: Array<{
+            type: 'forum_thread' | 'forum_post' | 'review' | 'place_comment';
+            id: string;
+            activityAt: string;
+            author: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            title: string | null;
+            excerpt: string;
+            sourceId: string;
+            parentSourceId: string | null;
+            placeSlug: string | null;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
     };
 };
 
@@ -143,6 +164,12 @@ export type GetCommunityFeedResponse = GetCommunityFeedResponses[keyof GetCommun
 
 export type DeleteCommentData = {
     body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Comment UUID.
@@ -186,6 +213,12 @@ export type UpdateCommentData = {
         body: string;
         version: number;
     };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Comment UUID.
@@ -217,7 +250,23 @@ export type UpdateCommentResponses = {
      * Comment updated.
      */
     200: {
-        [key: string]: unknown;
+        id: string;
+        placeId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+        replies?: Array<{
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -260,7 +309,26 @@ export type MyReviewsResponses = {
      * My reviews list.
      */
     200: {
-        [key: string]: unknown;
+        items: Array<{
+            id: string;
+            placeId?: string;
+            authorId?: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            rating: number;
+            body: string;
+            visitedOn: string | null;
+            status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+        }>;
+        pagination: {
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -268,6 +336,12 @@ export type MyReviewsResponse = MyReviewsResponses[keyof MyReviewsResponses];
 
 export type DeleteReviewData = {
     body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Review UUID.
@@ -313,6 +387,12 @@ export type UpdateReviewData = {
         visitedOn?: string | null;
         version: number;
     };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Review UUID.
@@ -344,7 +424,21 @@ export type UpdateReviewResponses = {
      * Review updated.
      */
     200: {
-        [key: string]: unknown;
+        id: string;
+        placeId?: string;
+        authorId?: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        rating: number;
+        body: string;
+        visitedOn: string | null;
+        status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
     };
 };
 
@@ -388,7 +482,23 @@ export type AddReplyResponses = {
      * Reply created.
      */
     201: {
-        [key: string]: unknown;
+        id: string;
+        placeId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+        replies?: Array<{
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -404,13 +514,13 @@ export type ListCommentsData = {
     };
     query?: {
         /**
-         * Page number.
-         */
-        page?: number;
-        /**
          * Page size.
          */
-        pageSize?: number;
+        limit?: number;
+        /**
+         * Pagination cursor.
+         */
+        cursor?: string;
     };
     url: '/api/v1/places/{placeId}/comments';
 };
@@ -421,10 +531,30 @@ export type ListCommentsResponses = {
      */
     200: {
         items: Array<{
-            [key: string]: unknown;
+            id: string;
+            placeId: string;
+            authorId: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            parentId: string | null;
+            body: string;
+            status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+            replies?: Array<{
+                [key: string]: unknown;
+            }>;
         }>;
         pagination: {
-            [key: string]: unknown;
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
         };
     };
 };
@@ -437,6 +567,12 @@ export type AddCommentData = {
      */
     body?: {
         body: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
     };
     path: {
         /**
@@ -469,7 +605,23 @@ export type AddCommentResponses = {
      * Comment created.
      */
     201: {
-        [key: string]: unknown;
+        id: string;
+        placeId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+        replies?: Array<{
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -513,7 +665,21 @@ export type ListReviewsResponses = {
             };
         };
         items: Array<{
-            [key: string]: unknown;
+            id: string;
+            placeId?: string;
+            authorId?: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            rating: number;
+            body: string;
+            visitedOn: string | null;
+            status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
         }>;
         pagination: {
             [key: string]: unknown;
@@ -531,6 +697,12 @@ export type AddReviewData = {
         rating: number;
         body: string;
         visitedOn?: string | null;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
     };
     path: {
         /**
@@ -563,7 +735,21 @@ export type AddReviewResponses = {
      * Review created.
      */
     201: {
-        [key: string]: unknown;
+        id: string;
+        placeId?: string;
+        authorId?: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        rating: number;
+        body: string;
+        visitedOn: string | null;
+        status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
     };
 };
 
@@ -1095,7 +1281,12 @@ export type ListForumCategoriesResponses = {
      * Forum categories list.
      */
     200: Array<{
-        [key: string]: unknown;
+        id: string;
+        slug: string;
+        name: string;
+        description: string | null;
+        displayOrder: number;
+        cityId?: string | null;
     }>;
 };
 
@@ -1108,6 +1299,12 @@ export type CreateForumThreadData = {
     body?: {
         title: string;
         body: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
     };
     path: {
         /**
@@ -1124,7 +1321,31 @@ export type CreateForumThreadResponses = {
      * Thread created.
      */
     201: {
-        [key: string]: unknown;
+        id: string;
+        categoryId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        title: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        lastActivityAt: string;
+        lockedAt?: string | null;
+        pinnedAt?: string | null;
+        version: number;
+        firstPost?: {
+            id?: string;
+            body?: string;
+        };
+        category?: {
+            id?: string;
+            slug?: string;
+            name?: string;
+        };
     };
 };
 
@@ -1156,7 +1377,46 @@ export type ListCategoryThreadsResponses = {
      * Category threads list.
      */
     200: {
-        [key: string]: unknown;
+        category: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+        };
+        items: Array<{
+            id: string;
+            categoryId: string;
+            authorId: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            title: string;
+            status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            lastActivityAt: string;
+            lockedAt?: string | null;
+            pinnedAt?: string | null;
+            version: number;
+            firstPost?: {
+                id?: string;
+                body?: string;
+            };
+            category?: {
+                id?: string;
+                slug?: string;
+                name?: string;
+            };
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
     };
 };
 
@@ -1179,7 +1439,31 @@ export type GetForumThreadResponses = {
      * Thread detail.
      */
     200: {
-        [key: string]: unknown;
+        id: string;
+        categoryId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        title: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        lastActivityAt: string;
+        lockedAt?: string | null;
+        pinnedAt?: string | null;
+        version: number;
+        firstPost?: {
+            id?: string;
+            body?: string;
+        };
+        category?: {
+            id?: string;
+            slug?: string;
+            name?: string;
+        };
     };
 };
 
@@ -1211,7 +1495,29 @@ export type ListForumPostsResponses = {
      * Posts list.
      */
     200: {
-        [key: string]: unknown;
+        items: Array<{
+            id: string;
+            threadId: string;
+            authorId: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            parentId: string | null;
+            body: string;
+            status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
     };
 };
 
@@ -1224,6 +1530,12 @@ export type CreateForumPostData = {
     body?: {
         body: string;
         replyToPostId?: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
     };
     path: {
         /**
@@ -1240,7 +1552,20 @@ export type CreateForumPostResponses = {
      * Post created.
      */
     201: {
-        [key: string]: unknown;
+        id: string;
+        threadId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
     };
 };
 
@@ -1248,6 +1573,12 @@ export type CreateForumPostResponse = CreateForumPostResponses[keyof CreateForum
 
 export type DeleteOwnForumPostData = {
     body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Post UUID.
@@ -1290,7 +1621,20 @@ export type EditOwnForumPostResponses = {
      * Post updated.
      */
     200: {
-        [key: string]: unknown;
+        id: string;
+        threadId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
     };
 };
 
@@ -1298,6 +1642,12 @@ export type EditOwnForumPostResponse = EditOwnForumPostResponses[keyof EditOwnFo
 
 export type DeleteOwnForumThreadData = {
     body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Thread UUID.
@@ -1325,6 +1675,12 @@ export type EditOwnForumThreadData = {
         title: string;
         version: number;
     };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * Thread UUID.
@@ -1340,7 +1696,31 @@ export type EditOwnForumThreadResponses = {
      * Thread updated.
      */
     200: {
-        [key: string]: unknown;
+        id: string;
+        categoryId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        title: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        lastActivityAt: string;
+        lockedAt?: string | null;
+        pinnedAt?: string | null;
+        version: number;
+        firstPost?: {
+            id?: string;
+            body?: string;
+        };
+        category?: {
+            id?: string;
+            slug?: string;
+            name?: string;
+        };
     };
 };
 
@@ -1391,6 +1771,12 @@ export type ReportContentData = {
         reason: 'SPAM' | 'HARASSMENT' | 'INAPPROPRIATE' | 'MISINFORMATION' | 'PRIVACY_CONCERN' | 'OTHER';
         details?: string;
     };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/content-reports';
@@ -1401,7 +1787,13 @@ export type ReportContentResponses = {
      * Report created.
      */
     201: {
-        [key: string]: unknown;
+        id: string;
+        targetId: string;
+        targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reason: string;
+        details: string | null;
+        status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+        createdAt: string;
     };
 };
 
@@ -1412,11 +1804,19 @@ export type ModerateContentData = {
      * Moderation action details
      */
     body?: {
-        reportId?: string;
-        targetId?: string;
-        targetType?: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reportId: string;
         action: 'HIDE' | 'REMOVE' | 'RESTORE' | 'LOCK' | 'UNLOCK' | 'PIN' | 'UNPIN' | 'DISMISS_REPORT' | 'RESOLVE_REPORT';
         reason: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+        /**
+         * UUID idempotency and audit correlation key.
+         */
+        'X-Correlation-ID'?: string;
     };
     path?: never;
     query?: never;
@@ -1428,7 +1828,7 @@ export type ModerateContentResponses = {
      * Perform moderator action.
      */
     200: {
-        [key: string]: unknown;
+        status: 'success';
     };
 };
 
@@ -1451,7 +1851,24 @@ export type GetModerationCaseResponses = {
      * Moderation case details.
      */
     200: {
-        [key: string]: unknown;
+        id: string;
+        targetId: string;
+        targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reason: string;
+        details?: string | null;
+        status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+        createdAt: string;
+        reporterId: string;
+        claimedBy: string | null;
+        claimedAt: string | null;
+        resolvedBy?: string | null;
+        resolvedAt?: string | null;
+        targetPreview?: null | {
+            title: string;
+            body: string;
+            status: string;
+            rating?: number;
+        };
     };
 };
 
@@ -1459,6 +1876,12 @@ export type GetModerationCaseResponse = GetModerationCaseResponses[keyof GetMode
 
 export type ClaimModerationCaseData = {
     body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
     path: {
         /**
          * The report UUID.
@@ -1474,7 +1897,7 @@ export type ClaimModerationCaseResponses = {
      * Case claimed successfully.
      */
     200: {
-        [key: string]: unknown;
+        status: 'success';
     };
 };
 
@@ -1505,7 +1928,43 @@ export type ListModerationQueueResponses = {
      * Moderation queue reports list.
      */
     200: {
-        [key: string]: unknown;
+        items: Array<{
+            id: string;
+            reporterId: string;
+            reporter: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            targetId: string;
+            targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+            reason: string;
+            details: string | null;
+            status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+            createdAt: string;
+            resolvedAt: string | null;
+            resolvedBy: string | null;
+            claimedAt: string | null;
+            claimedBy: string | null;
+            evidence: string;
+            author: null | {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            publicLink: string;
+            adminLink: string;
+            moderationHistory: Array<{
+                [key: string]: unknown;
+            }>;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
     };
 };
 

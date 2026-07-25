@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Community\Application\UseCase;
 
+use App\Community\Application\Pagination\CursorCodec;
 use App\Community\Application\Port\PublicAuthorProfileLookup;
 use App\Community\Domain\Forum\ForumCategoryRepository;
 use App\Community\Domain\Forum\ForumThreadRepository;
@@ -35,12 +36,11 @@ final class ListCategoryThreads
         $cursorLastActivityAt = null;
 
         if (null !== $cursorStr && '' !== $cursorStr) {
-            $decoded = json_decode((string) base64_decode($cursorStr), true);
-            if (\is_array($decoded)) {
-                $cursorId = $decoded['id'] ?? null;
-                $cursorPinnedAt = isset($decoded['pinnedAt']) ? new \DateTimeImmutable($decoded['pinnedAt']) : null;
-                $cursorLastActivityAt = isset($decoded['lastActivityAt']) ? new \DateTimeImmutable($decoded['lastActivityAt']) : null;
-            }
+            $decoded = CursorCodec::decode($cursorStr, ['id', 'pinnedAt', 'lastActivityAt', 'categorySlug'], ['categorySlug' => $slug]);
+            \assert(null !== $decoded);
+            $cursorId = (string) $decoded['id'];
+            $cursorPinnedAt = null === $decoded['pinnedAt'] ? null : new \DateTimeImmutable((string) $decoded['pinnedAt']);
+            $cursorLastActivityAt = new \DateTimeImmutable((string) $decoded['lastActivityAt']);
         }
 
         // Fetch threads (+1 to check for next page)
@@ -67,7 +67,7 @@ final class ListCategoryThreads
 
             if (ForumThreadStatus::DELETED_BY_AUTHOR === $thread->status()) {
                 $author = [
-                    'id' => $authorIdStr,
+                    'id' => null,
                     'displayName' => 'Usunięty użytkownik',
                     'initials' => 'U',
                 ];
@@ -84,7 +84,7 @@ final class ListCategoryThreads
             $items[] = [
                 'id' => $thread->id()->toString(),
                 'categoryId' => $thread->categoryId()->toString(),
-                'authorId' => $authorIdStr,
+                'authorId' => ForumThreadStatus::DELETED_BY_AUTHOR === $thread->status() ? null : $authorIdStr,
                 'author' => $author,
                 'title' => $title,
                 'status' => $thread->status()->value,
@@ -100,11 +100,12 @@ final class ListCategoryThreads
         $nextCursor = null;
         if (!empty($threads)) {
             $lastThread = end($threads);
-            $nextCursor = base64_encode((string) json_encode([
+            $nextCursor = CursorCodec::encode([
                 'id' => $lastThread->id()->toString(),
                 'pinnedAt' => $lastThread->pinnedAt()?->format('Y-m-d H:i:s'),
                 'lastActivityAt' => $lastThread->lastActivityAt()->format('Y-m-d H:i:s'),
-            ]));
+                'categorySlug' => $slug,
+            ]);
         }
 
         return [

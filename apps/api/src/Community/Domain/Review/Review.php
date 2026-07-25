@@ -53,6 +53,9 @@ final class Review
 
     public function edit(int $rating, string $body, ?\DateTimeImmutable $visitedOn, \DateTimeImmutable $now): void
     {
+        if (ReviewStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published reviews can be edited.');
+        }
         if ($rating < 1 || $rating > 5) {
             throw new \InvalidArgumentException('Rating must be between 1 and 5.');
         }
@@ -69,24 +72,36 @@ final class Review
 
     public function softDelete(\DateTimeImmutable $now): void
     {
+        if (!\in_array($this->status, [ReviewStatus::PUBLISHED, ReviewStatus::HIDDEN], true)) {
+            throw new \LogicException('Only published or hidden reviews can be deleted by their author.');
+        }
         $this->status = ReviewStatus::DELETED_BY_AUTHOR;
         $this->updatedAt = $now;
     }
 
     public function hide(\DateTimeImmutable $now): void
     {
+        if (ReviewStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published reviews can be hidden.');
+        }
         $this->status = ReviewStatus::HIDDEN;
         $this->updatedAt = $now;
     }
 
     public function publish(\DateTimeImmutable $now): void
     {
+        if (ReviewStatus::HIDDEN !== $this->status) {
+            throw new \LogicException('Only hidden reviews can be restored.');
+        }
         $this->status = ReviewStatus::PUBLISHED;
         $this->updatedAt = $now;
     }
 
     public function removeByModerator(\DateTimeImmutable $now): void
     {
+        if (ReviewStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published reviews can be removed.');
+        }
         $this->status = ReviewStatus::REMOVED_BY_MODERATOR;
         $this->updatedAt = $now;
     }

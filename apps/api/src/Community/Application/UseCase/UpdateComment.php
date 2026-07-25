@@ -33,6 +33,9 @@ final class UpdateComment
         if ($comment->version() !== $expectedVersion) {
             throw new ApiException(409, 'Comment has been modified by another process.', 'CONCURRENCY_CONFLICT');
         }
+        if (PlaceCommentStatus::PUBLISHED !== $comment->status()) {
+            throw new ApiException(409, 'Only published comments can be edited.', 'CONTENT_STATE_CONFLICT');
+        }
 
         $comment->edit($body, $this->clock->now());
 

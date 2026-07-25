@@ -12,6 +12,7 @@ use App\Community\Application\UseCase\DeleteOwnForumThread;
 use App\Community\Application\UseCase\EditOwnForumPost;
 use App\Community\Application\UseCase\EditOwnForumThread;
 use App\Shared\Application\Exception\ApiException;
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,6 +36,7 @@ final class ForumCommandController
         private readonly Security $security,
         private readonly ActiveCommunityUserLookup $userLookup,
         private readonly ValidatorInterface $validator,
+        private readonly CsrfValidator $csrfValidator,
         private readonly RateLimiterFactory $forumThreadWrite,
         private readonly RateLimiterFactory $forumPostWrite,
     ) {
@@ -43,8 +45,8 @@ final class ForumCommandController
     #[Route('/api/v1/forum/categories/{categoryId}/threads', name: 'api_forum_add_thread', methods: ['POST'])]
     public function createThread(string $categoryId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->forumThreadWrite, 'user_'.$user->getId()->toString());
@@ -100,8 +102,8 @@ final class ForumCommandController
     #[Route('/api/v1/me/forum-threads/{threadId}', name: 'api_me_update_thread', methods: ['PATCH'])]
     public function updateThread(string $threadId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->forumThreadWrite, 'user_'.$user->getId()->toString());
@@ -149,8 +151,8 @@ final class ForumCommandController
     #[Route('/api/v1/me/forum-threads/{threadId}', name: 'api_me_delete_thread', methods: ['DELETE'])]
     public function deleteThread(string $threadId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         try {
             $threadUuid = Uuid::fromString($threadId);
@@ -166,8 +168,8 @@ final class ForumCommandController
     #[Route('/api/v1/forum/threads/{threadId}/posts', name: 'api_forum_add_post', methods: ['POST'])]
     public function createPost(string $threadId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->forumPostWrite, 'user_'.$user->getId()->toString());
@@ -184,9 +186,9 @@ final class ForumCommandController
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Length(min: 1, max: 10000),
             ],
-            'replyToPostId' => [
+            'replyToPostId' => new \Symfony\Component\Validator\Constraints\Optional([
                 new \Symfony\Component\Validator\Constraints\Type('string'),
-            ],
+            ]),
         ];
 
         $data = $this->parseAndValidateJson($request, $this->validator, $constraints);
@@ -223,8 +225,8 @@ final class ForumCommandController
     #[Route('/api/v1/me/forum-posts/{postId}', name: 'api_me_update_post', methods: ['PATCH'])]
     public function updatePost(string $postId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit check
         $this->checkRateLimit($this->forumPostWrite, 'user_'.$user->getId()->toString());
@@ -272,8 +274,8 @@ final class ForumCommandController
     #[Route('/api/v1/me/forum-posts/{postId}', name: 'api_me_delete_post', methods: ['DELETE'])]
     public function deletePost(string $postId, Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         try {
             $postUuid = Uuid::fromString($postId);

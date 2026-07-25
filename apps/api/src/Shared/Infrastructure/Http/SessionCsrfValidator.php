@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Identity\UI\Security;
+namespace App\Shared\Infrastructure\Http;
 
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
-final class CsrfValidator
+final class SessionCsrfValidator implements CsrfValidator
 {
     public function __construct(private readonly CsrfTokenManagerInterface $csrfTokenManager)
     {

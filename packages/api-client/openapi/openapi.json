@@ -296,7 +296,126 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "type",
+                                                    "id",
+                                                    "activityAt",
+                                                    "author",
+                                                    "title",
+                                                    "excerpt",
+                                                    "sourceId",
+                                                    "parentSourceId",
+                                                    "placeSlug"
+                                                ],
+                                                "properties": {
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "forum_thread",
+                                                            "forum_post",
+                                                            "review",
+                                                            "place_comment"
+                                                        ]
+                                                    },
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "activityAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "author": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "excerpt": {
+                                                        "type": "string"
+                                                    },
+                                                    "sourceId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "parentSourceId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "placeSlug": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "nextCursor",
+                                                "hasNextPage"
+                                            ],
+                                            "properties": {
+                                                "nextCursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "hasNextPage": {
+                                                    "type": "boolean"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "rootCount": {
+                                                    "type": "integer"
+                                                },
+                                                "replyCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -433,6 +552,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ]
             },
@@ -447,7 +580,96 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "placeId",
+                                        "authorId",
+                                        "parentId",
+                                        "body",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "placeId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "parentId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "replies": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -506,6 +728,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ],
                 "requestBody": {
@@ -548,7 +784,108 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "rating",
+                                                    "body",
+                                                    "visitedOn",
+                                                    "createdAt",
+                                                    "updatedAt",
+                                                    "version"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "placeId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "authorId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "author": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "rating": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "maximum": 5
+                                                    },
+                                                    "body": {
+                                                        "type": "string"
+                                                    },
+                                                    "visitedOn": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "PUBLISHED",
+                                                            "HIDDEN",
+                                                            "REMOVED_BY_MODERATOR",
+                                                            "DELETED_BY_AUTHOR"
+                                                        ]
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updatedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "version": {
+                                                        "type": "integer",
+                                                        "minimum": 1
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -689,6 +1026,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ]
             },
@@ -703,7 +1054,93 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "rating",
+                                        "body",
+                                        "visitedOn",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "placeId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "rating": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 5
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "visitedOn": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -762,6 +1199,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ],
                 "requestBody": {
@@ -815,7 +1266,96 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "placeId",
+                                        "authorId",
+                                        "parentId",
+                                        "body",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "placeId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "parentId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "replies": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -921,11 +1461,124 @@
                                         "items": {
                                             "type": "array",
                                             "items": {
-                                                "type": "object"
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "placeId",
+                                                    "authorId",
+                                                    "parentId",
+                                                    "body",
+                                                    "status",
+                                                    "createdAt",
+                                                    "updatedAt",
+                                                    "version"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "placeId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "authorId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "author": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "parentId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "body": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "PUBLISHED",
+                                                            "HIDDEN",
+                                                            "REMOVED_BY_MODERATOR",
+                                                            "DELETED_BY_AUTHOR"
+                                                        ]
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updatedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "version": {
+                                                        "type": "integer",
+                                                        "minimum": 1
+                                                    },
+                                                    "replies": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                }
                                             }
                                         },
                                         "pagination": {
-                                            "type": "object"
+                                            "type": "object",
+                                            "required": [
+                                                "nextCursor",
+                                                "hasNextPage"
+                                            ],
+                                            "properties": {
+                                                "nextCursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "hasNextPage": {
+                                                    "type": "boolean"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "rootCount": {
+                                                    "type": "integer"
+                                                },
+                                                "replyCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -949,20 +1602,7 @@
                         "explode": false
                     },
                     {
-                        "name": "page",
-                        "in": "query",
-                        "description": "Page number.",
-                        "required": false,
-                        "deprecated": false,
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1
-                        },
-                        "style": "form",
-                        "explode": true
-                    },
-                    {
-                        "name": "pageSize",
+                        "name": "limit",
                         "in": "query",
                         "description": "Page size.",
                         "required": false,
@@ -971,6 +1611,18 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 50
+                        },
+                        "style": "form",
+                        "explode": true
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "description": "Pagination cursor.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string"
                         },
                         "style": "form",
                         "explode": true
@@ -988,7 +1640,96 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "placeId",
+                                        "authorId",
+                                        "parentId",
+                                        "body",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "placeId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "parentId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "replies": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1044,6 +1785,20 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
                         },
                         "style": "simple",
                         "explode": false
@@ -1114,7 +1869,93 @@
                                         "items": {
                                             "type": "array",
                                             "items": {
-                                                "type": "object"
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "rating",
+                                                    "body",
+                                                    "visitedOn",
+                                                    "createdAt",
+                                                    "updatedAt",
+                                                    "version"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "placeId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "authorId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "author": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "rating": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "maximum": 5
+                                                    },
+                                                    "body": {
+                                                        "type": "string"
+                                                    },
+                                                    "visitedOn": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "PUBLISHED",
+                                                            "HIDDEN",
+                                                            "REMOVED_BY_MODERATOR",
+                                                            "DELETED_BY_AUTHOR"
+                                                        ]
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updatedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "version": {
+                                                        "type": "integer",
+                                                        "minimum": 1
+                                                    }
+                                                }
                                             }
                                         },
                                         "pagination": {
@@ -1198,7 +2039,93 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "rating",
+                                        "body",
+                                        "visitedOn",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "placeId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "rating": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 5
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "visitedOn": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1254,6 +2181,20 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
                         },
                         "style": "simple",
                         "explode": false
@@ -2928,7 +3869,42 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "type": "object"
+                                        "type": "object",
+                                        "required": [
+                                            "id",
+                                            "slug",
+                                            "name",
+                                            "description",
+                                            "displayOrder"
+                                        ],
+                                        "properties": {
+                                            "id": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                            },
+                                            "slug": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "description": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
+                                            },
+                                            "displayOrder": {
+                                                "type": "integer"
+                                            },
+                                            "cityId": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "format": "uuid"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2950,7 +3926,128 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "categoryId",
+                                        "authorId",
+                                        "title",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "lastActivityAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "categoryId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "lastActivityAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "lockedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "pinnedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "firstPost": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "body": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "category": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2967,6 +4064,20 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
                         },
                         "style": "simple",
                         "explode": false
@@ -3013,7 +4124,195 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "category",
+                                        "items",
+                                        "pagination"
+                                    ],
+                                    "properties": {
+                                        "category": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "slug",
+                                                "name",
+                                                "description"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "categoryId",
+                                                    "authorId",
+                                                    "title",
+                                                    "status",
+                                                    "createdAt",
+                                                    "updatedAt",
+                                                    "lastActivityAt",
+                                                    "version"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "categoryId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "authorId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "author": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "PUBLISHED",
+                                                            "HIDDEN",
+                                                            "REMOVED_BY_MODERATOR",
+                                                            "DELETED_BY_AUTHOR"
+                                                        ]
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updatedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "lastActivityAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "lockedAt": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "pinnedAt": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "version": {
+                                                        "type": "integer",
+                                                        "minimum": 1
+                                                    },
+                                                    "firstPost": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "uuid"
+                                                            },
+                                                            "body": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "category": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "uuid"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "nextCursor",
+                                                "hasNextPage"
+                                            ],
+                                            "properties": {
+                                                "nextCursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "hasNextPage": {
+                                                    "type": "boolean"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "rootCount": {
+                                                    "type": "integer"
+                                                },
+                                                "replyCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3072,7 +4371,128 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "categoryId",
+                                        "authorId",
+                                        "title",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "lastActivityAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "categoryId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "lastActivityAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "lockedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "pinnedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "firstPost": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "body": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "category": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3108,7 +4528,129 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "threadId",
+                                                    "authorId",
+                                                    "parentId",
+                                                    "body",
+                                                    "status",
+                                                    "createdAt",
+                                                    "updatedAt",
+                                                    "version"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "threadId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "authorId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "author": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "parentId": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "body": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "PUBLISHED",
+                                                            "HIDDEN",
+                                                            "REMOVED_BY_MODERATOR",
+                                                            "DELETED_BY_AUTHOR"
+                                                        ]
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updatedAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "version": {
+                                                        "type": "integer",
+                                                        "minimum": 1
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "nextCursor",
+                                                "hasNextPage"
+                                            ],
+                                            "properties": {
+                                                "nextCursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "hasNextPage": {
+                                                    "type": "boolean"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "rootCount": {
+                                                    "type": "integer"
+                                                },
+                                                "replyCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3166,7 +4708,90 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "threadId",
+                                        "authorId",
+                                        "parentId",
+                                        "body",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "threadId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "parentId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3183,6 +4808,20 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
                         },
                         "style": "simple",
                         "explode": false
@@ -3240,6 +4879,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ]
             },
@@ -3254,7 +4907,90 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "threadId",
+                                        "authorId",
+                                        "parentId",
+                                        "body",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "threadId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "parentId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3328,6 +5064,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ]
             },
@@ -3342,7 +5092,128 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "categoryId",
+                                        "authorId",
+                                        "title",
+                                        "status",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "lastActivityAt",
+                                        "version"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "categoryId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "authorId": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "author": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "displayName",
+                                                "initials"
+                                            ],
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "uuid"
+                                                },
+                                                "displayName": {
+                                                    "type": "string"
+                                                },
+                                                "initials": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "PUBLISHED",
+                                                "HIDDEN",
+                                                "REMOVED_BY_MODERATOR",
+                                                "DELETED_BY_AUTHOR"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "lastActivityAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "lockedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "pinnedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "version": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "firstPost": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "body": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "category": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3359,6 +5230,20 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid"
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
                         },
                         "style": "simple",
                         "explode": false
@@ -3438,13 +5323,79 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "targetId",
+                                        "targetType",
+                                        "reason",
+                                        "details",
+                                        "status",
+                                        "createdAt"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "targetId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "targetType": {
+                                            "type": "string",
+                                            "enum": [
+                                                "REVIEW",
+                                                "PLACE_COMMENT",
+                                                "FORUM_THREAD",
+                                                "FORUM_POST"
+                                            ]
+                                        },
+                                        "reason": {
+                                            "type": "string"
+                                        },
+                                        "details": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "OPEN",
+                                                "IN_REVIEW",
+                                                "RESOLVED",
+                                                "DISMISSED"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 },
                 "summary": "Report offensive content",
+                "parameters": [
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
+                    }
+                ],
                 "requestBody": {
                     "description": "Report details",
                     "content": {
@@ -3505,20 +5456,64 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "status"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "success"
+                                            ]
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 },
                 "summary": "Perform moderator action on content",
+                "parameters": [
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
+                        "name": "X-Correlation-ID",
+                        "in": "header",
+                        "description": "UUID idempotency and audit correlation key.",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "maxLength": 36
+                        },
+                        "style": "simple",
+                        "explode": false
+                    }
+                ],
                 "requestBody": {
                     "description": "Moderation action details",
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
+                                "additionalProperties": false,
                                 "required": [
+                                    "reportId",
                                     "action",
                                     "reason"
                                 ],
@@ -3526,19 +5521,6 @@
                                     "reportId": {
                                         "type": "string",
                                         "format": "uuid"
-                                    },
-                                    "targetId": {
-                                        "type": "string",
-                                        "format": "uuid"
-                                    },
-                                    "targetType": {
-                                        "type": "string",
-                                        "enum": [
-                                            "REVIEW",
-                                            "PLACE_COMMENT",
-                                            "FORUM_THREAD",
-                                            "FORUM_POST"
-                                        ]
                                     },
                                     "action": {
                                         "type": "string",
@@ -3578,7 +5560,120 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "reporterId",
+                                        "targetId",
+                                        "targetType",
+                                        "reason",
+                                        "status",
+                                        "createdAt",
+                                        "claimedBy",
+                                        "claimedAt"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "targetId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "targetType": {
+                                            "type": "string",
+                                            "enum": [
+                                                "REVIEW",
+                                                "PLACE_COMMENT",
+                                                "FORUM_THREAD",
+                                                "FORUM_POST"
+                                            ]
+                                        },
+                                        "reason": {
+                                            "type": "string"
+                                        },
+                                        "details": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "OPEN",
+                                                "IN_REVIEW",
+                                                "RESOLVED",
+                                                "DISMISSED"
+                                            ]
+                                        },
+                                        "createdAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "reporterId": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "claimedBy": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "claimedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "resolvedBy": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "uuid"
+                                        },
+                                        "resolvedAt": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "format": "date-time"
+                                        },
+                                        "targetPreview": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "title",
+                                                        "body",
+                                                        "status"
+                                                    ],
+                                                    "properties": {
+                                                        "title": {
+                                                            "type": "string"
+                                                        },
+                                                        "body": {
+                                                            "type": "string"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "rating": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3614,7 +5709,19 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "status"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "success"
+                                            ]
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3634,6 +5741,20 @@
                         },
                         "style": "simple",
                         "explode": false
+                    },
+                    {
+                        "name": "X-CSRF-Token",
+                        "in": "header",
+                        "description": "Current api_session CSRF token.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                        },
+                        "style": "simple",
+                        "explode": false
                     }
                 ]
             }
@@ -3650,7 +5771,209 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "required": [
+                                        "items",
+                                        "pagination"
+                                    ],
+                                    "properties": {
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "reporterId",
+                                                    "reporter",
+                                                    "targetId",
+                                                    "targetType",
+                                                    "reason",
+                                                    "details",
+                                                    "status",
+                                                    "createdAt",
+                                                    "resolvedAt",
+                                                    "resolvedBy",
+                                                    "claimedAt",
+                                                    "claimedBy",
+                                                    "evidence",
+                                                    "author",
+                                                    "publicLink",
+                                                    "adminLink",
+                                                    "moderationHistory"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "reporterId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "reporter": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "displayName",
+                                                            "initials"
+                                                        ],
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "uuid"
+                                                            },
+                                                            "displayName": {
+                                                                "type": "string"
+                                                            },
+                                                            "initials": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "targetId": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "targetType": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "REVIEW",
+                                                            "PLACE_COMMENT",
+                                                            "FORUM_THREAD",
+                                                            "FORUM_POST"
+                                                        ]
+                                                    },
+                                                    "reason": {
+                                                        "type": "string"
+                                                    },
+                                                    "details": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "OPEN",
+                                                            "IN_REVIEW",
+                                                            "RESOLVED",
+                                                            "DISMISSED"
+                                                        ]
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "resolvedAt": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "resolvedBy": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "claimedAt": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "claimedBy": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "uuid"
+                                                    },
+                                                    "evidence": {
+                                                        "type": "string"
+                                                    },
+                                                    "author": {
+                                                        "oneOf": [
+                                                            {
+                                                                "type": "null"
+                                                            },
+                                                            {
+                                                                "type": "object",
+                                                                "required": [
+                                                                    "id",
+                                                                    "displayName",
+                                                                    "initials"
+                                                                ],
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ],
+                                                                        "format": "uuid"
+                                                                    },
+                                                                    "displayName": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "initials": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    },
+                                                    "publicLink": {
+                                                        "type": "string"
+                                                    },
+                                                    "adminLink": {
+                                                        "type": "string"
+                                                    },
+                                                    "moderationHistory": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "required": [
+                                                "nextCursor",
+                                                "hasNextPage"
+                                            ],
+                                            "properties": {
+                                                "nextCursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "hasNextPage": {
+                                                    "type": "boolean"
+                                                },
+                                                "totalItems": {
+                                                    "type": "integer"
+                                                },
+                                                "rootCount": {
+                                                    "type": "integer"
+                                                },
+                                                "replyCount": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

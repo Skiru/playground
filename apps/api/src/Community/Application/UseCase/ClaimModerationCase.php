@@ -26,7 +26,7 @@ final class ClaimModerationCase
         $this->transactionManager->transactional(function () use ($reportId, $moderatorId): void {
             // Pessimistic lock on the report
             $row = $this->connection->fetchAssociative(
-                'SELECT status FROM content_reports WHERE id = :id FOR UPDATE',
+                'SELECT status, claimed_by FROM content_reports WHERE id = :id FOR UPDATE',
                 ['id' => $reportId->toRfc4122()]
             );
 
@@ -35,7 +35,11 @@ final class ClaimModerationCase
             }
 
             $currentStatus = (string) $row['status'];
-            if ('OPEN' !== $currentStatus && 'IN_REVIEW' !== $currentStatus) {
+            $claimedBy = null === $row['claimed_by'] ? null : (string) $row['claimed_by'];
+            if ('IN_REVIEW' === $currentStatus && $moderatorId->toRfc4122() === $claimedBy) {
+                return;
+            }
+            if ('OPEN' !== $currentStatus) {
                 throw new ApiException(409, 'Only OPEN reports can be claimed.', 'MODERATION_CONFLICT');
             }
 

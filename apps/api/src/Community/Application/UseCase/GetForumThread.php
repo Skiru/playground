@@ -40,7 +40,7 @@ final class GetForumThread
         $authorIdStr = $thread->authorId()->toString();
         if (ForumThreadStatus::DELETED_BY_AUTHOR === $thread->status()) {
             $author = [
-                'id' => $authorIdStr,
+                'id' => null,
                 'displayName' => 'Usunięty użytkownik',
                 'initials' => 'U',
             ];
@@ -57,7 +57,7 @@ final class GetForumThread
         return [
             'id' => $thread->id()->toString(),
             'categoryId' => $thread->categoryId()->toString(),
-            'authorId' => $authorIdStr,
+            'authorId' => ForumThreadStatus::DELETED_BY_AUTHOR === $thread->status() ? null : $authorIdStr,
             'author' => $author,
             'title' => $title,
             'status' => $thread->status()->value,

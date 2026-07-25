@@ -9,6 +9,7 @@ use App\Community\Application\UseCase\ReportContent;
 use App\Community\Domain\Moderation\ReportReason;
 use App\Community\Domain\Moderation\TargetType;
 use App\Shared\Application\Exception\ApiException;
+use App\Shared\Application\Security\CsrfValidator;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,6 +28,7 @@ final class ContentReportController
         private readonly Security $security,
         private readonly ActiveCommunityUserLookup $userLookup,
         private readonly ValidatorInterface $validator,
+        private readonly CsrfValidator $csrfValidator,
         private readonly RateLimiterFactory $reportWrite,
     ) {
     }
@@ -34,8 +36,8 @@ final class ContentReportController
     #[Route('/api/v1/content-reports', name: 'api_content_reports', methods: ['POST'])]
     public function reportContent(Request $request): JsonResponse
     {
-        $this->validateCsrf($request);
         $user = $this->getAuthenticatedUser($this->security, $this->userLookup);
+        $this->validateCsrf($request, $this->csrfValidator);
 
         // Rate limit
         $this->checkRateLimit($this->reportWrite, 'user_'.$user->getId()->toString());
@@ -53,10 +55,10 @@ final class ContentReportController
                 new \Symfony\Component\Validator\Constraints\NotBlank(),
                 new \Symfony\Component\Validator\Constraints\Choice(choices: ['SPAM', 'HARASSMENT', 'INAPPROPRIATE', 'MISINFORMATION', 'PRIVACY_CONCERN', 'OTHER']),
             ],
-            'details' => [
+            'details' => new \Symfony\Component\Validator\Constraints\Optional([
                 new \Symfony\Component\Validator\Constraints\Type('string'),
                 new \Symfony\Component\Validator\Constraints\Length(max: 1000),
-            ],
+            ]),
         ];
 
         $data = $this->parseAndValidateJson($request, $this->validator, $constraints);

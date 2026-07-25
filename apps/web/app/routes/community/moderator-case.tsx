@@ -22,6 +22,8 @@ interface CaseDetails {
   createdAt: string
   resolvedAt?: string | null
   resolvedBy?: string | null
+  claimedBy?: string | null
+  claimedAt?: string | null
   targetPreview?: {
     title: string
     body: string
@@ -47,6 +49,8 @@ function toCaseDetails(data: Record<string, unknown>): CaseDetails {
     createdAt: String(data.createdAt),
     resolvedAt: typeof data.resolvedAt === "string" ? data.resolvedAt : null,
     resolvedBy: typeof data.resolvedBy === "string" ? data.resolvedBy : null,
+    claimedBy: typeof data.claimedBy === "string" ? data.claimedBy : null,
+    claimedAt: typeof data.claimedAt === "string" ? data.claimedAt : null,
     targetPreview: preview && typeof preview === "object" ? {
       title: String(Reflect.get(preview, "title")),
       body: String(Reflect.get(preview, "body")),
@@ -146,6 +150,10 @@ export default function ModeratorCasePage() {
 
   const handleAction = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!reportId) {
+      setActionError("Brak identyfikatora zgłoszenia.")
+      return
+    }
     if (!action) {
       setActionError("Wybierz decyzję moderacyjną.")
       return
@@ -319,6 +327,12 @@ export default function ModeratorCasePage() {
                   </CardHeader>
 
                   <CardContent className="flex-1 py-6 space-y-4">
+                    {actionError && (
+                      <div className="bg-destructive/10 text-destructive p-2.5 rounded text-xs leading-relaxed flex gap-1.5" role="alert">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{actionError}</span>
+                      </div>
+                    )}
                     {actionSuccess ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center space-y-2" role="alert">
                         <CheckCircle2 className="h-12 w-12 text-emerald-500 animate-bounce" />
@@ -339,15 +353,12 @@ export default function ModeratorCasePage() {
                         <p className="font-semibold">Sprawa została już zamknięta.</p>
                         <p>Zakończono przez: {caseData.resolvedBy || "System"}</p>
                       </div>
+                    ) : caseData.claimedBy !== session.user?.id ? (
+                      <div className="bg-destructive/5 text-destructive border border-destructive/10 p-4 rounded text-center text-xs">
+                        Ta sprawa jest przypisana do innego moderatora.
+                      </div>
                     ) : (
                       <form onSubmit={handleAction} className="space-y-4">
-                        {actionError && (
-                          <div className="bg-destructive/10 text-destructive p-2.5 rounded text-xs leading-relaxed flex gap-1.5" role="alert">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            <span>{actionError}</span>
-                          </div>
-                        )}
-
                         <div className="space-y-1.5">
                           <Label htmlFor="moderator-action-select">Wybierz akcję</Label>
                           <Select value={action} onValueChange={(val) => setAction(val as ModerationAction | "")} required>

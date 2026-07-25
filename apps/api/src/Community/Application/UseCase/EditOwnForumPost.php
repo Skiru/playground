@@ -33,6 +33,9 @@ final class EditOwnForumPost
         if ($post->version() !== $expectedVersion) {
             throw new ApiException(409, 'Post has been modified by another process.', 'CONCURRENCY_CONFLICT');
         }
+        if (ForumPostStatus::PUBLISHED !== $post->status()) {
+            throw new ApiException(409, 'Only published posts can be edited.', 'CONTENT_STATE_CONFLICT');
+        }
 
         $post->edit($body, $this->clock->now());
 

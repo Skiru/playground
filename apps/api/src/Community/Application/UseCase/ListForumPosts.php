@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Community\Application\UseCase;
 
+use App\Community\Application\Pagination\CursorCodec;
 use App\Community\Application\Port\PublicAuthorProfileLookup;
 use App\Community\Domain\Forum\ForumPostRepository;
 use App\Community\Domain\Forum\ForumPostStatus;
@@ -36,11 +37,10 @@ final class ListForumPosts
         $cursorCreatedAt = null;
 
         if (null !== $cursorStr && '' !== $cursorStr) {
-            $decoded = json_decode((string) base64_decode($cursorStr), true);
-            if (\is_array($decoded)) {
-                $cursorId = $decoded['id'] ?? null;
-                $cursorCreatedAt = isset($decoded['createdAt']) ? new \DateTimeImmutable($decoded['createdAt']) : null;
-            }
+            $decoded = CursorCodec::decode($cursorStr, ['id', 'createdAt', 'threadId'], ['threadId' => $threadId->toRfc4122()]);
+            \assert(null !== $decoded);
+            $cursorId = (string) $decoded['id'];
+            $cursorCreatedAt = new \DateTimeImmutable((string) $decoded['createdAt']);
         }
 
         // Fetch posts (+1 to check for next page)
@@ -61,7 +61,7 @@ final class ListForumPosts
 
             if (ForumPostStatus::DELETED_BY_AUTHOR === $post->status()) {
                 $author = [
-                    'id' => $authorIdStr,
+                    'id' => null,
                     'displayName' => 'Usunięty użytkownik',
                     'initials' => 'U',
                 ];
@@ -78,7 +78,7 @@ final class ListForumPosts
             $items[] = [
                 'id' => $post->id()->toString(),
                 'threadId' => $post->threadId()->toString(),
-                'authorId' => $authorIdStr,
+                'authorId' => ForumPostStatus::DELETED_BY_AUTHOR === $post->status() ? null : $authorIdStr,
                 'author' => $author,
                 'parentId' => $post->parentId()?->toString(),
                 'body' => $body,
@@ -92,10 +92,11 @@ final class ListForumPosts
         $nextCursor = null;
         if (!empty($posts)) {
             $lastPost = end($posts);
-            $nextCursor = base64_encode((string) json_encode([
+            $nextCursor = CursorCodec::encode([
                 'id' => $lastPost->id()->toString(),
                 'createdAt' => $lastPost->createdAt()->format('Y-m-d H:i:s'),
-            ]));
+                'threadId' => $threadId->toRfc4122(),
+            ]);
         }
 
         return [

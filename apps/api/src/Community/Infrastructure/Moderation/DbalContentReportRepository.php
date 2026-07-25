@@ -78,6 +78,8 @@ final class DbalContentReportRepository implements ContentReportRepository
         $createdAt = $report->createdAt()->format('Y-m-d H:i:s');
         $resolvedAt = $report->resolvedAt()?->format('Y-m-d H:i:s');
         $resolvedBy = $report->resolvedBy()?->toRfc4122();
+        $claimedBy = $report->claimedBy()?->toRfc4122();
+        $claimedAt = $report->claimedAt()?->format('Y-m-d H:i:s');
 
         $exists = $this->connection->fetchOne(
             'SELECT 1 FROM content_reports WHERE id = :id',
@@ -89,19 +91,23 @@ final class DbalContentReportRepository implements ContentReportRepository
                 'UPDATE content_reports SET 
                     status = :status,
                     resolved_at = :resolved_at,
-                    resolved_by = :resolved_by
+                    resolved_by = :resolved_by,
+                    claimed_by = :claimed_by,
+                    claimed_at = :claimed_at
                  WHERE id = :id',
                 [
                     'id' => $id,
                     'status' => $status,
                     'resolved_at' => $resolvedAt,
                     'resolved_by' => $resolvedBy,
+                    'claimed_by' => $claimedBy,
+                    'claimed_at' => $claimedAt,
                 ]
             );
         } else {
             $this->connection->executeStatement(
-                'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at, resolved_at, resolved_by) 
-                 VALUES (:id, :reporter_id, :target_type, :target_id, :reason, :details, :status, :created_at, :resolved_at, :resolved_by)',
+                'INSERT INTO content_reports (id, reporter_id, target_type, target_id, reason, details, status, created_at, resolved_at, resolved_by, claimed_by, claimed_at)
+                 VALUES (:id, :reporter_id, :target_type, :target_id, :reason, :details, :status, :created_at, :resolved_at, :resolved_by, :claimed_by, :claimed_at)',
                 [
                     'id' => $id,
                     'reporter_id' => $reporterId,
@@ -113,6 +119,8 @@ final class DbalContentReportRepository implements ContentReportRepository
                     'created_at' => $createdAt,
                     'resolved_at' => $resolvedAt,
                     'resolved_by' => $resolvedBy,
+                    'claimed_by' => $claimedBy,
+                    'claimed_at' => $claimedAt,
                 ]
             );
         }
@@ -133,7 +141,9 @@ final class DbalContentReportRepository implements ContentReportRepository
             ReportStatus::from((string) $row['status']),
             new \DateTimeImmutable((string) $row['created_at']),
             null === $row['resolved_at'] ? null : new \DateTimeImmutable((string) $row['resolved_at']),
-            null === $row['resolved_by'] ? null : Uuid::fromString((string) $row['resolved_by'])
+            null === $row['resolved_by'] ? null : Uuid::fromString((string) $row['resolved_by']),
+            null === ($row['claimed_by'] ?? null) ? null : Uuid::fromString((string) $row['claimed_by']),
+            null === ($row['claimed_at'] ?? null) ? null : new \DateTimeImmutable((string) $row['claimed_at']),
         );
     }
 }

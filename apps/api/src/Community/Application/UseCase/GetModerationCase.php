@@ -94,6 +94,8 @@ final class GetModerationCase
             'createdAt' => $report->createdAt()->format(\DateTimeInterface::ATOM),
             'resolvedAt' => $report->resolvedAt()?->format(\DateTimeInterface::ATOM),
             'resolvedBy' => $report->resolvedBy()?->toString(),
+            'claimedBy' => $report->claimedBy()?->toString(),
+            'claimedAt' => $report->claimedAt()?->format(\DateTimeInterface::ATOM),
             'targetPreview' => $targetPreview,
         ];
     }

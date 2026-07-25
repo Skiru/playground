@@ -47,6 +47,9 @@ final class PlaceComment
 
     public function edit(string $body, \DateTimeImmutable $now): void
     {
+        if (PlaceCommentStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published comments can be edited.');
+        }
         $trimmedBody = trim($body);
         if (mb_strlen($trimmedBody) < 1 || mb_strlen($trimmedBody) > 3000) {
             throw new \InvalidArgumentException('Comment body must be between 1 and 3000 characters.');
@@ -58,24 +61,36 @@ final class PlaceComment
 
     public function softDelete(\DateTimeImmutable $now): void
     {
+        if (!\in_array($this->status, [PlaceCommentStatus::PUBLISHED, PlaceCommentStatus::HIDDEN], true)) {
+            throw new \LogicException('Only published or hidden comments can be deleted by their author.');
+        }
         $this->status = PlaceCommentStatus::DELETED_BY_AUTHOR;
         $this->updatedAt = $now;
     }
 
     public function hide(\DateTimeImmutable $now): void
     {
+        if (PlaceCommentStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published comments can be hidden.');
+        }
         $this->status = PlaceCommentStatus::HIDDEN;
         $this->updatedAt = $now;
     }
 
     public function publish(\DateTimeImmutable $now): void
     {
+        if (PlaceCommentStatus::HIDDEN !== $this->status) {
+            throw new \LogicException('Only hidden comments can be restored.');
+        }
         $this->status = PlaceCommentStatus::PUBLISHED;
         $this->updatedAt = $now;
     }
 
     public function removeByModerator(\DateTimeImmutable $now): void
     {
+        if (PlaceCommentStatus::PUBLISHED !== $this->status) {
+            throw new \LogicException('Only published comments can be removed.');
+        }
         $this->status = PlaceCommentStatus::REMOVED_BY_MODERATOR;
         $this->updatedAt = $now;
     }

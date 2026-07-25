@@ -33,6 +33,9 @@ final class EditOwnForumThread
         if ($thread->version() !== $expectedVersion) {
             throw new ApiException(409, 'Thread has been modified by another process.', 'CONCURRENCY_CONFLICT');
         }
+        if (ForumThreadStatus::PUBLISHED !== $thread->status()) {
+            throw new ApiException(409, 'Only published threads can be edited.', 'CONTENT_STATE_CONFLICT');
+        }
 
         $thread->editTitle($title, $this->clock->now());
 
