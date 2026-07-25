@@ -60,7 +60,8 @@ final class CreateForumThread
             $firstPostBody,
             ForumPostStatus::PUBLISHED,
             $now,
-            $now
+            $now,
+            true,
         );
 
         // Perform transactional atomic insert

@@ -91,7 +91,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
 
         $postUuid = Uuid::v7();
         $this->em->getConnection()->executeStatement(
-            'INSERT INTO forum_posts (id, thread_id, author_id, body, status, created_at, updated_at) VALUES (:id, :thread_id, :author_id, :body, :status, :created_at, :updated_at)',
+            'INSERT INTO forum_posts (id, thread_id, author_id, body, status, created_at, updated_at, is_initial) VALUES (:id, :thread_id, :author_id, :body, :status, :created_at, :updated_at, :is_initial)',
             [
                 'id' => $postUuid->toRfc4122(),
                 'thread_id' => $threadUuid->toRfc4122(),
@@ -100,6 +100,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
                 'status' => 'PUBLISHED',
                 'created_at' => '2026-07-20 12:01:00',
                 'updated_at' => '2026-07-20 12:01:00',
+                'is_initial' => 'true',
             ]
         );
 
@@ -107,14 +108,14 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $unpublishedPlaceUuid = Uuid::v7();
         $this->em->getConnection()->executeStatement(
             "INSERT INTO places (
-                id, city_id, primary_category_id, slug, name, normalized_name, 
-                short_description, description, status, verification_status, 
-                address_line1, postal_code, country_code, location, latitude, longitude, 
+                id, city_id, primary_category_id, slug, name, normalized_name,
+                short_description, description, status, verification_status,
+                address_line1, postal_code, country_code, location, latitude, longitude,
                 timezone, indoor, outdoor, free_entry, version, opening_hours_mode, created_at, updated_at
             ) VALUES (
-                :id, :city_id, :primary_category_id, :slug, :name, :normalized_name, 
-                :short_description, :description, :status, :verification_status, 
-                :address_line1, :postal_code, :country_code, ST_GeomFromText('POINT(21.0122 52.2297)', 4326), :latitude, :longitude, 
+                :id, :city_id, :primary_category_id, :slug, :name, :normalized_name,
+                :short_description, :description, :status, :verification_status,
+                :address_line1, :postal_code, :country_code, ST_GeomFromText('POINT(21.0122 52.2297)', 4326), :latitude, :longitude,
                 :timezone, :indoor, :outdoor, :free_entry, :version, :opening_hours_mode, :created_at, :updated_at
             )",
             [
@@ -259,7 +260,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
 
         $hiddenPostUuid = Uuid::v7();
         $this->em->getConnection()->executeStatement(
-            'INSERT INTO forum_posts (id, thread_id, author_id, body, status, created_at, updated_at) VALUES (:id, :thread_id, :author_id, :body, :status, :created_at, :updated_at)',
+            'INSERT INTO forum_posts (id, thread_id, author_id, body, status, created_at, updated_at, is_initial) VALUES (:id, :thread_id, :author_id, :body, :status, :created_at, :updated_at, :is_initial)',
             [
                 'id' => $hiddenPostUuid->toRfc4122(),
                 'thread_id' => $threadUuid->toRfc4122(),
@@ -268,6 +269,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
                 'status' => 'HIDDEN', // Not public!
                 'created_at' => '2026-07-20 12:01:00',
                 'updated_at' => '2026-07-20 12:01:00',
+                'is_initial' => 'true',
             ]
         );
 
@@ -456,7 +458,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         // 4. FORUM_POST
         $postUuid = Uuid::v7();
         $this->em->getConnection()->executeStatement(
-            'INSERT INTO forum_posts (id, thread_id, author_id, body, status, created_at, updated_at) VALUES (:id, :thread_id, :author_id, :body, :status, :created_at, :updated_at)',
+            'INSERT INTO forum_posts (id, thread_id, author_id, body, status, created_at, updated_at, is_initial) VALUES (:id, :thread_id, :author_id, :body, :status, :created_at, :updated_at, :is_initial)',
             [
                 'id' => $postUuid->toRfc4122(),
                 'thread_id' => $threadUuid->toRfc4122(),
@@ -465,6 +467,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
                 'status' => 'PUBLISHED',
                 'created_at' => $now,
                 'updated_at' => $now,
+                'is_initial' => 'false',
             ]
         );
 
@@ -771,6 +774,7 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $client->loginUser($otherModerator);
         $client->request('GET', '/api/v1/session');
         $otherHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
+        $otherHeaders['HTTP_IDEMPOTENCY_KEY'] = Uuid::v7()->toRfc4122();
         $client->request('POST', \sprintf('/api/v1/moderation/case/%s/claim', $reportId->toRfc4122()), [], [], $otherHeaders);
         self::assertSame(Response::HTTP_CONFLICT, $client->getResponse()->getStatusCode());
         $client->request('POST', '/api/v1/moderation/action', [], [], $otherHeaders, json_encode(['reportId' => $reportId->toRfc4122(), 'action' => 'RESOLVE_REPORT', 'reason' => 'Not the owner.']));
@@ -780,7 +784,9 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         $client->request('GET', '/api/v1/session');
         $moderatorHeaders = $this->getCsrfHeaders(json_decode($client->getResponse()->getContent(), true)['csrfToken']);
         $correlationId = Uuid::v7()->toRfc4122();
+        $idempotencyKey = Uuid::v7()->toRfc4122();
         $moderatorHeaders['HTTP_X-Correlation-ID'] = $correlationId;
+        $moderatorHeaders['HTTP_IDEMPOTENCY_KEY'] = $idempotencyKey;
         $payload = json_encode(['reportId' => $reportId->toRfc4122(), 'action' => 'RESOLVE_REPORT', 'reason' => 'Report reviewed; content stays public.']);
         $client->request('POST', '/api/v1/moderation/action', [], [], $moderatorHeaders, $payload);
         self::assertResponseIsSuccessful();
@@ -795,5 +801,6 @@ final class C5DForumModerationRegressionTest extends WebTestCase
         self::assertSame('PUBLISHED', $audit['previous_status']);
         self::assertSame('PUBLISHED', $audit['resulting_status']);
         self::assertSame(1, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM moderation_actions WHERE correlation_id = :correlation_id', ['correlation_id' => $correlationId]));
+        self::assertSame(1, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM moderation_idempotency_keys WHERE idempotency_key = :idempotency_key AND outcome_status = 200', ['idempotency_key' => $idempotencyKey]));
     }
 }

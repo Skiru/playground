@@ -5,8 +5,9 @@ const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
-  await page.goto("/");
-  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -14,6 +15,7 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
     });
     return res.ok;
   }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
   await page.goto("/");
 }
 
@@ -37,7 +39,7 @@ async function assertAccessible(page: Page) {
         values: ["wcag2a", "wcag2aa", "best-practice"]
       }
     });
-    
+
     // Filter to only serious and critical violations
     return result.violations
       .filter((violation) => violation.impact === "critical" || violation.impact === "serious")
@@ -100,7 +102,7 @@ test.describe("Community Accessibility Axe Scan Real Journey", () => {
     await assertAccessible(page);
 
     // 5. Forum Thread List (first category)
-    await page.locator("a[href^='/forum/']").first().click();
+    await page.locator("a.group[href^='/forum/']").first().click();
     await expect(page).toHaveURL(/\/forum\/[^/]+$/);
     await assertAccessible(page);
 

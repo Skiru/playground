@@ -4,7 +4,7 @@ const API = process.env.API_BASE_URL_BROWSER ?? "http://127.0.0.1:8080";
 const WEB = process.env.WEB_BASE_URL ?? "http://127.0.0.1:3000";
 
 test("real admin create, edit, invalid publish, valid publish, visibility and unpublish", async ({ page }, testInfo) => {
-  const run = process.env.GITHUB_RUN_ID ?? String(process.pid);
+  const run = process.env.GITHUB_RUN_ID ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const slug = `playwright-${testInfo.project.name}-${run}-${testInfo.retry}`;
   const name = `Playwright ${slug}`;
   await login(page);

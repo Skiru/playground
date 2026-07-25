@@ -8,6 +8,8 @@ import {
   deleteOwnForumThread,
   editOwnForumPost,
   deleteOwnForumPost,
+  type GetForumThreadResponses,
+  type ListForumPostsResponses,
 } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
@@ -32,98 +34,19 @@ import {
   Flag,
 } from "lucide-react"
 
-interface Post {
-  id: string
-  threadId: string
-  authorId: string
-  author: { id: string; displayName: string; initials: string }
-  parentId?: string | null
-  body: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  version: number
-}
+type Thread = GetForumThreadResponses[200] & { author: NonNullable<GetForumThreadResponses[200]["author"]> }
+type Post = ListForumPostsResponses[200]["items"][number] & { author: NonNullable<ListForumPostsResponses[200]["items"][number]["author"]> }
+type CursorPagination = ListForumPostsResponses[200]["pagination"]
 
-interface CursorPagination {
-  nextCursor?: string | null
-  hasNextPage?: boolean
-}
-
-interface Thread {
-  id: string
-  categoryId: string
-  authorId: string
-  author: { id: string; displayName: string; initials: string }
-  title: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  lastActivityAt: string
-  lockedAt?: string | null
-  pinnedAt?: string | null
-  version: number
-}
-
-function toAuthor(value: unknown) {
-  return value && typeof value === "object" ? {
-    id: String(Reflect.get(value, "id")),
-    displayName: String(Reflect.get(value, "displayName")),
-    initials: String(Reflect.get(value, "initials")),
-  } : { id: "", displayName: "", initials: "" }
-}
-
-function toThread(data: Record<string, unknown>): Thread {
+function withAuthor<T extends { author?: { id: string | null; displayName: string; initials: string }; authorId: string | null }>(item: T): T & { author: { id: string | null; displayName: string; initials: string } } {
   return {
-    id: String(data.id),
-    categoryId: String(data.categoryId),
-    authorId: String(data.authorId),
-    author: toAuthor(data.author),
-    title: String(data.title),
-    status: String(data.status),
-    createdAt: String(data.createdAt),
-    updatedAt: String(data.updatedAt),
-    lastActivityAt: String(data.lastActivityAt),
-    lockedAt: typeof data.lockedAt === "string" ? data.lockedAt : null,
-    pinnedAt: typeof data.pinnedAt === "string" ? data.pinnedAt : null,
-    version: Number(data.version),
+    ...item,
+    author: item.author ?? {
+      id: item.authorId,
+      displayName: "Usunięty użytkownik",
+      initials: "U",
+    },
   }
-}
-
-function toPost(data: Record<string, unknown>): Post {
-  return {
-    id: String(data.id),
-    threadId: String(data.threadId),
-    authorId: String(data.authorId),
-    author: toAuthor(data.author),
-    parentId: typeof data.parentId === "string" ? data.parentId : null,
-    body: String(data.body),
-    status: String(data.status),
-    createdAt: String(data.createdAt),
-    updatedAt: String(data.updatedAt),
-    version: Number(data.version),
-  }
-}
-
-function toCursorPagination(data: Record<string, unknown>): CursorPagination {
-  return {
-    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
-    hasNextPage: data.hasNextPage === true,
-  }
-}
-
-function toRecord(value: unknown): Record<string, unknown> {
-  return isRecord(value) ? value : {}
-}
-
-function toRecordArray(value: unknown): Array<Record<string, unknown>> {
-  return Array.isArray(value)
-    ? value.filter(isRecord)
-    : []
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
 export default function ForumThreadDetailPage() {
@@ -176,11 +99,11 @@ export default function ForumThreadDetailPage() {
       ])
 
       if (threadRes.data && postsRes.data) {
-        const nextThread = toThread(threadRes.data)
+        const nextThread = withAuthor(threadRes.data)
         setThread(nextThread)
-        setPosts(toRecordArray(postsRes.data.items).map(toPost))
+        setPosts(postsRes.data.items.map(withAuthor))
         setEditTitle(nextThread.title)
-        const pagination = toCursorPagination(toRecord(postsRes.data.pagination))
+        const pagination: CursorPagination = postsRes.data.pagination
         setPostsNextCursor(pagination?.nextCursor || null)
         setPostsHasNextPage(pagination?.hasNextPage || false)
       } else {
@@ -205,13 +128,13 @@ export default function ForumThreadDetailPage() {
         }
       })
       if (res.data) {
-        const fetchedItems = toRecordArray(res.data.items).map(toPost)
+        const fetchedItems = res.data.items.map(withAuthor)
         setPosts((prev) => {
           const existingIds = new Set(prev.map(p => p.id))
           const uniqueNew = fetchedItems.filter(p => !existingIds.has(p.id))
           return [...prev, ...uniqueNew]
         })
-        const pagination = toCursorPagination(toRecord(res.data.pagination))
+        const pagination: CursorPagination = res.data.pagination
         setPostsNextCursor(pagination?.nextCursor || null)
         setPostsHasNextPage(pagination?.hasNextPage || false)
       }
@@ -234,10 +157,10 @@ export default function ForumThreadDetailPage() {
           listForumPosts({ path: { threadId: threadId! }, query: { limit: 20 } }),
         ])
         if (!ignore && threadRes.data && postsRes.data) {
-          const nextThread = toThread(threadRes.data)
-          const pagination = toCursorPagination(toRecord(postsRes.data.pagination))
+          const nextThread = withAuthor(threadRes.data)
+          const pagination: CursorPagination = postsRes.data.pagination
           setThread(nextThread)
-          setPosts(toRecordArray(postsRes.data.items).map(toPost))
+          setPosts(postsRes.data.items.map(withAuthor))
           setEditTitle(nextThread.title)
           setPostsNextCursor(pagination.nextCursor || null)
           setPostsHasNextPage(pagination.hasNextPage || false)
@@ -572,7 +495,7 @@ export default function ForumThreadDetailPage() {
                             </Button>
                           )}
 
-                          {isPostAuthor && !isDeleted && post.status === "PUBLISHED" && (
+                          {isPostAuthor && !isDeleted && !post.isInitial && post.status === "PUBLISHED" && (
                             <>
                               <Button
                                 aria-label="Edytuj post"

@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
-  await page.goto("/");
-  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -10,6 +11,7 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
     });
     return res.ok;
   }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
   await page.goto("/");
 }
 
@@ -37,7 +39,7 @@ test.describe("Forum E2E Real Journey", () => {
 
     // 3. Alice creates a thread
     await alicePage.goto("/forum");
-    await alicePage.locator("a[href^='/forum/']").first().click();
+    await alicePage.locator("a.group[href^='/forum/']").first().click();
     await alicePage.getByRole("button", { name: "Nowy wątek" }).click();
     await alicePage.locator("#title").fill(threadTitle);
     await alicePage.locator("#body").fill(threadBody);
@@ -51,6 +53,7 @@ test.describe("Forum E2E Real Journey", () => {
     await expect(alicePage).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
     const threadUrl = alicePage.url();
     const threadId = threadUrl.split("/").pop();
+    await expect(alicePage.locator('[data-slot="card"]', { hasText: threadBody }).getByRole("button", { name: "Usuń post" })).toHaveCount(0);
 
     // 4. Bob opens the same thread and replies
     await bobPage.goto(threadUrl);
@@ -85,7 +88,7 @@ test.describe("Forum E2E Real Journey", () => {
     // 6. Moderator sees the exact report in the queue
     await modPage.goto("/moderator/queue");
     await expect(modPage.getByRole("heading", { name: "Panel Moderatorów" })).toBeVisible();
-    
+
     const reportRow = modPage.locator("div.p-5", { hasText: replyText });
     const reportLink = reportRow.getByRole("link", { name: "Szczegóły" });
     await expect(reportLink).toBeVisible();

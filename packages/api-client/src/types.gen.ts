@@ -1505,6 +1505,7 @@ export type ListForumPostsResponses = {
                 initials: string;
             };
             parentId: string | null;
+            isInitial: boolean;
             body: string;
             status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
             createdAt: string;
@@ -1561,6 +1562,7 @@ export type CreateForumPostResponses = {
             initials: string;
         };
         parentId: string | null;
+        isInitial: boolean;
         body: string;
         status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
         createdAt: string;
@@ -1630,6 +1632,7 @@ export type EditOwnForumPostResponses = {
             initials: string;
         };
         parentId: string | null;
+        isInitial: boolean;
         body: string;
         status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
         createdAt: string;
@@ -1814,7 +1817,11 @@ export type ModerateContentData = {
          */
         'X-CSRF-Token': string;
         /**
-         * UUID idempotency and audit correlation key.
+         * UUID idempotency key for exact moderation request retries.
+         */
+        'Idempotency-Key': string;
+        /**
+         * Optional request correlation identifier for observability.
          */
         'X-Correlation-ID'?: string;
     };
@@ -1863,11 +1870,14 @@ export type GetModerationCaseResponses = {
         claimedAt: string | null;
         resolvedBy?: string | null;
         resolvedAt?: string | null;
+        allowedActions: Array<'HIDE' | 'REMOVE' | 'RESTORE' | 'LOCK' | 'UNLOCK' | 'PIN' | 'UNPIN' | 'DISMISS_REPORT' | 'RESOLVE_REPORT'>;
         targetPreview?: null | {
             title: string;
             body: string;
             status: string;
             rating?: number;
+            threadId?: string;
+            isInitial?: boolean;
         };
     };
 };

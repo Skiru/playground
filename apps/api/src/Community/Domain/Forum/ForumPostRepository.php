@@ -10,6 +10,8 @@ interface ForumPostRepository
 {
     public function findById(Uuid $id): ?ForumPost;
 
+    public function findInitialByThreadId(Uuid $threadId): ?ForumPost;
+
     /** @return list<ForumPost> */
     public function findByThreadId(Uuid $threadId, ?string $cursorId, ?\DateTimeImmutable $cursorCreatedAt, int $limit): array;
 

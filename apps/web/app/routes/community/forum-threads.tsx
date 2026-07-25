@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useParams, Link } from "react-router"
-import { listCategoryThreads, createForumThread } from "@family-places/api-client"
+import { listCategoryThreads, createForumThread, type ListCategoryThreadsResponses } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
@@ -13,30 +13,19 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { MessageSquare, Pin, Lock, Plus, Calendar, AlertTriangle } from "lucide-react"
 
-interface Thread {
-  id: string
-  categoryId: string
-  authorId: string
-  author: { id: string; displayName: string; initials: string }
-  title: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  lastActivityAt: string
-  lockedAt?: string | null
-  pinnedAt?: string | null
-}
+type Thread = ListCategoryThreadsResponses[200]["items"][number] & { author: NonNullable<ListCategoryThreadsResponses[200]["items"][number]["author"]> }
+type Category = ListCategoryThreadsResponses[200]["category"]
+type CursorPagination = ListCategoryThreadsResponses[200]["pagination"]
 
-interface Category {
-  id: string
-  slug: string
-  name: string
-  description: string
-}
-
-interface CursorPagination {
-  nextCursor?: string | null
-  hasNextPage?: boolean
+function withAuthor(thread: ListCategoryThreadsResponses[200]["items"][number]): Thread {
+  return {
+    ...thread,
+    author: thread.author ?? {
+      id: thread.authorId,
+      displayName: "Usunięty użytkownik",
+      initials: "U",
+    },
+  }
 }
 
 export default function ForumThreadsPage() {
@@ -76,8 +65,8 @@ export default function ForumThreadsPage() {
         }
       })
       if (res.data) {
-        setCategory(res.data.category as Category)
-        const fetchedItems = (res.data.items || []) as Thread[]
+        setCategory(res.data.category)
+        const fetchedItems = res.data.items.map(withAuthor)
 
         setThreads((prev) => {
           if (!append) return fetchedItems
@@ -86,7 +75,7 @@ export default function ForumThreadsPage() {
           return [...prev, ...uniqueNew]
         })
 
-        const pagination = res.data.pagination as CursorPagination | undefined
+        const pagination: CursorPagination = res.data.pagination
         setNextCursor(pagination?.nextCursor || null)
         setHasNextPage(pagination?.hasNextPage || false)
       } else {
@@ -113,10 +102,10 @@ export default function ForumThreadsPage() {
           }
         })
         if (!ignore && res.data) {
-          setCategory(res.data.category as Category)
-          const fetchedItems = (res.data.items || []) as Thread[]
+          setCategory(res.data.category)
+          const fetchedItems = res.data.items.map(withAuthor)
           setThreads(fetchedItems)
-          const pagination = res.data.pagination as CursorPagination | undefined
+          const pagination: CursorPagination = res.data.pagination
           setNextCursor(pagination?.nextCursor || null)
           setHasNextPage(pagination?.hasNextPage || false)
         } else if (!ignore) {

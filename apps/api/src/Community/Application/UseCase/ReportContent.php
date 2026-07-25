@@ -98,7 +98,7 @@ final class ReportContent
         }
 
         // 2. Prevent duplicate open reports by the same reporter for the same target
-        $existing = $this->reportRepository->findOpenByReporterAndTarget($reporterId, $targetId, $targetType);
+        $existing = $this->reportRepository->findActiveByReporterAndTarget($reporterId, $targetId, $targetType);
         if (null !== $existing) {
             throw new ApiException(409, 'You have already reported this content.', 'REPORT_ALREADY_EXISTS');
         }

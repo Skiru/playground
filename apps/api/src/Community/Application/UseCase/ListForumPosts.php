@@ -32,12 +32,24 @@ final class ListForumPosts
             throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
         }
 
+        $initialPost = $this->postRepository->findInitialByThreadId($threadId);
+        if (null === $initialPost) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+        if (ForumThreadStatus::PUBLISHED === $thread->status() && ForumPostStatus::PUBLISHED !== $initialPost->status()) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+
         // Decode cursor
         $cursorId = null;
         $cursorCreatedAt = null;
 
         if (null !== $cursorStr && '' !== $cursorStr) {
-            $decoded = CursorCodec::decode($cursorStr, ['id', 'createdAt', 'threadId'], ['threadId' => $threadId->toRfc4122()]);
+            $decoded = CursorCodec::decode($cursorStr, [
+                'id' => CursorCodec::uuidField(),
+                'createdAt' => CursorCodec::timestampField(),
+                'threadId' => CursorCodec::uuidField(expected: $threadId->toRfc4122(), hasExpected: true),
+            ]);
             \assert(null !== $decoded);
             $cursorId = (string) $decoded['id'];
             $cursorCreatedAt = new \DateTimeImmutable((string) $decoded['createdAt']);
@@ -81,6 +93,7 @@ final class ListForumPosts
                 'authorId' => ForumPostStatus::DELETED_BY_AUTHOR === $post->status() ? null : $authorIdStr,
                 'author' => $author,
                 'parentId' => $post->parentId()?->toString(),
+                'isInitial' => $post->isInitial(),
                 'body' => $body,
                 'status' => $post->status()->value,
                 'createdAt' => $post->createdAt()->format(\DateTimeInterface::ATOM),

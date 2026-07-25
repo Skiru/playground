@@ -6,6 +6,8 @@ namespace App\Community\Application\UseCase;
 
 use App\Community\Application\Port\PublicAuthorProfileLookup;
 use App\Community\Domain\Forum\ForumCategoryRepository;
+use App\Community\Domain\Forum\ForumPostRepository;
+use App\Community\Domain\Forum\ForumPostStatus;
 use App\Community\Domain\Forum\ForumThreadRepository;
 use App\Community\Domain\Forum\ForumThreadStatus;
 use App\Shared\Application\Exception\ApiException;
@@ -15,6 +17,7 @@ final class GetForumThread
 {
     public function __construct(
         private readonly ForumThreadRepository $threadRepository,
+        private readonly ForumPostRepository $postRepository,
         private readonly ForumCategoryRepository $categoryRepository,
         private readonly PublicAuthorProfileLookup $authorProfileLookup,
     ) {
@@ -27,6 +30,14 @@ final class GetForumThread
     {
         $thread = $this->threadRepository->findById($threadId);
         if (null === $thread || ForumThreadStatus::HIDDEN === $thread->status() || ForumThreadStatus::REMOVED_BY_MODERATOR === $thread->status()) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+
+        $initialPost = $this->postRepository->findInitialByThreadId($threadId);
+        if (null === $initialPost) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+        if (ForumThreadStatus::PUBLISHED === $thread->status() && ForumPostStatus::PUBLISHED !== $initialPost->status()) {
             throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
         }
 
@@ -67,6 +78,14 @@ final class GetForumThread
             'lockedAt' => $thread->lockedAt()?->format(\DateTimeInterface::ATOM),
             'pinnedAt' => $thread->pinnedAt()?->format(\DateTimeInterface::ATOM),
             'version' => $thread->version(),
+            'firstPost' => [
+                'id' => $initialPost->id()->toString(),
+                'body' => match ($initialPost->status()) {
+                    ForumPostStatus::DELETED_BY_AUTHOR => 'Treść usunięta przez autora',
+                    ForumPostStatus::REMOVED_BY_MODERATOR, ForumPostStatus::HIDDEN => 'Treść niedostępna publicznie',
+                    default => $initialPost->body(),
+                },
+            ],
             'category' => [
                 'id' => $category->id()->toString(),
                 'slug' => $category->slug(),

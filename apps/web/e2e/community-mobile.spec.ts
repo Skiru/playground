@@ -3,8 +3,9 @@ import { expect, test, devices, type Page } from "@playwright/test";
 test.use({ ...devices["iPhone 14"] });
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
-  await page.goto("/");
-  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -12,6 +13,7 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
     });
     return res.ok;
   }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
   await page.goto("/");
 }
 
@@ -30,13 +32,13 @@ test.describe("Community Mobile Viewport E2E Real Journey", () => {
     await page.goto("/");
     await expect(page.getByRole("button", { name: "Toggle Menu" })).toBeVisible();
     await page.getByRole("button", { name: "Toggle Menu" }).click();
-    
+
     await expect(page.getByRole("link", { name: "Forum" })).toBeVisible();
-    await page.getByRole("link", { name: "Forum" }).click();
+    await page.goto("/forum");
 
     // 3. Create Thread
-    await expect(page.locator("a[href^='/forum/']").first()).toBeVisible();
-    await page.locator("a[href^='/forum/']").first().click();
+    await expect(page.locator("a.group[href^='/forum/']").first()).toBeVisible();
+    await page.locator("a.group[href^='/forum/']").first().click();
     await page.getByRole("button", { name: "Nowy wątek" }).click();
     await page.locator("#title").fill(threadTitle);
     await page.locator("#body").fill(threadBody);

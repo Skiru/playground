@@ -100,48 +100,48 @@ src/Community
 
 ### 2.1 Hidden-Content Disclosure (Section 2.1)
 - **Problem**: Stale implementation might reveal draft, hidden, or moderated comment bodies and author profiles to the public.
-- **Solution**: 
+- **Solution**:
   - Change repository methods to explicitly exclude `HIDDEN` and `REMOVED_BY_MODERATOR` from standard public read-queries.
   - Implement tombstone rendering for `DELETED_BY_AUTHOR` status directly in the Use Cases / Projections. Original body and deleted author profiles are never returned.
   - Add integration tests verifying that hidden content and deleted authors' metadata do not leak in public endpoints.
 
 ### 2.2 Public Place Validation (Section 2.2)
 - **Problem**: Unverified place IDs might expose community content associated with unreleased or unpublished places.
-- **Solution**: 
+- **Solution**:
   - Call `PublishedPlaceLookup::isPublished` at the start of standard queries and commands.
   - Throw a non-enumerating `ApiException(404, MISSING_PUBLIC_RESOURCE)` for drafts, unarchived, missing, or private places.
 
 ### 2.3 Reply Lifecycle (Section 2.3)
 - **Problem**: Nested nested replies (replies to replies) must be blocked; replies to deleted parents should render beneath a tombstone.
-- **Solution**: 
+- **Solution**:
   - Enforce in `CreateReply` that the parent comment exists, has no parent itself (`parentId` is null), and status is currently `PUBLISHED`.
   - Block replies to replies with `COMMENT_REPLY_DEPTH_LIMIT` machine-readable code.
   - Replies beneath `DELETED_BY_AUTHOR` parents remain visible if they are public.
 
 ### 2.4 Pagination Hardening (Section 2.4)
 - **Problem**: Flat pagination of parents and replies orphans children and produces duplicate entries.
-- **Solution**: 
+- **Solution**:
   - Implement Root-only cursor/keyset pagination (`created_at ASC, id ASC`).
   - Nested replies for each Root on the page are batch loaded in a single query and embedded hierarchically.
   - Pagination metadata includes root comment count, visible reply count, and next page cursor.
 
 ### 2.5 N+1 Query Elimination (Section 2.5)
 - **Problem**: Serial `PublicAuthorProfileLookup::getProfile()` calls trigger N+1 queries.
-- **Solution**: 
+- **Solution**:
   - Add `getProfiles(array $userIds): array` batch port.
   - Perform exactly 1 SQL query with `IN (:ids)` inside the DBAL adapter.
   - Add query-count assertion in integration tests to enforce bounded query complexity.
 
 ### 2.6 Optimistic Concurrency and Duplicate insertion Hardening (Section 2.6)
 - **Problem**: Using `ReflectionProperty` to advance versions is anemic; active review insert races can leak internal SQL details.
-- **Solution**: 
+- **Solution**:
   - Implement a clean aggregate method `advanceVersion()` on domain models.
   - Translate write conflicts to HTTP 409 `CONCURRENCY_CONFLICT` Problem Details.
   - Handle duplicate review insert unique constraint races as deterministic HTTP 409 `REVIEW_ALREADY_EXISTS`.
 
 ### 2.7 Environment Configurable Rate Limiting (Section 2.7)
 - **Problem**: In-process limits must be configurable and testable without slow sleeps.
-- **Solution**: 
+- **Solution**:
   - Create separate rate limiters for reviews, comments, threads, posts, reports, and moderation writes.
   - Enforce them using the authenticated user ID as primary key and trusted IP fallback.
   - Inject custom test environment rate limits (`LIMIT_WRITE=5`) so 429 exceptions can be deterministically tested.

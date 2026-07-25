@@ -36,7 +36,7 @@ async function assertAccessible(page: Page) {
       axe: { run: () => Promise<{ violations: AxeViolation[] }> };
     };
     const result = await axeWindow.axe.run();
-    
+
     // Filter out known WCAG violations inside third-party EasyAdmin vendor layout details
     return result.violations
       .map((v) => {
@@ -46,23 +46,23 @@ async function assertAccessible(page: Page) {
 
         const nonVendorNodes = v.nodes.filter((node) => {
           const selector = node.target.join(" ");
-          
+
           if (v.id === "color-contrast") {
-            const isEasyAdminContrast = 
-              selector.includes("sidebar") || 
-              selector.includes("header") || 
-              selector.includes("brand") || 
-              selector.includes("menu") || 
+            const isEasyAdminContrast =
+              selector.includes("sidebar") ||
+              selector.includes("header") ||
+              selector.includes("brand") ||
+              selector.includes("menu") ||
               selector.includes("dropdown") ||
               selector.includes("breadcrumb");
             if (isEasyAdminContrast) return false;
           }
-          
+
           if (v.id === "link-name" || v.id === "button-name") {
-            const isEasyAdminLabeling = 
-              selector.includes("user-details") || 
-              selector.includes("dropdown") || 
-              selector.includes("sidebar") || 
+            const isEasyAdminLabeling =
+              selector.includes("user-details") ||
+              selector.includes("dropdown") ||
+              selector.includes("sidebar") ||
               selector.includes("action-");
             if (isEasyAdminLabeling) return false;
           }

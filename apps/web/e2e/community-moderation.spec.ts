@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
-  await page.goto("/");
-  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -10,6 +11,7 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
     });
     return res.ok;
   }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
   await page.goto("/");
 }
 
@@ -25,7 +27,7 @@ test.describe("Community Moderation E2E", () => {
 
     // 2. Alice creates a thread, and Bob reports it through the real UI.
     await page.goto("/forum");
-    await page.locator("a[href^='/forum/']").first().click();
+    await page.locator("a.group[href^='/forum/']").first().click();
     await page.getByRole("button", { name: "Nowy wątek" }).click();
     await page.locator("#title").fill(threadTitle);
     await page.locator("#body").fill(`Treść sprawy moderacyjnej ${uniqueSuffix}`);
@@ -77,7 +79,7 @@ test.describe("Community Moderation E2E", () => {
 
     await loginAs(authorPage, `race_author_${suffix}@example.com`, "Race Author");
     await authorPage.goto("/forum");
-    await authorPage.locator("a[href^='/forum/']").first().click();
+    await authorPage.locator("a.group[href^='/forum/']").first().click();
     await authorPage.getByRole("button", { name: "Nowy wątek" }).click();
     await authorPage.locator("#title").fill(title);
     await authorPage.locator("#body").fill(`Claim race body ${suffix}`);
@@ -110,14 +112,72 @@ test.describe("Community Moderation E2E", () => {
       firstClaim.click(),
       secondClaim.click(),
     ]);
-    await firstModeratorPage.waitForTimeout(500);
+    await expect.poll(async () => {
+      const firstOwns = await firstModeratorPage.locator("#moderator-reason-textarea").isVisible();
+      const secondOwns = await secondModeratorPage.locator("#moderator-reason-textarea").isVisible();
+      return Number(firstOwns) + Number(secondOwns);
+    }).toBe(1);
     const firstOwns = await firstModeratorPage.locator("#moderator-reason-textarea").isVisible();
     const secondOwns = await secondModeratorPage.locator("#moderator-reason-textarea").isVisible();
-    expect(Number(firstOwns) + Number(secondOwns)).toBe(1);
     const losingPage = firstOwns ? secondModeratorPage : firstModeratorPage;
     await losingPage.reload();
     await expect(losingPage.getByText("Ta sprawa jest przypisana do innego moderatora.")).toBeVisible();
 
     await Promise.all([authorContext.close(), firstModeratorContext.close(), secondModeratorContext.close()]);
+  });
+
+  test("moderation retries reuse the same idempotency key", async ({ page }) => {
+    const uniqueSuffix = Math.random().toString(36).slice(2);
+    const threadTitle = `Retry idempotency ${uniqueSuffix}`;
+    const observedKeys: string[] = [];
+    let moderationAttempts = 0;
+
+    await loginAs(page, `retry-author_${uniqueSuffix}@example.com`, "Retry Author");
+    await page.goto("/forum");
+    await page.locator("a.group[href^='/forum/']").first().click();
+    await page.getByRole("button", { name: "Nowy wątek" }).click();
+    await page.locator("#title").fill(threadTitle);
+    await page.locator("#body").fill(`Retry body ${uniqueSuffix}`);
+    await page.getByRole("button", { name: "Utwórz wątek" }).click();
+    await page.locator("a", { hasText: threadTitle }).click();
+    await expect(page).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
+    const threadUrl = page.url();
+
+    await loginAs(page, `retry-reporter_${uniqueSuffix}@example.com`, "Retry Reporter");
+    await page.goto(threadUrl);
+    await page.getByRole("button", { name: "Zgłoś wątek" }).click();
+    await page.locator("#reason-select").click();
+    await page.getByRole("option", { name: "Spam lub reklama" }).click();
+    await page.getByRole("button", { name: "Wyślij zgłoszenie" }).click();
+    await expect(page.getByText("Zgłoszenie wysłane")).toBeVisible();
+
+    await loginAs(page, `retry-moderator_${uniqueSuffix}@example.com`, "Retry Moderator", ["ROLE_MODERATOR"]);
+    await page.goto("/moderator/queue");
+    await page.locator("div.p-5", { hasText: threadTitle }).getByRole("link", { name: "Szczegóły" }).click();
+    await page.getByRole("button", { name: "Rozpocznij analizę (Claim)" }).click();
+
+    await page.route("**/api/v1/moderation/action", async (route) => {
+      observedKeys.push(route.request().headers()["idempotency-key"] ?? "");
+      moderationAttempts += 1;
+      if (moderationAttempts === 1) {
+        await route.abort("failed");
+        return;
+      }
+
+      await route.continue();
+    });
+
+    await page.locator("#moderator-action-select").click();
+    await page.getByRole("option", { name: /RESOLVE/ }).click();
+    await page.locator("#moderator-reason-textarea").fill("Retry the exact same moderation request.");
+    await page.getByRole("button", { name: "Zatwierdź decyzję" }).click();
+    await expect(page.getByText("Wystąpił błąd")).toBeVisible();
+
+    await page.getByRole("button", { name: "Zatwierdź decyzję" }).click();
+    await expect(page.getByText("Decyzja zapisana")).toBeVisible();
+
+    expect(observedKeys).toHaveLength(2);
+    expect(observedKeys[0]).not.toBe("");
+    expect(observedKeys[0]).toBe(observedKeys[1]);
   });
 });

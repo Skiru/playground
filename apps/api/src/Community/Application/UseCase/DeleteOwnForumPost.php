@@ -29,7 +29,20 @@ final class DeleteOwnForumPost
             throw new ApiException(403, 'You cannot delete someone else\'s post.', 'FORBIDDEN_OWNERSHIP');
         }
 
+        if ($post->isInitial()) {
+            throw new ApiException(409, 'Delete the thread instead of deleting its initial post directly.', 'INITIAL_POST_DELETE_REQUIRES_THREAD_DELETE');
+        }
+
         $post->softDelete($this->clock->now());
-        $this->postRepository->save($post);
+
+        try {
+            $this->postRepository->save($post);
+        } catch (\RuntimeException $e) {
+            if ('CONCURRENCY_ERROR' === $e->getMessage()) {
+                throw new ApiException(409, 'Post has been modified by another process.', 'CONCURRENCY_CONFLICT', '', [], $e);
+            }
+
+            throw $e;
+        }
     }
 }

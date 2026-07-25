@@ -34,10 +34,12 @@ final class GetModerationCase
         }
 
         $targetPreview = null;
+        $allowedActions = ['DISMISS_REPORT', 'RESOLVE_REPORT'];
         $targetId = $report->targetId();
 
         switch ($report->targetType()) {
             case \App\Community\Domain\Moderation\TargetType::REVIEW:
+                $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE'];
                 $review = $this->reviewRepository->findById($targetId);
                 if (null !== $review) {
                     $targetPreview = [
@@ -50,6 +52,7 @@ final class GetModerationCase
                 break;
 
             case \App\Community\Domain\Moderation\TargetType::PLACE_COMMENT:
+                $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE'];
                 $comment = $this->commentRepository->findById($targetId);
                 if (null !== $comment) {
                     $targetPreview = [
@@ -61,6 +64,7 @@ final class GetModerationCase
                 break;
 
             case \App\Community\Domain\Moderation\TargetType::FORUM_THREAD:
+                $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN'];
                 $thread = $this->threadRepository->findById($targetId);
                 if (null !== $thread) {
                     $targetPreview = [
@@ -74,10 +78,15 @@ final class GetModerationCase
             case \App\Community\Domain\Moderation\TargetType::FORUM_POST:
                 $post = $this->postRepository->findById($targetId);
                 if (null !== $post) {
+                    if (!$post->isInitial()) {
+                        $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE'];
+                    }
                     $targetPreview = [
                         'title' => 'Post na forum',
                         'body' => $post->body(),
                         'status' => $post->status()->value,
+                        'threadId' => $post->threadId()->toString(),
+                        'isInitial' => $post->isInitial(),
                     ];
                 }
                 break;
@@ -96,6 +105,7 @@ final class GetModerationCase
             'resolvedBy' => $report->resolvedBy()?->toString(),
             'claimedBy' => $report->claimedBy()?->toString(),
             'claimedAt' => $report->claimedAt()?->format(\DateTimeInterface::ATOM),
+            'allowedActions' => $allowedActions,
             'targetPreview' => $targetPreview,
         ];
     }

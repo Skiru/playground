@@ -30,9 +30,23 @@ final class DbalForumPostRepository implements ForumPostRepository
         return $this->reconstitute($row);
     }
 
+    public function findInitialByThreadId(Uuid $threadId): ?ForumPost
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT * FROM forum_posts WHERE thread_id = :thread_id AND is_initial = true LIMIT 1',
+            ['thread_id' => $threadId->toRfc4122()]
+        );
+
+        if (false === $row) {
+            return null;
+        }
+
+        return $this->reconstitute($row);
+    }
+
     public function findByThreadId(Uuid $threadId, ?string $cursorId, ?\DateTimeImmutable $cursorCreatedAt, int $limit): array
     {
-        $sql = 'SELECT * FROM forum_posts 
+        $sql = 'SELECT * FROM forum_posts
                 WHERE thread_id = :thread_id AND status IN (\'PUBLISHED\', \'DELETED_BY_AUTHOR\')';
 
         $params = [
@@ -65,6 +79,7 @@ final class DbalForumPostRepository implements ForumPostRepository
         $status = $post->status()->value;
         $createdAt = $post->createdAt()->format('Y-m-d H:i:s');
         $updatedAt = $post->updatedAt()->format('Y-m-d H:i:s');
+        $isInitial = $post->isInitial();
         $version = $post->version();
 
         $exists = $this->connection->fetchOne(
@@ -74,7 +89,7 @@ final class DbalForumPostRepository implements ForumPostRepository
 
         if ($exists) {
             $affected = $this->connection->executeStatement(
-                'UPDATE forum_posts SET 
+                'UPDATE forum_posts SET
                     body = :body,
                     status = :status,
                     updated_at = :updated_at,
@@ -96,8 +111,8 @@ final class DbalForumPostRepository implements ForumPostRepository
             $post->advanceVersion();
         } else {
             $this->connection->executeStatement(
-                'INSERT INTO forum_posts (id, thread_id, author_id, parent_id, body, status, created_at, updated_at, version) 
-                 VALUES (:id, :thread_id, :author_id, :parent_id, :body, :status, :created_at, :updated_at, :version)',
+                'INSERT INTO forum_posts (id, thread_id, author_id, parent_id, body, status, created_at, updated_at, is_initial, version)
+                  VALUES (:id, :thread_id, :author_id, :parent_id, :body, :status, :created_at, :updated_at, :is_initial, :version)',
                 [
                     'id' => $id,
                     'thread_id' => $threadId,
@@ -107,7 +122,11 @@ final class DbalForumPostRepository implements ForumPostRepository
                     'status' => $status,
                     'created_at' => $createdAt,
                     'updated_at' => $updatedAt,
+                    'is_initial' => $isInitial,
                     'version' => $version,
+                ],
+                [
+                    'is_initial' => \Doctrine\DBAL\ParameterType::BOOLEAN,
                 ]
             );
         }
@@ -127,6 +146,7 @@ final class DbalForumPostRepository implements ForumPostRepository
             ForumPostStatus::from((string) $row['status']),
             new \DateTimeImmutable((string) $row['created_at']),
             new \DateTimeImmutable((string) $row['updated_at']),
+            (bool) ($row['is_initial'] ?? false),
             (int) $row['version']
         );
     }

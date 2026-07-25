@@ -84,7 +84,7 @@ final class DbalForumCategoryRepository implements ForumCategoryRepository
 
         if ($exists) {
             $this->connection->executeStatement(
-                'UPDATE forum_categories SET 
+                'UPDATE forum_categories SET
                     slug = :slug,
                     name = :name,
                     description = :description,
@@ -104,7 +104,7 @@ final class DbalForumCategoryRepository implements ForumCategoryRepository
             );
         } else {
             $this->connection->executeStatement(
-                'INSERT INTO forum_categories (id, slug, name, description, city_id, display_order, active) 
+                'INSERT INTO forum_categories (id, slug, name, description, city_id, display_order, active)
                  VALUES (:id, :slug, :name, :description, :city_id, :display_order, :active)',
                 [
                     'id' => $id,

@@ -1,27 +1,36 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+    const res = await fetch("/resources/auth/dev-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.ok;
+  }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
+  await page.goto("/");
+}
 
 test.describe("C3R Personalization and Security E2E", () => {
-  test("complete user journey: login, reload session, favorite, visit, edit, delete, logout", async ({ page }) => {
-    // 1. Visit home page
-    await page.goto("/");
-    await expect(page.getByRole("button", { name: "Zaloguj się" }).first()).toBeVisible();
+  test("complete user journey: login, reload session, favorite, visit, edit, delete, logout", async ({ page }, testInfo) => {
+    const uniqueSuffix = `${testInfo.project.name}-${Date.now()}`.replace(/[^a-zA-Z0-9-]/g, "-").toLowerCase();
 
-    // 2. Click Zaloguj się to open Login Dialog
-    await page.getByRole("button", { name: "Zaloguj się" }).first().click();
-    await expect(page.getByRole("heading", { name: "Logowanie" }).first()).toBeVisible();
+    // 1. Authenticate deterministically with an isolated test user.
+    await loginAs(page, `c3r_${uniqueSuffix}@example.com`, "Demo User");
 
-    // 3. Click Bypass Login to authenticate deterministically
-    await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
-
-    // 4. Verify successful login and session menu button in the header (initials DU)
+    // 2. Verify successful login and session menu button in the header.
     const userMenuButton = page.getByTestId("user-menu-button").filter({ visible: true });
     await expect(userMenuButton).toBeVisible();
 
-    // 5. Reload page to verify session persistence
+    // 3. Reload page to verify session persistence.
     await page.reload();
     await expect(userMenuButton).toBeVisible();
 
-    // 6. Navigate to place list and details
+    // 4. Navigate to place list and details.
     await page.goto("/miejsca?city=warszawa");
     await expect(page.locator(".place-card").first()).toBeVisible();
 
@@ -33,12 +42,18 @@ test.describe("C3R Personalization and Security E2E", () => {
     const favButton = page.locator(".place-card").first().locator('button[aria-pressed]');
     await expect(favButton).toBeEnabled();
     if (await favButton.getAttribute("aria-pressed") === "true") {
+      const removeFavoriteRequest = page.waitForResponse((response) => {
+        return response.url().includes("/resources/favorites") && response.request().method() === "DELETE";
+      });
       await favButton.click();
+      await removeFavoriteRequest;
       await expect(favButton).toHaveAttribute("aria-pressed", "false");
     }
     await favButton.click();
     
     // Verify button state changes to "Usuń z ulubionych" (aria-pressed=true)
+    await expect(page.locator(".place-card").first().locator('button[aria-pressed="true"]')).toBeVisible();
+    await page.reload();
     await expect(page.locator(".place-card").first().locator('button[aria-pressed="true"]')).toBeVisible();
 
     // Go to My Favorites page

@@ -42,7 +42,11 @@ final class ListComments
         );
 
         // Decode cursor
-        $cursor = CursorCodec::decode($cursorStr, ['createdAt', 'id', 'placeId'], ['placeId' => $placeId->toRfc4122()]);
+        $cursor = CursorCodec::decode($cursorStr, [
+            'createdAt' => CursorCodec::timestampField(),
+            'id' => CursorCodec::uuidField(),
+            'placeId' => CursorCodec::uuidField(expected: $placeId->toRfc4122(), hasExpected: true),
+        ]);
 
         // Fetch roots using cursor
         // Stable order: created_at ASC, id ASC
@@ -51,7 +55,7 @@ final class ListComments
             'limit' => $limit + 1,
         ];
 
-        $sql = 'SELECT * FROM place_comments 
+        $sql = 'SELECT * FROM place_comments
                 WHERE place_id = :place_id AND parent_id IS NULL AND status IN (\'PUBLISHED\', \'DELETED_BY_AUTHOR\')';
 
         if (null !== $cursor) {

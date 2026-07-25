@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function loginAs(page: Page, email: string, displayName: string) {
-  await page.goto("/");
-  await page.evaluate(async (data: { email: string; displayName: string }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string }) => {
     const response = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -10,6 +11,7 @@ async function loginAs(page: Page, email: string, displayName: string) {
     });
     return response.ok;
   }, { email, displayName });
+  expect(ok).toBeTruthy();
   await page.goto("/");
 }
 
@@ -19,7 +21,7 @@ test.describe("Community Feed E2E Real Journey", () => {
     const threadTitle = `Feed visible thread ${uniqueSuffix}`;
     await loginAs(page, `feed_${uniqueSuffix}@example.com`, "FeedUser");
     await page.goto("/forum");
-    await page.locator("a[href^='/forum/']").first().click();
+    await page.locator("a.group[href^='/forum/']").first().click();
     await page.getByRole("button", { name: "Nowy wątek" }).click();
     await page.locator("#title").fill(threadTitle);
     await page.locator("#body").fill(`Visible feed body ${uniqueSuffix}`);

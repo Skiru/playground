@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useParams, Link } from "react-router"
-import { getModerationCase, claimModerationCase, moderateContent } from "@family-places/api-client"
+import { getModerationCase, claimModerationCase, moderateContent, type GetModerationCaseResponses, type ModerateContentData } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
@@ -11,53 +11,40 @@ import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Shield, ArrowLeft, CheckCircle2, AlertTriangle, AlertCircle, Info, Check } from "lucide-react"
 
-interface CaseDetails {
-  id: string
-  reporterId: string
-  targetId: string
-  targetType: string
-  reason: string
-  details?: string | null
-  status: string
-  createdAt: string
-  resolvedAt?: string | null
-  resolvedBy?: string | null
-  claimedBy?: string | null
-  claimedAt?: string | null
-  targetPreview?: {
-    title: string
-    body: string
-    rating?: number
-    status: string
-  } | null
+type CaseDetails = GetModerationCaseResponses[200]
+type ModerationAction = NonNullable<ModerateContentData["body"]>["action"]
+
+const ACTION_LABELS: Record<ModerationAction, string> = {
+  HIDE: "Ukryj treść (HIDE)",
+  REMOVE: "Usuń treść perm (REMOVE)",
+  RESTORE: "Przywróć treść (RESTORE)",
+  LOCK: "Zablokuj wątek (LOCK)",
+  UNLOCK: "Odblokuj wątek (UNLOCK)",
+  PIN: "Przypnij wątek (PIN)",
+  UNPIN: "Odepnij wątek (UNPIN)",
+  DISMISS_REPORT: "Odrzuć zgłoszenie (DISMISS)",
+  RESOLVE_REPORT: "Oznacz jako rozwiązane (RESOLVE)",
 }
 
-type ModerationAction = "HIDE" | "REMOVE" | "RESTORE" | "LOCK" | "UNLOCK" | "PIN" | "UNPIN" | "DISMISS_REPORT" | "RESOLVE_REPORT"
-
-function toCaseDetails(data: Record<string, unknown>): CaseDetails {
-  const preview = data.targetPreview
-  const previewRating = preview && typeof preview === "object" ? Reflect.get(preview, "rating") : undefined
-
-  return {
-    id: String(data.id),
-    reporterId: String(data.reporterId),
-    targetId: String(data.targetId),
-    targetType: String(data.targetType),
-    reason: String(data.reason),
-    details: typeof data.details === "string" ? data.details : null,
-    status: String(data.status),
-    createdAt: String(data.createdAt),
-    resolvedAt: typeof data.resolvedAt === "string" ? data.resolvedAt : null,
-    resolvedBy: typeof data.resolvedBy === "string" ? data.resolvedBy : null,
-    claimedBy: typeof data.claimedBy === "string" ? data.claimedBy : null,
-    claimedAt: typeof data.claimedAt === "string" ? data.claimedAt : null,
-    targetPreview: preview && typeof preview === "object" ? {
-      title: String(Reflect.get(preview, "title")),
-      body: String(Reflect.get(preview, "body")),
-      rating: typeof previewRating === "number" ? previewRating : undefined,
-      status: String(Reflect.get(preview, "status")),
-    } : null,
+function createIdempotencyKey(): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID()
   }
+
+  const bytes = new Uint8Array(16)
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    globalThis.crypto.getRandomValues(bytes)
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256)
+    }
+  }
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 export default function ModeratorCasePage() {
@@ -73,6 +60,7 @@ export default function ModeratorCasePage() {
   const [actionError, setActionError] = React.useState<string | null>(null)
   const [submittingAction, setSubmittingAction] = React.useState(false)
   const [actionSuccess, setActionSuccess] = React.useState(false)
+  const idempotencyKeyRef = React.useRef<string | null>(null)
 
   const isModerator = session.authenticated && (
     session.user?.roles.includes("ROLE_MODERATOR") || session.user?.roles.includes("ROLE_ADMIN")
@@ -86,7 +74,7 @@ export default function ModeratorCasePage() {
         path: { reportId },
       })
       if (res.data) {
-        setCaseData(toCaseDetails(res.data))
+        setCaseData(res.data)
       } else {
         setError("Zgłoszenie nie istnieje lub zostało usunięte.")
       }
@@ -106,7 +94,7 @@ export default function ModeratorCasePage() {
       try {
         const res = await getModerationCase({ path: { reportId: reportId! } })
         if (!ignore && res.data) {
-          setCaseData(toCaseDetails(res.data))
+          setCaseData(res.data)
         } else if (!ignore) {
           setError("Zgłoszenie nie istnieje lub zostało usunięte.")
         }
@@ -167,6 +155,8 @@ export default function ModeratorCasePage() {
     setSubmittingAction(true)
 
     try {
+      const idempotencyKey = idempotencyKeyRef.current ?? createIdempotencyKey()
+      idempotencyKeyRef.current = idempotencyKey
       const res = await moderateContent({
         body: {
           reportId,
@@ -175,10 +165,12 @@ export default function ModeratorCasePage() {
         },
         headers: {
           "X-CSRF-Token": session.csrfToken || "",
+          "Idempotency-Key": idempotencyKey,
         },
       })
 
       if (res.response?.status === 200) {
+        idempotencyKeyRef.current = null
         setActionSuccess(true)
         setTimeout(() => {
           setActionSuccess(false)
@@ -186,16 +178,26 @@ export default function ModeratorCasePage() {
           setReason("")
           loadCase()
         }, 2000)
+      } else if (!res.response) {
+        setActionError("Wystąpił błąd.")
       } else {
         const errorData = mapApiError(res.error)
+        if (res.response.status >= 500) {
+          setActionError("Wystąpił błąd.")
+          return
+        }
+
+        idempotencyKeyRef.current = null
         setActionError(errorData.detail || "Wystąpił błąd podczas zapisywania decyzji.")
       }
-    } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Wystąpił błąd.")
+    } catch {
+      setActionError("Wystąpił błąd.")
     } finally {
       setSubmittingAction(false)
     }
   }
+
+  const availableActions = caseData?.allowedActions ?? []
 
   if (!isModerator) {
     return (
@@ -359,6 +361,11 @@ export default function ModeratorCasePage() {
                       </div>
                     ) : (
                       <form onSubmit={handleAction} className="space-y-4">
+                        {caseData.targetType === "FORUM_POST" && caseData.targetPreview?.isInitial && (
+                          <div className="bg-muted p-3 rounded text-xs text-muted-foreground">
+                            To zgłoszenie dotyczy posta początkowego. Dla zachowania spójności wątku można tutaj jedynie zamknąć lub odrzucić zgłoszenie, a moderację treści należy prowadzić na poziomie wątku.
+                          </div>
+                        )}
                         <div className="space-y-1.5">
                           <Label htmlFor="moderator-action-select">Wybierz akcję</Label>
                           <Select value={action} onValueChange={(val) => setAction(val as ModerationAction | "")} required>
@@ -366,19 +373,9 @@ export default function ModeratorCasePage() {
                               <SelectValue placeholder="Wybierz akcję..." />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="HIDE">Ukryj treść (HIDE)</SelectItem>
-                              <SelectItem value="REMOVE">Usuń treść perm (REMOVE)</SelectItem>
-                              <SelectItem value="RESTORE">Przywróć treść (RESTORE)</SelectItem>
-                              <SelectItem value="DISMISS_REPORT">Odrzuć zgłoszenie (DISMISS)</SelectItem>
-                              <SelectItem value="RESOLVE_REPORT">Oznacz jako rozwiązane (RESOLVE)</SelectItem>
-                              {caseData.targetType === "FORUM_THREAD" && (
-                                <>
-                                  <SelectItem value="LOCK">Zablokuj wątek (LOCK)</SelectItem>
-                                  <SelectItem value="UNLOCK">Odblokuj wątek (UNLOCK)</SelectItem>
-                                  <SelectItem value="PIN">Przypnij wątek (PIN)</SelectItem>
-                                  <SelectItem value="UNPIN">Odepnij wątek (UNPIN)</SelectItem>
-                                </>
-                              )}
+                              {availableActions.map((allowedAction) => (
+                                <SelectItem key={allowedAction} value={allowedAction}>{ACTION_LABELS[allowedAction]}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>

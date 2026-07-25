@@ -1,5 +1,5 @@
 import * as React from "react"
-import { listModerationQueue } from "@family-places/api-client"
+import { listModerationQueue, type ListModerationQueueResponses } from "@family-places/api-client"
 import { useSession } from "~/lib/session-context"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
@@ -9,24 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Shield, Eye, Calendar, User } from "lucide-react"
 import { Link } from "react-router"
 
-interface Report {
-  id: string
-  reporterId: string
-  reporter: { id: string; displayName: string; initials: string }
-  targetType: string
-  targetId: string
-  reason: string
-  details?: string | null
-  status: string
-  createdAt: string
-  evidence: string
-  author?: { id: string; displayName: string; initials: string } | null
-}
-
-interface CursorPagination {
-  nextCursor?: string | null
-  hasNextPage?: boolean
-}
+type Report = ListModerationQueueResponses[200]["items"][number]
+type CursorPagination = ListModerationQueueResponses[200]["pagination"]
 
 export default function ModeratorQueuePage() {
   const { session } = useSession()
@@ -56,8 +40,8 @@ export default function ModeratorQueuePage() {
         },
       })
       if (res.data) {
-        setReports((prev) => [...prev, ...((res.data.items || []) as Report[])])
-        const pagination = res.data.pagination as CursorPagination | undefined
+        setReports((prev) => [...prev, ...res.data.items])
+        const pagination: CursorPagination = res.data.pagination
         setNextCursor(pagination?.nextCursor || null)
         setHasNextPage(pagination?.hasNextPage || false)
       } else {
@@ -83,8 +67,8 @@ export default function ModeratorQueuePage() {
           },
         })
         if (!ignore && res.data) {
-          setReports((res.data.items || []) as Report[])
-          const pagination = res.data.pagination as CursorPagination | undefined
+          setReports(res.data.items)
+          const pagination: CursorPagination = res.data.pagination
           setNextCursor(pagination?.nextCursor || null)
           setHasNextPage(pagination?.hasNextPage || false)
         } else if (!ignore) {
@@ -226,7 +210,7 @@ export default function ModeratorQueuePage() {
                   </div>
 
                   <div>
-                    <Button asChild size="sm" className="flex items-center gap-1.5 min-w-[120px]">
+                    <Button asChild variant="outline" size="sm" className="flex items-center gap-1.5 min-w-[120px] font-semibold">
                       <Link to={`/moderator/case/${rep.id}`}>
                         <Eye className="h-4 w-4" />
                         <span>Szczegóły</span>

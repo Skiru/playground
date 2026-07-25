@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Community\Application\UseCase;
 
 use App\Community\Domain\Forum\ForumPostRepository;
+use App\Community\Domain\Forum\ForumPostStatus;
 use App\Community\Domain\Forum\ForumThreadRepository;
 use App\Community\Domain\Forum\ForumThreadStatus;
 use App\Shared\Application\Clock;
@@ -39,23 +40,32 @@ final class DeleteOwnForumThread
                 throw new ApiException(403, 'You cannot delete someone else\'s thread.', 'FORBIDDEN_OWNERSHIP');
             }
 
-            $firstPostId = $this->connection->fetchOne(
-                'SELECT id FROM forum_posts WHERE thread_id = :thread_id AND parent_id IS NULL ORDER BY created_at ASC, id ASC LIMIT 1 FOR UPDATE',
-                ['thread_id' => $threadId->toRfc4122()],
-            );
-            if (false === $firstPostId) {
-                throw new ApiException(409, 'Thread initial post is missing.', 'CONTENT_STATE_CONFLICT');
-            }
-            $firstPost = $this->postRepository->findById(Uuid::fromString((string) $firstPostId));
+            $firstPost = $this->postRepository->findInitialByThreadId($threadId);
             if (null === $firstPost) {
                 throw new ApiException(409, 'Thread initial post is missing.', 'CONTENT_STATE_CONFLICT');
             }
 
             $now = $this->clock->now();
             $thread->softDelete($now);
-            $firstPost->softDelete($now);
-            $this->threadRepository->save($thread);
-            $this->postRepository->save($firstPost);
+            $shouldSaveInitialPost = false;
+
+            if (\in_array($firstPost->status(), [ForumPostStatus::PUBLISHED, ForumPostStatus::HIDDEN], true)) {
+                $firstPost->softDelete($now);
+                $shouldSaveInitialPost = true;
+            }
+
+            try {
+                $this->threadRepository->save($thread);
+                if ($shouldSaveInitialPost) {
+                    $this->postRepository->save($firstPost);
+                }
+            } catch (\RuntimeException $e) {
+                if ('CONCURRENCY_ERROR' === $e->getMessage()) {
+                    throw new ApiException(409, 'Thread has been modified by another process.', 'CONCURRENCY_CONFLICT', '', [], $e);
+                }
+
+                throw $e;
+            }
         });
     }
 }

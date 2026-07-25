@@ -4547,6 +4547,7 @@
                                                     "status",
                                                     "createdAt",
                                                     "updatedAt",
+                                                    "isInitial",
                                                     "version"
                                                 ],
                                                 "properties": {
@@ -4595,6 +4596,9 @@
                                                             "null"
                                                         ],
                                                         "format": "uuid"
+                                                    },
+                                                    "isInitial": {
+                                                        "type": "boolean"
                                                     },
                                                     "body": {
                                                         "type": "string"
@@ -4718,6 +4722,7 @@
                                         "status",
                                         "createdAt",
                                         "updatedAt",
+                                        "isInitial",
                                         "version"
                                     ],
                                     "properties": {
@@ -4766,6 +4771,9 @@
                                                 "null"
                                             ],
                                             "format": "uuid"
+                                        },
+                                        "isInitial": {
+                                            "type": "boolean"
                                         },
                                         "body": {
                                             "type": "string"
@@ -4917,6 +4925,7 @@
                                         "status",
                                         "createdAt",
                                         "updatedAt",
+                                        "isInitial",
                                         "version"
                                     ],
                                     "properties": {
@@ -4965,6 +4974,9 @@
                                                 "null"
                                             ],
                                             "format": "uuid"
+                                        },
+                                        "isInitial": {
+                                            "type": "boolean"
                                         },
                                         "body": {
                                             "type": "string"
@@ -5491,9 +5503,23 @@
                         "explode": false
                     },
                     {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "description": "UUID idempotency key for exact moderation request retries.",
+                        "required": true,
+                        "deprecated": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "maxLength": 36
+                        },
+                        "style": "simple",
+                        "explode": false
+                    },
+                    {
                         "name": "X-Correlation-ID",
                         "in": "header",
-                        "description": "UUID idempotency and audit correlation key.",
+                        "description": "Optional request correlation identifier for observability.",
                         "required": false,
                         "deprecated": false,
                         "schema": {
@@ -5570,7 +5596,8 @@
                                         "status",
                                         "createdAt",
                                         "claimedBy",
-                                        "claimedAt"
+                                        "claimedAt",
+                                        "allowedActions"
                                     ],
                                     "properties": {
                                         "id": {
@@ -5644,6 +5671,23 @@
                                             ],
                                             "format": "date-time"
                                         },
+                                        "allowedActions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "HIDE",
+                                                    "REMOVE",
+                                                    "RESTORE",
+                                                    "LOCK",
+                                                    "UNLOCK",
+                                                    "PIN",
+                                                    "UNPIN",
+                                                    "DISMISS_REPORT",
+                                                    "RESOLVE_REPORT"
+                                                ]
+                                            }
+                                        },
                                         "targetPreview": {
                                             "oneOf": [
                                                 {
@@ -5668,6 +5712,13 @@
                                                         },
                                                         "rating": {
                                                             "type": "integer"
+                                                        },
+                                                        "threadId": {
+                                                            "type": "string",
+                                                            "format": "uuid"
+                                                        },
+                                                        "isInitial": {
+                                                            "type": "boolean"
                                                         }
                                                     }
                                                 }

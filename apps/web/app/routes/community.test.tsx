@@ -27,6 +27,9 @@ vi.mock("@family-places/api-client", () => {
     createForumPost: vi.fn(),
     getCommunityFeed: vi.fn(),
     listModerationQueue: vi.fn(),
+    getModerationCase: vi.fn(),
+    claimModerationCase: vi.fn(),
+    moderateContent: vi.fn(),
     reportContent: vi.fn(),
     editOwnForumThread: vi.fn(),
     deleteOwnForumThread: vi.fn(),
@@ -39,6 +42,7 @@ import ForumThreadsPage from "./community/forum-threads";
 import ForumThreadDetailPage from "./community/forum-thread-detail";
 import CommunityFeedPage from "./community/feed";
 import ModeratorQueuePage from "./community/moderator-queue";
+import ModeratorCasePage from "./community/moderator-case";
 import { ReportContentDialog } from "~/components/community/ReportContentDialog";
 
 import {
@@ -47,6 +51,7 @@ import {
   listForumPosts,
   getCommunityFeed,
   listModerationQueue,
+  getModerationCase,
   reportContent,
 } from "@family-places/api-client";
 
@@ -109,7 +114,7 @@ describe("Community Frontend Vitest Suite", () => {
       response: new Response(null, { status: 200 }),
       data: {
         items: [
-          { id: "post-1", threadId: "thread-1", authorId: "user-2", body: "A reply", status: "DELETED_BY_AUTHOR", createdAt: "2026-07-20T12:05:00Z", author: { id: "user-2", displayName: "Anna", initials: "A" } }
+          { id: "post-1", threadId: "thread-1", authorId: null, parentId: null, isInitial: true, body: "Treść usunięta przez autora", status: "DELETED_BY_AUTHOR", createdAt: "2026-07-20T12:05:00Z", updatedAt: "2026-07-20T12:05:00Z", version: 2, author: { id: null, displayName: "Usunięty użytkownik", initials: "U" } }
         ],
         pagination: { nextCursor: null, hasNextPage: false }
       }
@@ -133,8 +138,61 @@ describe("Community Frontend Vitest Suite", () => {
     await waitFor(() => {
       expect(screen.getByText("Wątek zablokowany")).toBeInTheDocument();
       expect(screen.getByText("Treść usunięta przez autora")).toBeInTheDocument();
+      expect(screen.queryByText(/^null$/i)).not.toBeInTheDocument();
     });
   });
+
+  it("limits moderator actions for an initial forum post case", async () => {
+    vi.mocked(getModerationCase).mockResolvedValue({
+      response: new Response(null, { status: 200 }),
+      data: {
+        id: "report-1",
+        reporterId: "user-2",
+        targetId: "post-1",
+        targetType: "FORUM_POST",
+        reason: "SPAM",
+        status: "IN_REVIEW",
+        createdAt: "2026-07-20T12:00:00Z",
+        claimedBy: "mod-1",
+        claimedAt: "2026-07-20T12:01:00Z",
+        allowedActions: ["DISMISS_REPORT", "RESOLVE_REPORT"],
+        targetPreview: {
+          title: "Post na forum",
+          body: "Treść początkowa wątku",
+          status: "PUBLISHED",
+          threadId: "thread-1",
+          isInitial: true,
+        },
+      },
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={["/moderator/case/report-1"]}>
+        <Routes>
+          <Route path="/moderator/case/:reportId" element={
+            <SessionProvider initialSession={{ authenticated: true, user: { id: "mod-1", roles: ["ROLE_MODERATOR"], displayName: "Moderator", initials: "M" }, csrfToken: "csrf-abc" }}>
+              <LoginRequiredActionProvider>
+                <ModeratorCasePage />
+              </LoginRequiredActionProvider>
+            </SessionProvider>
+          } />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/posta początkowego/i)).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText("Wybierz akcję"))
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Odrzuć zgłoszenie/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/Oznacz jako rozwiązane/).length).toBeGreaterThan(0)
+      expect(screen.queryByText(/Ukryj treść/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Usuń treść perm/)).not.toBeInTheDocument()
+    })
+  })
 
   it("renders community feed and builds correct source links", async () => {
     vi.mocked(getCommunityFeed).mockResolvedValue({

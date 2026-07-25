@@ -32,10 +32,10 @@ final class DbalContentReportRepository implements ContentReportRepository
         return $this->reconstitute($row);
     }
 
-    public function findOpenByReporterAndTarget(Uuid $reporterId, Uuid $targetId, TargetType $targetType): ?ContentReport
+    public function findActiveByReporterAndTarget(Uuid $reporterId, Uuid $targetId, TargetType $targetType): ?ContentReport
     {
         $row = $this->connection->fetchAssociative(
-            'SELECT * FROM content_reports WHERE reporter_id = :reporter_id AND target_id = :target_id AND target_type = :target_type AND status = \'OPEN\' LIMIT 1',
+            'SELECT * FROM content_reports WHERE reporter_id = :reporter_id AND target_id = :target_id AND target_type = :target_type AND status IN (\'OPEN\', \'IN_REVIEW\') LIMIT 1',
             [
                 'reporter_id' => $reporterId->toRfc4122(),
                 'target_id' => $targetId->toRfc4122(),
@@ -88,7 +88,7 @@ final class DbalContentReportRepository implements ContentReportRepository
 
         if ($exists) {
             $this->connection->executeStatement(
-                'UPDATE content_reports SET 
+                'UPDATE content_reports SET
                     status = :status,
                     resolved_at = :resolved_at,
                     resolved_by = :resolved_by,

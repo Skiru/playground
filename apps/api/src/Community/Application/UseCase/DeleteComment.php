@@ -30,6 +30,15 @@ final class DeleteComment
         }
 
         $comment->softDelete($this->clock->now());
-        $this->placeCommentRepository->save($comment);
+
+        try {
+            $this->placeCommentRepository->save($comment);
+        } catch (\RuntimeException $e) {
+            if ('CONCURRENCY_ERROR' === $e->getMessage()) {
+                throw new ApiException(409, 'Comment has been modified by another process.', 'CONCURRENCY_CONFLICT', '', [], $e);
+            }
+
+            throw $e;
+        }
     }
 }

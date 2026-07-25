@@ -63,7 +63,7 @@ final class CreateForumPost
             $body,
             ForumPostStatus::PUBLISHED,
             $now,
-            $now
+            $now,
         );
 
         // Update thread's last activity

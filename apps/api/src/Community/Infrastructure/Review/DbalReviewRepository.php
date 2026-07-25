@@ -127,7 +127,7 @@ final readonly class DbalReviewRepository implements ReviewRepository
 
         if ($exists) {
             $affected = $this->connection->executeStatement(
-                'UPDATE reviews SET 
+                'UPDATE reviews SET
                     rating = :rating,
                     body = :body,
                     visited_on = :visited_on,
@@ -153,7 +153,7 @@ final readonly class DbalReviewRepository implements ReviewRepository
             $review->advanceVersion();
         } else {
             $this->connection->executeStatement(
-                'INSERT INTO reviews (id, place_id, author_id, rating, body, visited_on, status, created_at, updated_at, version) 
+                'INSERT INTO reviews (id, place_id, author_id, rating, body, visited_on, status, created_at, updated_at, version)
                  VALUES (:id, :place_id, :author_id, :rating, :body, :visited_on, :status, :created_at, :updated_at, :version)',
                 [
                     'id' => $id,

@@ -32,8 +32,10 @@ final class DbalForumThreadRepository implements ForumThreadRepository
 
     public function findByCategoryId(Uuid $categoryId, ?string $cursorId, ?\DateTimeImmutable $cursorPinnedAt, ?\DateTimeImmutable $cursorLastActivityAt, int $limit): array
     {
-        $sql = 'SELECT * FROM forum_threads 
-                WHERE category_id = :category_id AND status IN (\'PUBLISHED\', \'DELETED_BY_AUTHOR\')';
+        $sql = 'SELECT t.* FROM forum_threads t
+                JOIN forum_posts ip ON ip.thread_id = t.id AND ip.is_initial = true
+                WHERE t.category_id = :category_id
+                  AND ((t.status = \'PUBLISHED\' AND ip.status = \'PUBLISHED\') OR (t.status = \'DELETED_BY_AUTHOR\' AND ip.status = \'DELETED_BY_AUTHOR\'))';
 
         $params = [
             'category_id' => $categoryId->toRfc4122(),
@@ -43,20 +45,20 @@ final class DbalForumThreadRepository implements ForumThreadRepository
         if (null !== $cursorId && null !== $cursorLastActivityAt) {
             $sql .= ' AND (';
             if (null !== $cursorPinnedAt) {
-                $sql .= '(pinned_at IS NOT NULL AND (pinned_at < :cursor_pinned_at OR (pinned_at = :cursor_pinned_at AND last_activity_at < :cursor_last_activity) OR (pinned_at = :cursor_pinned_at AND last_activity_at = :cursor_last_activity AND id < :cursor_id)))';
-                $sql .= ' OR (pinned_at IS NULL)';
+                $sql .= '(t.pinned_at IS NOT NULL AND (t.pinned_at < :cursor_pinned_at OR (t.pinned_at = :cursor_pinned_at AND t.last_activity_at < :cursor_last_activity) OR (t.pinned_at = :cursor_pinned_at AND t.last_activity_at = :cursor_last_activity AND t.id < :cursor_id)))';
+                $sql .= ' OR (t.pinned_at IS NULL)';
                 $params['cursor_pinned_at'] = $cursorPinnedAt->format('Y-m-d H:i:s');
                 $params['cursor_last_activity'] = $cursorLastActivityAt->format('Y-m-d H:i:s');
                 $params['cursor_id'] = $cursorId;
             } else {
-                $sql .= '(pinned_at IS NULL AND (last_activity_at < :cursor_last_activity OR (last_activity_at = :cursor_last_activity AND id < :cursor_id)))';
+                $sql .= '(t.pinned_at IS NULL AND (t.last_activity_at < :cursor_last_activity OR (t.last_activity_at = :cursor_last_activity AND t.id < :cursor_id)))';
                 $params['cursor_last_activity'] = $cursorLastActivityAt->format('Y-m-d H:i:s');
                 $params['cursor_id'] = $cursorId;
             }
             $sql .= ')';
         }
 
-        $sql .= ' ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC, last_activity_at DESC, id DESC LIMIT :limit';
+        $sql .= ' ORDER BY (t.pinned_at IS NOT NULL) DESC, t.pinned_at DESC, t.last_activity_at DESC, t.id DESC LIMIT :limit';
 
         $rows = $this->connection->fetchAllAssociative($sql, $params, [
             'limit' => \Doctrine\DBAL\ParameterType::INTEGER,
@@ -86,7 +88,7 @@ final class DbalForumThreadRepository implements ForumThreadRepository
 
         if ($exists) {
             $affected = $this->connection->executeStatement(
-                'UPDATE forum_threads SET 
+                'UPDATE forum_threads SET
                     category_id = :category_id,
                     title = :title,
                     status = :status,
@@ -116,7 +118,7 @@ final class DbalForumThreadRepository implements ForumThreadRepository
             $thread->advanceVersion();
         } else {
             $this->connection->executeStatement(
-                'INSERT INTO forum_threads (id, category_id, author_id, title, status, created_at, updated_at, last_activity_at, locked_at, pinned_at, version) 
+                'INSERT INTO forum_threads (id, category_id, author_id, title, status, created_at, updated_at, last_activity_at, locked_at, pinned_at, version)
                  VALUES (:id, :category_id, :author_id, :title, :status, :created_at, :updated_at, :last_activity_at, :locked_at, :pinned_at, :version)',
                 [
                     'id' => $id,

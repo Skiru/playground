@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
-  await page.goto("/");
-  await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
     const res = await fetch("/resources/auth/dev-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -10,6 +11,7 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
     });
     return res.ok;
   }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
   await page.goto("/");
 }
 
@@ -35,7 +37,7 @@ test.describe("Community Reporting E2E Real Journey", () => {
 
     // 2. Bob creates a thread to be reported
     await bobPage.goto("/forum");
-    await bobPage.locator("a[href^='/forum/']").first().click();
+    await bobPage.locator("a.group[href^='/forum/']").first().click();
     await bobPage.getByRole("button", { name: "Nowy wątek" }).click();
     await bobPage.locator("#title").fill(`Reporting Thread ${uniqueSuffix}`);
     await bobPage.locator("#body").fill(`This is the content to be reported ${uniqueSuffix}`);

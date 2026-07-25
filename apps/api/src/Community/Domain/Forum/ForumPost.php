@@ -16,6 +16,7 @@ final class ForumPost
     private ForumPostStatus $status;
     private \DateTimeImmutable $createdAt;
     private \DateTimeImmutable $updatedAt;
+    private bool $isInitial;
     private int $version;
 
     public function __construct(
@@ -27,6 +28,7 @@ final class ForumPost
         ForumPostStatus $status,
         \DateTimeImmutable $createdAt,
         \DateTimeImmutable $updatedAt,
+        bool $isInitial = false,
         int $version = 1,
     ) {
         $trimmedBody = trim($body);
@@ -43,6 +45,7 @@ final class ForumPost
         $this->status = $status;
         $this->createdAt = $createdAt;
         $this->updatedAt = $updatedAt;
+        $this->isInitial = $isInitial;
         $this->version = $version;
     }
 
@@ -146,5 +149,10 @@ final class ForumPost
     public function version(): int
     {
         return $this->version;
+    }
+
+    public function isInitial(): bool
+    {
+        return $this->isInitial;
     }
 }

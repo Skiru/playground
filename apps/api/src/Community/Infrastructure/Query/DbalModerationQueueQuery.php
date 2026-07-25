@@ -34,7 +34,12 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
         // Decode and parse cursor
         $cursorData = null;
         if (null !== $cursor && '' !== trim($cursor)) {
-            $cursorData = CursorCodec::decode($cursor, ['priority', 'createdAt', 'id', 'statusFilter'], ['statusFilter' => $statusFilter]);
+            $cursorData = CursorCodec::decode($cursor, [
+                'priority' => CursorCodec::integerField(),
+                'createdAt' => CursorCodec::timestampField(),
+                'id' => CursorCodec::uuidField(),
+                'statusFilter' => CursorCodec::enumField(['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED'], nullable: true, expected: $statusFilter, hasExpected: true),
+            ]);
             \assert(null !== $cursorData);
             if (!\is_int($cursorData['priority']) || $cursorData['priority'] < 1 || $cursorData['priority'] > 5) {
                 throw new \App\Shared\Application\Exception\ApiException(400, 'Invalid pagination cursor.', 'INVALID_CURSOR');
@@ -47,29 +52,29 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
             $lastId = (string) $cursorData['id'];
 
             $where[] = '(
-                (CASE status 
-                    WHEN \'OPEN\' THEN 1 
-                    WHEN \'IN_REVIEW\' THEN 2 
-                    WHEN \'RESOLVED\' THEN 3 
-                    WHEN \'DISMISSED\' THEN 4 
+                (CASE status
+                    WHEN \'OPEN\' THEN 1
+                    WHEN \'IN_REVIEW\' THEN 2
+                    WHEN \'RESOLVED\' THEN 3
+                    WHEN \'DISMISSED\' THEN 4
                     ELSE 5 END > :last_priority)
                 OR (
-                    CASE status 
-                        WHEN \'OPEN\' THEN 1 
-                        WHEN \'IN_REVIEW\' THEN 2 
-                        WHEN \'RESOLVED\' THEN 3 
-                        WHEN \'DISMISSED\' THEN 4 
-                        ELSE 5 END = :last_priority 
+                    CASE status
+                        WHEN \'OPEN\' THEN 1
+                        WHEN \'IN_REVIEW\' THEN 2
+                        WHEN \'RESOLVED\' THEN 3
+                        WHEN \'DISMISSED\' THEN 4
+                        ELSE 5 END = :last_priority
                     AND created_at < :last_created_at
                 )
                 OR (
-                    CASE status 
-                        WHEN \'OPEN\' THEN 1 
-                        WHEN \'IN_REVIEW\' THEN 2 
-                        WHEN \'RESOLVED\' THEN 3 
-                        WHEN \'DISMISSED\' THEN 4 
-                        ELSE 5 END = :last_priority 
-                    AND created_at = :last_created_at 
+                    CASE status
+                        WHEN \'OPEN\' THEN 1
+                        WHEN \'IN_REVIEW\' THEN 2
+                        WHEN \'RESOLVED\' THEN 3
+                        WHEN \'DISMISSED\' THEN 4
+                        ELSE 5 END = :last_priority
+                    AND created_at = :last_created_at
                     AND id < :last_id
                 )
             )';
@@ -82,14 +87,14 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
 
         // Deterministic order: status priority (OPEN, IN_REVIEW, RESOLVED, DISMISSED), creation timestamp, unique ID
         $rows = $this->connection->fetchAllAssociative(
-            "SELECT * FROM content_reports {$whereSql} 
-             ORDER BY CASE status 
-                WHEN 'OPEN' THEN 1 
-                WHEN 'IN_REVIEW' THEN 2 
-                WHEN 'RESOLVED' THEN 3 
-                WHEN 'DISMISSED' THEN 4 
-                ELSE 5 END ASC, 
-             created_at DESC, id DESC 
+            "SELECT * FROM content_reports {$whereSql}
+             ORDER BY CASE status
+                WHEN 'OPEN' THEN 1
+                WHEN 'IN_REVIEW' THEN 2
+                WHEN 'RESOLVED' THEN 3
+                WHEN 'DISMISSED' THEN 4
+                ELSE 5 END ASC,
+             created_at DESC, id DESC
              LIMIT :limit",
             $params,
             [

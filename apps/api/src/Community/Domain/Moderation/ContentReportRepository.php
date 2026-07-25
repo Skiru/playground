@@ -10,7 +10,7 @@ interface ContentReportRepository
 {
     public function findById(Uuid $id): ?ContentReport;
 
-    public function findOpenByReporterAndTarget(Uuid $reporterId, Uuid $targetId, TargetType $targetType): ?ContentReport;
+    public function findActiveByReporterAndTarget(Uuid $reporterId, Uuid $targetId, TargetType $targetType): ?ContentReport;
 
     /** @return list<ContentReport> */
     public function findOpenReportsForTarget(Uuid $targetId, TargetType $targetType): array;

@@ -36,7 +36,12 @@ final class ListCategoryThreads
         $cursorLastActivityAt = null;
 
         if (null !== $cursorStr && '' !== $cursorStr) {
-            $decoded = CursorCodec::decode($cursorStr, ['id', 'pinnedAt', 'lastActivityAt', 'categorySlug'], ['categorySlug' => $slug]);
+            $decoded = CursorCodec::decode($cursorStr, [
+                'id' => CursorCodec::uuidField(),
+                'pinnedAt' => CursorCodec::timestampField(nullable: true),
+                'lastActivityAt' => CursorCodec::timestampField(),
+                'categorySlug' => CursorCodec::stringField(expected: $slug, hasExpected: true),
+            ]);
             \assert(null !== $decoded);
             $cursorId = (string) $decoded['id'];
             $cursorPinnedAt = null === $decoded['pinnedAt'] ? null : new \DateTimeImmutable((string) $decoded['pinnedAt']);

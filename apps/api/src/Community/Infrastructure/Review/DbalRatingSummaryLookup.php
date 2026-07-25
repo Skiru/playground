@@ -17,7 +17,7 @@ final readonly class DbalRatingSummaryLookup implements RatingSummaryLookup
     public function getSummary(Uuid $placeId): array
     {
         $row = $this->connection->fetchAssociative(
-            "SELECT 
+            "SELECT
                 COALESCE(AVG(rating), 0.0) as average_rating,
                 COUNT(*) as total_reviews,
                 COALESCE(SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END), 0) as r1,
@@ -25,7 +25,7 @@ final readonly class DbalRatingSummaryLookup implements RatingSummaryLookup
                 COALESCE(SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END), 0) as r3,
                 COALESCE(SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END), 0) as r4,
                 COALESCE(SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END), 0) as r5
-            FROM reviews 
+            FROM reviews
             WHERE place_id = :place_id AND status = 'PUBLISHED'",
             ['place_id' => $placeId->toRfc4122()]
         );

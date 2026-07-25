@@ -62,7 +62,7 @@ final class DbalModerationActionRepository implements ModerationActionRepository
         $correlationId = $record->correlationId();
 
         $this->connection->executeStatement(
-            'INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status, report_id, correlation_id) 
+            'INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status, report_id, correlation_id)
              VALUES (:id, :moderator_id, :target_type, :target_id, :action, :reason, :created_at, :previous_status, :resulting_status, :report_id, :correlation_id)',
             [
                 'id' => $id,

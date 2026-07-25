@@ -30,35 +30,6 @@ final readonly class DbalPlaceCommentRepository implements PlaceCommentRepositor
         return $this->reconstitute($row);
     }
 
-    public function findByPlaceId(Uuid $placeId, int $page, int $pageSize): array
-    {
-        $offset = ($page - 1) * $pageSize;
-        $rows = $this->connection->fetchAllAssociative(
-            'SELECT * FROM place_comments 
-             WHERE place_id = :place_id AND status IN (\'PUBLISHED\', \'HIDDEN\', \'DELETED_BY_AUTHOR\') 
-             ORDER BY created_at ASC LIMIT :limit OFFSET :offset',
-            [
-                'place_id' => $placeId->toRfc4122(),
-                'limit' => $pageSize,
-                'offset' => $offset,
-            ],
-            [
-                'limit' => \Doctrine\DBAL\ParameterType::INTEGER,
-                'offset' => \Doctrine\DBAL\ParameterType::INTEGER,
-            ]
-        );
-
-        return array_map([$this, 'reconstitute'], $rows);
-    }
-
-    public function countByPlaceId(Uuid $placeId): int
-    {
-        return (int) $this->connection->fetchOne(
-            'SELECT COUNT(*) FROM place_comments WHERE place_id = :place_id AND status IN (\'PUBLISHED\', \'HIDDEN\', \'DELETED_BY_AUTHOR\')',
-            ['place_id' => $placeId->toRfc4122()]
-        );
-    }
-
     public function save(PlaceComment $comment): void
     {
         $id = $comment->id()->toRfc4122();
@@ -78,7 +49,7 @@ final readonly class DbalPlaceCommentRepository implements PlaceCommentRepositor
 
         if ($exists) {
             $affected = $this->connection->executeStatement(
-                'UPDATE place_comments SET 
+                'UPDATE place_comments SET
                     body = :body,
                     status = :status,
                     updated_at = :updated_at,
@@ -100,7 +71,7 @@ final readonly class DbalPlaceCommentRepository implements PlaceCommentRepositor
             $comment->advanceVersion();
         } else {
             $this->connection->executeStatement(
-                'INSERT INTO place_comments (id, place_id, author_id, parent_id, body, status, created_at, updated_at, version) 
+                'INSERT INTO place_comments (id, place_id, author_id, parent_id, body, status, created_at, updated_at, version)
                  VALUES (:id, :place_id, :author_id, :parent_id, :body, :status, :created_at, :updated_at, :version)',
                 [
                     'id' => $id,

@@ -203,6 +203,7 @@ final class ForumAndModerationSecurityTest extends WebTestCase
         self::assertResponseIsSuccessful();
 
         // Moderator hides Alice's thread
+        $csrfHeaders['HTTP_IDEMPOTENCY_KEY'] = Uuid::v7()->toRfc4122();
         $client->request('POST', '/api/v1/moderation/action', [], [], $csrfHeaders, json_encode([
             'reportId' => $threadReportId,
             'action' => 'HIDE',

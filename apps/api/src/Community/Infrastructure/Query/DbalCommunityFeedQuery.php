@@ -25,8 +25,13 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
         if (null !== $cursorStr && '' !== $cursorStr) {
             $cursor = CursorCodec::decode(
                 $cursorStr,
-                ['activityAt', 'id', 'type', 'cityId', 'categoryId'],
-                ['type' => $typeFilter, 'cityId' => $cityIdFilter, 'categoryId' => $categoryIdFilter],
+                [
+                    'activityAt' => CursorCodec::timestampField(),
+                    'id' => CursorCodec::uuidField(),
+                    'type' => CursorCodec::enumField(['forum_thread', 'forum_post', 'review', 'place_comment'], nullable: true, expected: $typeFilter, hasExpected: true),
+                    'cityId' => CursorCodec::uuidField(nullable: true, expected: $cityIdFilter, hasExpected: true),
+                    'categoryId' => CursorCodec::uuidField(nullable: true, expected: $categoryIdFilter, hasExpected: true),
+                ],
             );
         }
 
@@ -35,8 +40,8 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
 
         // 1. Forum Threads
         if (null === $typeFilter || 'forum_thread' === $typeFilter) {
-            $where = ['t.status = \'PUBLISHED\'', 'c.active = true'];
-            $joins = ' JOIN forum_categories c ON t.category_id = c.id';
+            $where = ['t.status = \'PUBLISHED\'', 'ip.status = \'PUBLISHED\'', 'c.active = true'];
+            $joins = ' JOIN forum_categories c ON t.category_id = c.id JOIN forum_posts ip ON ip.thread_id = t.id AND ip.is_initial = true';
             if (null !== $cityIdFilter) {
                 $where[] = 'c.city_id = :city_id';
                 $params['city_id'] = $cityIdFilter;
@@ -47,7 +52,7 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
             }
 
             $whereSql = implode(' AND ', $where);
-            $subqueries[] = "SELECT 
+            $subqueries[] = "SELECT
                 'forum_thread' as type,
                 t.id as id,
                 t.created_at as activity_at,
@@ -62,8 +67,8 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
 
         // 2. Forum Posts
         if (null === $typeFilter || 'forum_post' === $typeFilter) {
-            $where = ['p.status = \'PUBLISHED\'', 't.status = \'PUBLISHED\'', 'c.active = true'];
-            $joins = ' JOIN forum_threads t ON p.thread_id = t.id JOIN forum_categories c ON t.category_id = c.id';
+            $where = ['p.status = \'PUBLISHED\'', 'p.is_initial = false', 't.status = \'PUBLISHED\'', 'ip.status = \'PUBLISHED\'', 'c.active = true'];
+            $joins = ' JOIN forum_threads t ON p.thread_id = t.id JOIN forum_posts ip ON ip.thread_id = t.id AND ip.is_initial = true JOIN forum_categories c ON t.category_id = c.id';
             if (null !== $cityIdFilter) {
                 $where[] = 'c.city_id = :city_id';
                 $params['city_id'] = $cityIdFilter;
@@ -74,7 +79,7 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
             }
 
             $whereSql = implode(' AND ', $where);
-            $subqueries[] = "SELECT 
+            $subqueries[] = "SELECT
                 'forum_post' as type,
                 p.id as id,
                 p.created_at as activity_at,
@@ -98,7 +103,7 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                 }
 
                 $whereSql = implode(' AND ', $where);
-                $subqueries[] = "SELECT 
+                $subqueries[] = "SELECT
                     'review' as type,
                     r.id as id,
                     r.created_at as activity_at,
@@ -123,7 +128,7 @@ final readonly class DbalCommunityFeedQuery implements CommunityFeedQuery
                 }
 
                 $whereSql = implode(' AND ', $where);
-                $subqueries[] = "SELECT 
+                $subqueries[] = "SELECT
                     'place_comment' as type,
                     pc.id as id,
                     pc.created_at as activity_at,

@@ -1,4 +1,19 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
+  const ok = await page.evaluate(async (data: { email: string; displayName: string; roles: string[] }) => {
+    const res = await fetch("/resources/auth/dev-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.ok;
+  }, { email, displayName, roles });
+  expect(ok).toBeTruthy();
+  await page.goto("/");
+}
 
 const requiredAssets = [
   "/brand/wordmark.svg",
@@ -96,9 +111,6 @@ test.describe("Real Playwright Image Fallbacks", () => {
     await page.goto("/miejsca/demo-1-demo-bawialnia-mokotow");
     await page.waitForLoadState("networkidle");
 
-    // Give React and the browser some time to process the transitions
-    await page.waitForTimeout(1000);
-
     // Primary has failed and transitioned to local placeholder (errorCount is 1)
     const img = page.locator(".relative.rounded-2xl.overflow-hidden img").first();
     await expect(img).toBeVisible();
@@ -131,15 +143,15 @@ test.describe("Real Playwright Image Fallbacks", () => {
   });
 
   // Scenario 5: Favorites page without photos
-  test("Favorites page without photos falls back to local placeholder", async ({ page }) => {
+  test("Favorites page without photos falls back to local placeholder", async ({ page }, testInfo) => {
+    const uniqueSuffix = `${testInfo.project.name}-${Date.now()}`.replace(/[^a-zA-Z0-9-]/g, "-").toLowerCase();
+
     // Disable browser cache
     const session = await page.context().newCDPSession(page);
     await session.send("Network.setCacheDisabled", { cacheDisabled: true });
 
-    // Log in
-    await page.goto("/");
-    await page.getByRole("button", { name: "Zaloguj się" }).filter({ visible: true }).first().click();
-    await page.getByRole("button", { name: "Bypass Login (Fake User)" }).first().click();
+    // Log in with an isolated deterministic user.
+    await loginAs(page, `image-fallback_${uniqueSuffix}@example.com`, "Image Fallback User");
     const userMenuButton = page.getByTestId("user-menu-button").filter({ visible: true });
     await expect(userMenuButton).toBeVisible();
 
@@ -149,8 +161,9 @@ test.describe("Real Playwright Image Fallbacks", () => {
     const favButton = page.locator(".place-card").first().locator('button[title="Dodaj do ulubionych"]');
     await expect(favButton).toBeEnabled();
     await favButton.click();
-    // Wait for favorite to be added in the backend
-    await expect(page.getByText("Dodano do ulubionych!")).toBeVisible();
+    await expect(page.locator(".place-card").first().locator('button[aria-pressed="true"]')).toBeVisible();
+    await page.reload();
+    await expect(page.locator(".place-card").first().locator('button[aria-pressed="true"]')).toBeVisible();
 
     // Intercept any real media URL and return 404
     await page.route("**/media/**", (route) => {

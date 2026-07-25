@@ -729,7 +729,11 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'moderateContent',
                 tags: ['Moderation'],
-                parameters: [self::csrfParameter(), new Parameter('X-Correlation-ID', 'header', 'UUID idempotency and audit correlation key.', false, schema: ['type' => 'string', 'format' => 'uuid', 'maxLength' => 36])],
+                parameters: [
+                    self::csrfParameter(),
+                    new Parameter('Idempotency-Key', 'header', 'UUID idempotency key for exact moderation request retries.', true, schema: ['type' => 'string', 'format' => 'uuid', 'maxLength' => 36]),
+                    new Parameter('X-Correlation-ID', 'header', 'Optional request correlation identifier for observability.', false, schema: ['type' => 'string', 'format' => 'uuid', 'maxLength' => 36]),
+                ],
                 requestBody: new RequestBody('Moderation action details', new \ArrayObject(['application/json' => ['schema' => [
                     'type' => 'object',
                     'additionalProperties' => false,
@@ -877,12 +881,13 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     /** @return array<string, mixed> */
     private static function postSchema(): array
     {
-        return ['type' => 'object', 'required' => ['id', 'threadId', 'authorId', 'parentId', 'body', 'status', 'createdAt', 'updatedAt', 'version'], 'properties' => [
+        return ['type' => 'object', 'required' => ['id', 'threadId', 'authorId', 'parentId', 'body', 'status', 'createdAt', 'updatedAt', 'isInitial', 'version'], 'properties' => [
             'id' => ['type' => 'string', 'format' => 'uuid'],
             'threadId' => ['type' => 'string', 'format' => 'uuid'],
             'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
             'author' => self::publicAuthorSchema(),
             'parentId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'isInitial' => ['type' => 'boolean'],
             'body' => ['type' => 'string'],
             'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
             'createdAt' => ['type' => 'string', 'format' => 'date-time'],
@@ -966,16 +971,17 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     /** @return array<string, mixed> */
     private static function moderationCaseSchema(): array
     {
-        return ['type' => 'object', 'required' => ['id', 'reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt', 'claimedBy', 'claimedAt'], 'properties' => [
+        return ['type' => 'object', 'required' => ['id', 'reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt', 'claimedBy', 'claimedAt', 'allowedActions'], 'properties' => [
             ...self::reportSchema()['properties'],
             'reporterId' => ['type' => 'string', 'format' => 'uuid'],
             'claimedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
             'claimedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
             'resolvedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
             'resolvedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'allowedActions' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']]],
             'targetPreview' => ['oneOf' => [
                 ['type' => 'null'],
-                ['type' => 'object', 'required' => ['title', 'body', 'status'], 'properties' => ['title' => ['type' => 'string'], 'body' => ['type' => 'string'], 'status' => ['type' => 'string'], 'rating' => ['type' => 'integer']]],
+                ['type' => 'object', 'required' => ['title', 'body', 'status'], 'properties' => ['title' => ['type' => 'string'], 'body' => ['type' => 'string'], 'status' => ['type' => 'string'], 'rating' => ['type' => 'integer'], 'threadId' => ['type' => 'string', 'format' => 'uuid'], 'isInitial' => ['type' => 'boolean']]],
             ]],
         ]];
     }

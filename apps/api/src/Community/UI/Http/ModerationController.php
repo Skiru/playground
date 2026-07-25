@@ -151,12 +151,17 @@ final class ModerationController
         }
 
         $correlationId = $request->attributes->get(CorrelationId::ATTRIBUTE);
+        $idempotencyKey = $request->headers->get('Idempotency-Key');
+        if (!\is_string($idempotencyKey) || !Uuid::isValid($idempotencyKey)) {
+            throw new ApiException(400, 'Invalid Idempotency-Key header.', 'VALIDATION_FAILURE');
+        }
 
         $this->moderateContentUseCase->execute(
             $user->getId(),
             $reportUuid,
             ModerationActionType::from((string) $data['action']),
             (string) $data['reason'],
+            $idempotencyKey,
             \is_string($correlationId) ? $correlationId : null
         );
 

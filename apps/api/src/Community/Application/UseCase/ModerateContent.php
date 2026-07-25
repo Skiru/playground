@@ -40,31 +40,77 @@ final class ModerateContent
         Uuid $reportId,
         ModerationActionType $action,
         string $reason,
+        string $idempotencyKey,
         ?string $correlationId = null,
     ): void {
         $trimmedReason = trim($reason);
-        if (empty($trimmedReason)) {
+        if ('' === $trimmedReason) {
             throw new ApiException(400, 'Moderation reason cannot be empty.', 'VALIDATION_FAILURE');
         }
 
+        $requestFingerprint = hash('sha256', json_encode([
+            'reportId' => $reportId->toRfc4122(),
+            'action' => $action->value,
+            'reason' => $trimmedReason,
+        ], \JSON_THROW_ON_ERROR));
+
         try {
-            $this->transactionManager->transactional(function () use ($moderatorId, $reportId, $action, $trimmedReason, $correlationId): void {
+            $this->transactionManager->transactional(function () use ($moderatorId, $reportId, $action, $trimmedReason, $idempotencyKey, $requestFingerprint, $correlationId): void {
                 $now = $this->clock->now();
 
+                $insertedKey = $this->connection->fetchOne(
+                    'INSERT INTO moderation_idempotency_keys (idempotency_key, moderator_id, endpoint, report_id, request_fingerprint, outcome_status, outcome_code, created_at)
+                     VALUES (:idempotency_key, :moderator_id, :endpoint, :report_id, :request_fingerprint, :outcome_status, :outcome_code, :created_at)
+                     ON CONFLICT (idempotency_key) DO NOTHING
+                     RETURNING idempotency_key',
+                    [
+                        'idempotency_key' => $idempotencyKey,
+                        'moderator_id' => $moderatorId->toRfc4122(),
+                        'endpoint' => 'POST:/api/v1/moderation/action',
+                        'report_id' => $reportId->toRfc4122(),
+                        'request_fingerprint' => $requestFingerprint,
+                        'outcome_status' => 0,
+                        'outcome_code' => 'PENDING',
+                        'created_at' => $now->format('Y-m-d H:i:s'),
+                    ],
+                );
+
+                if (false === $insertedKey) {
+                    $existingKey = $this->connection->fetchAssociative(
+                        'SELECT moderator_id, endpoint, report_id, request_fingerprint, outcome_status FROM moderation_idempotency_keys WHERE idempotency_key = :idempotency_key',
+                        ['idempotency_key' => $idempotencyKey],
+                    );
+
+                    if (false === $existingKey) {
+                        throw new ApiException(409, 'Idempotency key is already in use.', 'IDEMPOTENCY_KEY_REUSE');
+                    }
+
+                    $isReplay = $existingKey['moderator_id'] === $moderatorId->toRfc4122()
+                        && 'POST:/api/v1/moderation/action' === $existingKey['endpoint']
+                        && $existingKey['report_id'] === $reportId->toRfc4122()
+                        && $existingKey['request_fingerprint'] === $requestFingerprint;
+
+                    if ($isReplay && 200 === (int) $existingKey['outcome_status']) {
+                        return;
+                    }
+
+                    if ($isReplay) {
+                        throw new ApiException(409, 'Idempotency key is already being processed.', 'IDEMPOTENCY_KEY_REUSE');
+                    }
+
+                    throw new ApiException(409, 'Idempotency key cannot be reused with a different moderation request.', 'IDEMPOTENCY_KEY_REUSE');
+                }
+
                 if (null !== $correlationId) {
-                    $existingReportId = $this->connection->fetchOne(
-                        'SELECT report_id FROM moderation_actions WHERE correlation_id = :correlation_id',
+                    $existingCorrelation = $this->connection->fetchOne(
+                        'SELECT id FROM moderation_actions WHERE correlation_id = :correlation_id LIMIT 1',
                         ['correlation_id' => $correlationId],
                     );
-                    if (false !== $existingReportId) {
-                        if ($reportId->toRfc4122() === (string) $existingReportId) {
-                            return;
-                        }
-                        throw new ApiException(409, 'Idempotency key was already used for another moderation case.', 'MODERATION_CONFLICT');
+                    if (false !== $existingCorrelation) {
+                        $correlationId = null;
                     }
                 }
 
-                // 1. Pessimistic lock on the report
                 $reportRow = $this->connection->fetchAssociative(
                     'SELECT status, target_id, target_type, claimed_by FROM content_reports WHERE id = :id FOR UPDATE',
                     ['id' => $reportId->toRfc4122()]
@@ -88,14 +134,12 @@ final class ModerateContent
                 $previousStatus = null;
                 $resultingStatus = '';
 
-                // 2. Pessimistic lock on the target and change state
                 if (ModerationActionType::DISMISS_REPORT === $action || ModerationActionType::RESOLVE_REPORT === $action) {
                     $previousStatus = $this->lockAndReadTargetStatus($targetType, $targetId);
                     $resultingStatus = $previousStatus;
                 } else {
                     switch ($targetType) {
                         case TargetType::REVIEW:
-                            // Lock review row
                             $this->connection->fetchAssociative(
                                 'SELECT id FROM reviews WHERE id = :id FOR UPDATE',
                                 ['id' => $targetId->toRfc4122()]
@@ -122,7 +166,6 @@ final class ModerateContent
                             break;
 
                         case TargetType::PLACE_COMMENT:
-                            // Lock comment row
                             $this->connection->fetchAssociative(
                                 'SELECT id FROM place_comments WHERE id = :id FOR UPDATE',
                                 ['id' => $targetId->toRfc4122()]
@@ -149,7 +192,6 @@ final class ModerateContent
                             break;
 
                         case TargetType::FORUM_THREAD:
-                            // Lock thread row
                             $this->connection->fetchAssociative(
                                 'SELECT id FROM forum_threads WHERE id = :id FOR UPDATE',
                                 ['id' => $targetId->toRfc4122()]
@@ -190,7 +232,6 @@ final class ModerateContent
                             break;
 
                         case TargetType::FORUM_POST:
-                            // Lock post row
                             $this->connection->fetchAssociative(
                                 'SELECT id FROM forum_posts WHERE id = :id FOR UPDATE',
                                 ['id' => $targetId->toRfc4122()]
@@ -199,6 +240,9 @@ final class ModerateContent
                             $target = $this->postRepository->findById($targetId);
                             if (null === $target) {
                                 throw new ApiException(404, 'Post target not found.', 'MISSING_PUBLIC_RESOURCE');
+                            }
+                            if ($target->isInitial()) {
+                                throw new ApiException(409, 'Initial forum posts must be moderated through the thread target.', 'INITIAL_POST_REQUIRES_THREAD_TARGET');
                             }
                             $previousStatus = $target->status()->value;
 
@@ -218,7 +262,6 @@ final class ModerateContent
                     }
                 }
 
-                // 3. Create immutable audit log record
                 $record = new ModerationActionRecord(
                     Uuid::v7(),
                     $moderatorId,
@@ -234,7 +277,6 @@ final class ModerateContent
                 );
                 $this->moderationActionRepository->save($record);
 
-                // 4. Resolve the selected report
                 $report = $this->reportRepository->findById($reportId);
                 if (null === $report) {
                     throw new ApiException(404, 'Moderation case not found.', 'MISSING_PUBLIC_RESOURCE');
@@ -246,6 +288,13 @@ final class ModerateContent
                     $report->resolve($moderatorId, $now);
                 }
                 $this->reportRepository->save($report);
+
+                $this->connection->update('moderation_idempotency_keys', [
+                    'outcome_status' => 200,
+                    'outcome_code' => 'success',
+                ], [
+                    'idempotency_key' => $idempotencyKey,
+                ]);
             });
         } catch (UniqueConstraintViolationException $e) {
             throw new ApiException(409, 'This action is duplicate or already processed.', 'MODERATION_CONFLICT');

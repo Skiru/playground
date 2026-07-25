@@ -30,6 +30,15 @@ final class DeleteReview
         }
 
         $review->softDelete($this->clock->now());
-        $this->reviewRepository->save($review);
+
+        try {
+            $this->reviewRepository->save($review);
+        } catch (\RuntimeException $e) {
+            if ('CONCURRENCY_ERROR' === $e->getMessage()) {
+                throw new ApiException(409, 'Review has been modified by another process.', 'CONCURRENCY_CONFLICT', '', [], $e);
+            }
+
+            throw $e;
+        }
     }
 }
