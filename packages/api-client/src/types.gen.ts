@@ -1530,6 +1530,9 @@ export type CreateForumPostData = {
      */
     body?: {
         body: string;
+        /**
+         * Optional top-level parent; replying to a reply is rejected with FORUM_REPLY_DEPTH_LIMIT.
+         */
         replyToPostId?: string;
     };
     headers: {
@@ -1770,6 +1773,9 @@ export type ReportContentData = {
      */
     body?: {
         targetId: string;
+        /**
+         * Initial forum posts are canonicalized to their FORUM_THREAD target. Replies remain FORUM_POST.
+         */
         targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
         reason: 'SPAM' | 'HARASSMENT' | 'INAPPROPRIATE' | 'MISINFORMATION' | 'PRIVACY_CONCERN' | 'OTHER';
         details?: string;

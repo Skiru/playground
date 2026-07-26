@@ -34,14 +34,21 @@ final class GetModerationCase
         }
 
         $targetPreview = null;
-        $allowedActions = ['DISMISS_REPORT', 'RESOLVE_REPORT'];
+        $allowedActions = [];
+        if (\in_array($report->status()->value, ['OPEN', 'IN_REVIEW'], true)) {
+            $allowedActions = ['DISMISS_REPORT', 'RESOLVE_REPORT'];
+        }
         $targetId = $report->targetId();
 
         switch ($report->targetType()) {
             case \App\Community\Domain\Moderation\TargetType::REVIEW:
-                $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE'];
                 $review = $this->reviewRepository->findById($targetId);
                 if (null !== $review) {
+                    $allowedActions = [...$allowedActions, ...match ($review->status()->value) {
+                        'PUBLISHED' => ['HIDE', 'REMOVE'],
+                        'HIDDEN' => ['RESTORE'],
+                        default => [],
+                    }];
                     $targetPreview = [
                         'title' => 'Opinia o miejscu',
                         'body' => $review->body(),
@@ -52,9 +59,13 @@ final class GetModerationCase
                 break;
 
             case \App\Community\Domain\Moderation\TargetType::PLACE_COMMENT:
-                $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE'];
                 $comment = $this->commentRepository->findById($targetId);
                 if (null !== $comment) {
+                    $allowedActions = [...$allowedActions, ...match ($comment->status()->value) {
+                        'PUBLISHED' => ['HIDE', 'REMOVE'],
+                        'HIDDEN' => ['RESTORE'],
+                        default => [],
+                    }];
                     $targetPreview = [
                         'title' => 'Komentarz do miejsca',
                         'body' => $comment->body(),
@@ -64,9 +75,17 @@ final class GetModerationCase
                 break;
 
             case \App\Community\Domain\Moderation\TargetType::FORUM_THREAD:
-                $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN'];
                 $thread = $this->threadRepository->findById($targetId);
                 if (null !== $thread) {
+                    $allowedActions = [...$allowedActions, ...match ($thread->status()->value) {
+                        'PUBLISHED' => [
+                            'HIDE', 'REMOVE',
+                            null === $thread->lockedAt() ? 'LOCK' : 'UNLOCK',
+                            null === $thread->pinnedAt() ? 'PIN' : 'UNPIN',
+                        ],
+                        'HIDDEN' => ['RESTORE'],
+                        default => [],
+                    }];
                     $targetPreview = [
                         'title' => 'Wątek na forum',
                         'body' => $thread->title(),
@@ -79,7 +98,11 @@ final class GetModerationCase
                 $post = $this->postRepository->findById($targetId);
                 if (null !== $post) {
                     if (!$post->isInitial()) {
-                        $allowedActions = [...$allowedActions, 'HIDE', 'REMOVE', 'RESTORE'];
+                        $allowedActions = [...$allowedActions, ...match ($post->status()->value) {
+                            'PUBLISHED' => ['HIDE', 'REMOVE'],
+                            'HIDDEN' => ['RESTORE'],
+                            default => [],
+                        }];
                     }
                     $targetPreview = [
                         'title' => 'Post na forum',

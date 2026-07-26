@@ -4852,7 +4852,8 @@
                                     },
                                     "replyToPostId": {
                                         "type": "string",
-                                        "format": "uuid"
+                                        "format": "uuid",
+                                        "description": "Optional top-level parent; replying to a reply is rejected with FORUM_REPLY_DEPTH_LIMIT."
                                     }
                                 }
                             }
@@ -5431,7 +5432,8 @@
                                             "PLACE_COMMENT",
                                             "FORUM_THREAD",
                                             "FORUM_POST"
-                                        ]
+                                        ],
+                                        "description": "Initial forum posts are canonicalized to their FORUM_THREAD target. Replies remain FORUM_POST."
                                     },
                                     "reason": {
                                         "type": "string",

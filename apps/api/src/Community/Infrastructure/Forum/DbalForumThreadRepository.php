@@ -30,6 +30,16 @@ final class DbalForumThreadRepository implements ForumThreadRepository
         return $this->reconstitute($row);
     }
 
+    public function findByIdForUpdate(Uuid $id): ?ForumThread
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT * FROM forum_threads WHERE id = :id FOR UPDATE',
+            ['id' => $id->toRfc4122()]
+        );
+
+        return false === $row ? null : $this->reconstitute($row);
+    }
+
     public function findByCategoryId(Uuid $categoryId, ?string $cursorId, ?\DateTimeImmutable $cursorPinnedAt, ?\DateTimeImmutable $cursorLastActivityAt, int $limit): array
     {
         $sql = 'SELECT t.* FROM forum_threads t

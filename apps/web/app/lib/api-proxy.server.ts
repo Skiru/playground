@@ -1,9 +1,25 @@
 function buildUpstreamUrl(request: Request, apiPath: string): string {
-  const baseUrl = process.env.API_BASE_URL ?? "http://api"
-  const url = new URL(request.url)
-  const query = url.search || ""
+  const configured = new URL(process.env.API_BASE_URL ?? "http://api")
+  if (!['http:', 'https:'].includes(configured.protocol) || configured.username || configured.password) {
+    throw new Error('Invalid API origin configuration')
+  }
 
-  return `${baseUrl}${apiPath}${query}`
+  if (!apiPath.startsWith('/') || apiPath.includes('#') || apiPath.includes('?') || /%(?![0-9a-f]{2})/i.test(apiPath)) {
+    throw new Error('Destination path is not allowed.')
+  }
+  if (/[\\]/.test(apiPath) || /%(?:25|2f|5c|2e)/i.test(apiPath) || apiPath.split('/').includes('..') || apiPath.split('/').includes('.')) {
+    throw new Error('Destination path is not allowed.')
+  }
+
+  const candidate = new URL(apiPath, configured.origin)
+  const normalizedPath = candidate.pathname
+  if (candidate.protocol !== configured.protocol || candidate.host !== configured.host ||
+      !(normalizedPath === '/api/v1' || normalizedPath.startsWith('/api/v1/'))) {
+    throw new Error('Destination path is not allowed.')
+  }
+
+  candidate.search = new URL(request.url).search
+  return candidate.toString()
 }
 
 function shouldForwardHeader(name: string): boolean {
@@ -21,7 +37,10 @@ function shouldForwardHeader(name: string): boolean {
   }
 }
 export async function proxyApiRequest(request: Request, apiPath: string): Promise<Response> {
-  if (!apiPath.startsWith("/api/v1/")) {
+  let upstreamUrl: string
+  try {
+    upstreamUrl = buildUpstreamUrl(request, apiPath)
+  } catch {
     return Response.json({ detail: "Destination path is not allowed." }, { status: 403 })
   }
 
@@ -42,7 +61,7 @@ export async function proxyApiRequest(request: Request, apiPath: string): Promis
     init.body = await request.arrayBuffer()
   }
 
-  const upstream = await fetch(buildUpstreamUrl(request, apiPath), init)
+  const upstream = await fetch(upstreamUrl, init)
   const responseHeaders = new Headers()
 
   const contentType = upstream.headers.get("content-type")

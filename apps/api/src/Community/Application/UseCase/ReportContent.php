@@ -89,7 +89,14 @@ final class ReportContent
                 if (null === $category || !$category->isActive()) {
                     throw new ApiException(404, 'Target not found.', 'MISSING_PUBLIC_RESOURCE');
                 }
-                $targetAuthorId = $target->authorId();
+                if ($target->isInitial()) {
+                    // The initial post is the thread body and must share its report lifecycle.
+                    $targetType = TargetType::FORUM_THREAD;
+                    $targetId = $thread->id();
+                    $targetAuthorId = $thread->authorId();
+                } else {
+                    $targetAuthorId = $target->authorId();
+                }
                 break;
         }
 

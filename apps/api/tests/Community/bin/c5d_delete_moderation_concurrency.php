@@ -69,8 +69,23 @@ function pgOne(PgSql\Connection $connection, string $sql, array $params = []): s
     return (string) $row[0];
 }
 
+function pgRow(PgSql\Connection $connection, string $sql, array $params = []): array
+{
+    $result = pg_query_params($connection, $sql, $params);
+    if (false === $result) {
+        throw new RuntimeException(pg_last_error($connection));
+    }
+    $row = pg_fetch_assoc($result);
+    if (false === $row) {
+        throw new RuntimeException('Expected one database row.');
+    }
+
+    return $row;
+}
+
 function apiRequest(string $method, string $path, ?array $body = null, ?string $cookieFile = null, array $headers = [], string $baseUrl = 'http://127.0.0.1'): array
 {
+    $startedAt = microtime(true);
     $ch = curl_init();
     $httpHeaders = [];
     foreach ($headers as $name => $value) {
@@ -117,6 +132,7 @@ function apiRequest(string $method, string $path, ?array $body = null, ?string $
 
     return [
         'status' => $status,
+        'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
         'body' => $bodyText,
         'json' => is_array($json) ? $json : null,
     ];
@@ -485,18 +501,187 @@ function scenarioD(PgSql\Connection $connection, string $categoryId): array
     return ['first' => $firstResult, 'second' => $secondResult, 'reportId' => $reportId];
 }
 
+function scenarioE(PgSql\Connection $connection, string $categoryId): array
+{
+    $suffix = (string) random_int(10000, 99999);
+    $author = loginDev('c5d-post-author-'.$suffix.'@example.com', 'Post Author '.$suffix);
+    $firstReplyAuthor = loginDev('c5d-post-replier-a-'.$suffix.'@example.com', 'Post Replier A '.$suffix);
+    $secondReplyAuthor = loginDev('c5d-post-replier-b-'.$suffix.'@example.com', 'Post Replier B '.$suffix);
+    $thread = createThread($author, $categoryId, 'C5D simultaneous posts '.$suffix, 'Concurrent normal post thread '.$suffix);
+
+    $firstWorker = startWorker([
+        'baseUrl' => 'http://127.0.0.1',
+        'method' => 'POST',
+        'path' => '/api/v1/forum/threads/'.$thread['id'].'/posts',
+        'body' => ['body' => 'Concurrent post A '.$suffix, 'replyToPostId' => $thread['firstPost']['id']],
+        'cookieFile' => $firstReplyAuthor['cookieFile'],
+        'headers' => authHeaders($firstReplyAuthor),
+    ]);
+    $secondWorker = startWorker([
+        'baseUrl' => 'http://127.0.0.1',
+        'method' => 'POST',
+        'path' => '/api/v1/forum/threads/'.$thread['id'].'/posts',
+        'body' => ['body' => 'Concurrent post B '.$suffix, 'replyToPostId' => $thread['firstPost']['id']],
+        'cookieFile' => $secondReplyAuthor['cookieFile'],
+        'headers' => authHeaders($secondReplyAuthor),
+    ]);
+
+    $firstResult = finishWorker($firstWorker);
+    $secondResult = finishWorker($secondWorker);
+    $statuses = [$firstResult['status'], $secondResult['status']];
+    sort($statuses);
+    assertTrue(in_array($statuses, [[201, 201], [201, 409]], true), 'Concurrent normal posts must produce 201/201 or controlled 201/409, got '.json_encode($statuses, \JSON_THROW_ON_ERROR));
+    assertTrue(!in_array(500, [$firstResult['status'], $secondResult['status']], true), 'Concurrent normal post leaked HTTP 500.');
+
+    $postCount = (int) pgOne($connection, 'SELECT COUNT(*) FROM forum_posts WHERE thread_id = $1 AND is_initial = false AND status = \'PUBLISHED\'', [(string) $thread['id']]);
+    assertTrue($postCount === ($statuses === [201, 201] ? 2 : 1), 'Unexpected persisted post count after concurrent post race.');
+    $lastActivity = pgOne($connection, 'SELECT last_activity_at FROM forum_threads WHERE id = $1', [(string) $thread['id']]);
+    assertTrue('' !== $lastActivity, 'Thread activity timestamp was lost after concurrent post race.');
+
+    return ['first' => $firstResult, 'second' => $secondResult, 'publishedReplies' => $postCount, 'lastActivityAt' => $lastActivity];
+}
+
+function postRaceSetup(string $suffix, string $categoryId, string $action): array
+{
+    $author = loginDev('c5d-post-race-author-'.$action.'-'.$suffix.'@example.com', 'Post Race Author '.$action);
+    $replyAuthor = loginDev('c5d-post-race-replier-'.$action.'-'.$suffix.'@example.com', 'Post Race Replier '.$action);
+    $reporter = loginDev('c5d-post-race-reporter-'.$action.'-'.$suffix.'@example.com', 'Post Race Reporter '.$action);
+    $moderator = loginDev('c5d-post-race-moderator-'.$action.'-'.$suffix.'@example.com', 'Post Race Moderator '.$action, ['ROLE_MODERATOR']);
+    $thread = createThread($author, $categoryId, 'C5D POST race '.$action.' '.$suffix, 'Sanitized POST race thread '.$action.' '.$suffix);
+    $reportId = reportThread($reporter, (string) $thread['id']);
+    claimCase($moderator, $reportId);
+
+    return compact('author', 'replyAuthor', 'moderator', 'thread', 'reportId');
+}
+
+function postRaceRequest(array $auth, string $threadId, string $body): array
+{
+    return ['baseUrl' => 'http://127.0.0.1', 'method' => 'POST', 'path' => '/api/v1/forum/threads/'.$threadId.'/posts', 'body' => ['body' => $body], 'cookieFile' => $auth['cookieFile'], 'headers' => authHeaders($auth)];
+}
+
+function moderationRaceRequest(array $moderator, string $reportId, string $action): array
+{
+    return ['baseUrl' => 'http://127.0.0.1', 'method' => 'POST', 'path' => '/api/v1/moderation/action', 'body' => ['reportId' => $reportId, 'action' => $action, 'reason' => 'C5D deterministic POST race '.$action], 'cookieFile' => $moderator['cookieFile'], 'headers' => ['Content-Type' => 'application/json', 'X-CSRF-Token' => $moderator['csrfToken'], 'Idempotency-Key' => uuidV4()]];
+}
+
+function assertPostRaceResponse(array $result, array $allowedStatuses): void
+{
+    assertTrue(in_array($result['status'], $allowedStatuses, true), 'Unexpected POST race response: '.json_encode($result, \JSON_THROW_ON_ERROR));
+    assertTrue(500 !== $result['status'], 'POST race leaked HTTP 500.');
+    $body = (string) ($result['body'] ?? '');
+    assertTrue(!str_contains($body, 'RuntimeException') && !str_contains($body, 'LogicException') && !str_contains($body, 'DBAL'), 'POST race leaked an internal exception.');
+}
+
+function postRaceState(PgSql\Connection $connection, array $thread, string $categorySlug, string $replyBody, bool $replyMustBeAbsent, int $expectedAuditCount): array
+{
+    $threadId = (string) $thread['id'];
+    $threadState = pgRow($connection, 'SELECT status, locked_at, version FROM forum_threads WHERE id = $1', [$threadId]);
+    $postCount = (int) pgOne($connection, 'SELECT COUNT(*) FROM forum_posts WHERE thread_id = $1 AND is_initial = false', [$threadId]);
+    $publishedReplyCount = (int) pgOne($connection, "SELECT COUNT(*) FROM forum_posts WHERE thread_id = $1 AND is_initial = false AND status = 'PUBLISHED'", [$threadId]);
+    $auditCount = (int) pgOne($connection, 'SELECT COUNT(*) FROM moderation_actions WHERE target_id = $1', [$threadId]);
+    $public = [];
+    foreach (['detail' => '/api/v1/forum/threads/'.$threadId, 'posts' => '/api/v1/forum/threads/'.$threadId.'/posts', 'listing' => '/api/v1/forum/categories/'.$categorySlug.'/threads?limit=50', 'feed' => '/api/v1/community/feed?limit=50'] as $name => $path) {
+        $response = apiRequest('GET', $path);
+        assertTrue(500 !== $response['status'], 'Public '.$name.' read leaked HTTP 500.');
+        $public[$name] = ['status' => $response['status'], 'containsRaceBody' => str_contains($response['body'], $replyBody)];
+    }
+    assertTrue($expectedAuditCount === $auditCount, 'Moderation audit record count was not deterministic.');
+    if ($replyMustBeAbsent) {
+        foreach ($public as $read) {
+            assertTrue(false === $read['containsRaceBody'], 'Race content leaked through public output.');
+        }
+    }
+
+    return ['thread' => $threadState, 'postCount' => $postCount, 'publishedReplyCount' => $publishedReplyCount, 'moderationAuditCount' => $auditCount, 'public' => $public];
+}
+
+function scenarioPostVsLock(PgSql\Connection $connection, string $categoryId, string $categorySlug): array
+{
+    $setup = postRaceSetup((string) random_int(10000, 99999), $categoryId, 'LOCK');
+    $threadId = (string) $setup['thread']['id'];
+    beginLock($connection, 'SELECT id FROM forum_threads WHERE id = $1 FOR UPDATE', [$threadId]);
+    $post = startWorker(postRaceRequest($setup['replyAuthor'], $threadId, 'C5D POST race LOCK reply'));
+    $moderation = startWorker(moderationRaceRequest($setup['moderator'], (string) $setup['reportId'], 'LOCK'));
+    releaseLock($connection);
+    $postResult = finishWorker($post);
+    $moderationResult = finishWorker($moderation);
+    assertPostRaceResponse($postResult, [201, 409]);
+    assertPostRaceResponse($moderationResult, [200]);
+    $state = postRaceState($connection, $setup['thread'], $categorySlug, 'C5D POST race LOCK reply', false, 1);
+    assertTrue('PUBLISHED' === $state['thread']['status'] && null !== $state['thread']['locked_at'], 'Lock race final thread state is invalid.');
+
+    return ['name' => 'POST_CREATE_VS_THREAD_LOCK', 'post' => $postResult, 'moderation' => $moderationResult, 'final' => $state];
+}
+
+function scenarioPostVsRemove(PgSql\Connection $connection, string $categoryId, string $categorySlug): array
+{
+    $setup = postRaceSetup((string) random_int(10000, 99999), $categoryId, 'REMOVE');
+    $threadId = (string) $setup['thread']['id'];
+    beginLock($connection, 'SELECT id FROM forum_threads WHERE id = $1 FOR UPDATE', [$threadId]);
+    $post = startWorker(postRaceRequest($setup['replyAuthor'], $threadId, 'C5D POST race REMOVE reply'));
+    $moderation = startWorker(moderationRaceRequest($setup['moderator'], (string) $setup['reportId'], 'REMOVE'));
+    releaseLock($connection);
+    $postResult = finishWorker($post);
+    $moderationResult = finishWorker($moderation);
+    assertPostRaceResponse($postResult, [201, 409]);
+    assertPostRaceResponse($moderationResult, [200]);
+    $state = postRaceState($connection, $setup['thread'], $categorySlug, 'C5D POST race REMOVE reply', true, 1);
+    assertTrue('REMOVED_BY_MODERATOR' === $state['thread']['status'], 'Remove race final thread state is invalid.');
+
+    return ['name' => 'POST_CREATE_VS_MODERATOR_REMOVE', 'post' => $postResult, 'moderation' => $moderationResult, 'final' => $state];
+}
+
+function scenarioPostVsAuthorDelete(PgSql\Connection $connection, string $categoryId, string $categorySlug): array
+{
+    $setup = postRaceSetup((string) random_int(10000, 99999), $categoryId, 'DELETE');
+    $threadId = (string) $setup['thread']['id'];
+    beginLock($connection, 'SELECT id FROM forum_threads WHERE id = $1 FOR UPDATE', [$threadId]);
+    $post = startWorker(postRaceRequest($setup['replyAuthor'], $threadId, 'C5D POST race DELETE reply'));
+    $delete = startWorker(['baseUrl' => 'http://127.0.0.1', 'method' => 'DELETE', 'path' => '/api/v1/me/forum-threads/'.$threadId, 'body' => null, 'cookieFile' => $setup['author']['cookieFile'], 'headers' => ['X-CSRF-Token' => $setup['author']['csrfToken']]]);
+    releaseLock($connection);
+    $postResult = finishWorker($post);
+    $deleteResult = finishWorker($delete);
+    assertPostRaceResponse($postResult, [201, 404, 409]);
+    assertPostRaceResponse($deleteResult, [204]);
+    $state = postRaceState($connection, $setup['thread'], $categorySlug, 'C5D POST race DELETE reply', false, 0);
+    assertTrue('DELETED_BY_AUTHOR' === $state['thread']['status'], 'Author delete race final thread state is invalid.');
+
+    return ['name' => 'POST_CREATE_VS_AUTHOR_DELETE', 'post' => $postResult, 'delete' => $deleteResult, 'final' => $state];
+}
+
+function sanitizeRaceResult(mixed $value): mixed
+{
+    if (!is_array($value)) {
+        return $value;
+    }
+    if (array_key_exists('status', $value) && array_key_exists('body', $value)) {
+        return ['status' => $value['status'], 'durationMs' => $value['durationMs'] ?? null, 'errorCode' => $value['json']['code'] ?? null, 'transportError' => $value['error'] ?? null];
+    }
+    $result = [];
+    foreach ($value as $key => $item) {
+        $result[$key] = sanitizeRaceResult($item);
+    }
+
+    return $result;
+}
+
 $connection = pgConnection();
 $categoryId = pgOne($connection, 'SELECT id FROM forum_categories WHERE active = true ORDER BY display_order ASC, id ASC LIMIT 1');
 $categorySlug = pgOne($connection, 'SELECT slug FROM forum_categories WHERE id = $1', [$categoryId]);
 
-$results = [
+$results = getenv('C5D_ONLY_POST_RACES') ? [
+    'postVsLock' => scenarioPostVsLock($connection, $categoryId, $categorySlug),
+    'postVsRemove' => scenarioPostVsRemove($connection, $categoryId, $categorySlug),
+    'postVsAuthorDelete' => scenarioPostVsAuthorDelete($connection, $categoryId, $categorySlug),
+] : [
     'scenarioA' => scenarioA($connection, $categoryId, $categorySlug),
     'scenarioB' => scenarioB($connection, $categoryId, $categorySlug),
     'scenarioC' => scenarioC($connection, $categoryId),
     'scenarioD' => scenarioD($connection, $categoryId),
+    'scenarioE' => scenarioE($connection, $categoryId),
 ];
 
 echo json_encode([
     'status' => 'PASS',
-    'results' => $results,
+    'results' => sanitizeRaceResult($results),
 ], \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR).\PHP_EOL;

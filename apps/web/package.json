@@ -9,7 +9,9 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "node scripts/validate-brand-assets.mjs && react-router typegen && tsc",
     "test": "vitest run --config vitest.config.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test --global-timeout=300000",
+    "e2e:desktop": "playwright test --project=chromium-desktop --global-timeout=300000 --reporter=line",
+    "e2e:mobile": "playwright test --project=chromium-mobile --global-timeout=300000 --reporter=line"
   },
   "dependencies": {
     "@family-places/api-client": "workspace:*",
@@ -36,7 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "1.61.1",
     "@react-router/dev": "8.3.0",
     "@tailwindcss/vite": "^4.3.2",
     "@testing-library/jest-dom": "^6.9.1",

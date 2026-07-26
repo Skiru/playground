@@ -596,7 +596,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     'required' => ['body'],
                     'properties' => [
                         'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
-                        'replyToPostId' => ['type' => 'string', 'format' => 'uuid'],
+                        'replyToPostId' => ['type' => 'string', 'format' => 'uuid', 'description' => 'Optional top-level parent; replying to a reply is rejected with FORUM_REPLY_DEPTH_LIMIT.'],
                     ],
                 ]]])),
                 responses: [
@@ -668,7 +668,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                     'required' => ['targetId', 'targetType', 'reason'],
                     'properties' => [
                         'targetId' => ['type' => 'string', 'format' => 'uuid'],
-                        'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+                        'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST'], 'description' => 'Initial forum posts are canonicalized to their FORUM_THREAD target. Replies remain FORUM_POST.'],
                         'reason' => ['type' => 'string', 'enum' => ['SPAM', 'HARASSMENT', 'INAPPROPRIATE', 'MISINFORMATION', 'PRIVACY_CONCERN', 'OTHER']],
                         'details' => ['type' => 'string', 'maxLength' => 1000],
                     ],

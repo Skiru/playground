@@ -148,14 +148,14 @@ describe("Community Frontend Vitest Suite", () => {
       data: {
         id: "report-1",
         reporterId: "user-2",
-        targetId: "post-1",
-        targetType: "FORUM_POST",
+         targetId: "thread-1",
+         targetType: "FORUM_THREAD",
         reason: "SPAM",
         status: "IN_REVIEW",
         createdAt: "2026-07-20T12:00:00Z",
         claimedBy: "mod-1",
         claimedAt: "2026-07-20T12:01:00Z",
-        allowedActions: ["DISMISS_REPORT", "RESOLVE_REPORT"],
+         allowedActions: ["DISMISS_REPORT", "RESOLVE_REPORT", "HIDE", "REMOVE", "LOCK", "PIN"],
         targetPreview: {
           title: "Post na forum",
           body: "Treść początkowa wątku",
@@ -181,7 +181,7 @@ describe("Community Frontend Vitest Suite", () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/posta początkowego/i)).toBeInTheDocument()
+       expect(screen.getByText(/Treść początkowa wątku/i)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByLabelText("Wybierz akcję"))
@@ -189,8 +189,8 @@ describe("Community Frontend Vitest Suite", () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Odrzuć zgłoszenie/).length).toBeGreaterThan(0)
       expect(screen.getAllByText(/Oznacz jako rozwiązane/).length).toBeGreaterThan(0)
-      expect(screen.queryByText(/Ukryj treść/)).not.toBeInTheDocument()
-      expect(screen.queryByText(/Usuń treść perm/)).not.toBeInTheDocument()
+       expect(screen.getAllByText(/Ukryj treść/).length).toBeGreaterThan(0)
+       expect(screen.getAllByText(/Usuń treść perm/).length).toBeGreaterThan(0)
     })
   })
 

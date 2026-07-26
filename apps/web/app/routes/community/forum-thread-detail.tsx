@@ -523,8 +523,8 @@ export default function ForumThreadDetailPage() {
 
                           {session.authenticated && !isPostAuthor && !isDeleted && post.status === "PUBLISHED" && (
                             <ReportContentDialog
-                              targetId={post.id}
-                              targetType="FORUM_POST"
+                              targetId={post.isInitial ? thread.id : post.id}
+                              targetType={post.isInitial ? "FORUM_THREAD" : "FORUM_POST"}
                               trigger={
                                 <Button aria-label="Zgłoś" variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
                                   <Flag className="h-3.5 w-3.5" />

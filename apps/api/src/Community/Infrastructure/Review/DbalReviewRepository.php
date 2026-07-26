@@ -51,9 +51,9 @@ final readonly class DbalReviewRepository implements ReviewRepository
     {
         $offset = ($page - 1) * $pageSize;
         $order = match ($sort) {
-            'highest' => 'rating DESC, created_at DESC',
-            'lowest' => 'rating ASC, created_at DESC',
-            default => 'created_at DESC', // 'newest'
+            'highest' => 'rating DESC, created_at DESC, id DESC',
+            'lowest' => 'rating ASC, created_at DESC, id DESC',
+            default => 'created_at DESC, id DESC', // 'newest'
         };
 
         $rows = $this->connection->fetchAllAssociative(
@@ -84,7 +84,7 @@ final readonly class DbalReviewRepository implements ReviewRepository
     {
         $offset = ($page - 1) * $pageSize;
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT * FROM reviews WHERE author_id = :author_id AND status IN (\'PUBLISHED\', \'HIDDEN\') ORDER BY created_at DESC LIMIT :limit OFFSET :offset',
+            'SELECT * FROM reviews WHERE author_id = :author_id AND status IN (\'PUBLISHED\', \'HIDDEN\') ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset',
             [
                 'author_id' => $authorId->toRfc4122(),
                 'limit' => $pageSize,

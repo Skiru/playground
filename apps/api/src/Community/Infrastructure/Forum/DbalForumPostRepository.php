@@ -30,6 +30,16 @@ final class DbalForumPostRepository implements ForumPostRepository
         return $this->reconstitute($row);
     }
 
+    public function findByIdForUpdate(Uuid $id): ?ForumPost
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT * FROM forum_posts WHERE id = :id FOR UPDATE',
+            ['id' => $id->toRfc4122()]
+        );
+
+        return false === $row ? null : $this->reconstitute($row);
+    }
+
     public function findInitialByThreadId(Uuid $threadId): ?ForumPost
     {
         $row = $this->connection->fetchAssociative(

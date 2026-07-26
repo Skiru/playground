@@ -118,7 +118,7 @@ final class ListComments
 
         // Next cursor calculation
         $nextCursor = null;
-        if (!empty($rootComments)) {
+        if ($hasNextPage && !empty($rootComments)) {
             $lastRoot = end($rootComments);
             $nextCursor = CursorCodec::encode([
                 'createdAt' => $lastRoot->createdAt()->format('Y-m-d H:i:s'),

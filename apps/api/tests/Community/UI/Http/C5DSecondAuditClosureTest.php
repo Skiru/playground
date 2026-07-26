@@ -136,7 +136,7 @@ final class C5DSecondAuditClosureTest extends WebTestCase
         self::assertStringContainsString('REPORT_ALREADY_EXISTS', (string) $client->getResponse()->getContent());
     }
 
-    public function testInitialPostModerationCaseAllowsOnlyReportClosureActions(): void
+    public function testInitialPostReportUsesThreadTargetAndCanRemediateBody(): void
     {
         $client = self::createClient();
         $this->em = self::getContainer()->get('doctrine.orm.entity_manager');
@@ -161,7 +161,10 @@ final class C5DSecondAuditClosureTest extends WebTestCase
             'reason' => 'SPAM',
         ]));
         self::assertSame(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
-        $reportId = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR)['id'];
+        $createdReport = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $reportId = $createdReport['id'];
+        self::assertSame('FORUM_THREAD', $createdReport['targetType']);
+        self::assertSame($created['id'], $createdReport['targetId']);
 
         $moderatorHeaders = $this->loginWithCsrf($client, $moderator);
         $client->request('POST', \sprintf('/api/v1/moderation/case/%s/claim', $reportId), [], [], $moderatorHeaders);
@@ -170,8 +173,8 @@ final class C5DSecondAuditClosureTest extends WebTestCase
         $client->request('GET', \sprintf('/api/v1/moderation/case/%s', $reportId));
         self::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
         $case = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
-        self::assertSame(['DISMISS_REPORT', 'RESOLVE_REPORT'], $case['allowedActions']);
-        self::assertTrue($case['targetPreview']['isInitial']);
+        self::assertContains('HIDE', $case['allowedActions']);
+        self::assertSame('FORUM_THREAD', $case['targetType']);
 
         $moderatorHeaders['HTTP_IDEMPOTENCY_KEY'] = Uuid::v7()->toRfc4122();
         $client->request('POST', '/api/v1/moderation/action', [], [], $moderatorHeaders, json_encode([
@@ -180,8 +183,10 @@ final class C5DSecondAuditClosureTest extends WebTestCase
             'reason' => 'This must be routed through thread moderation.',
         ]));
 
-        self::assertSame(Response::HTTP_CONFLICT, $client->getResponse()->getStatusCode());
-        self::assertStringContainsString('INITIAL_POST_REQUIRES_THREAD_TARGET', (string) $client->getResponse()->getContent());
+        self::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+
+        $client->request('GET', \sprintf('/api/v1/forum/threads/%s', $created['id']));
+        self::assertSame(Response::HTTP_NOT_FOUND, $client->getResponse()->getStatusCode());
     }
 
     public function testIdempotencyKeyReuseWithChangedPayloadReturnsConflict(): void

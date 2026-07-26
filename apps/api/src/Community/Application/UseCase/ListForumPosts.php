@@ -57,7 +57,6 @@ final class ListForumPosts
 
         // Fetch posts (+1 to check for next page)
         $posts = $this->postRepository->findByThreadId($threadId, $cursorId, $cursorCreatedAt, $limit + 1);
-
         $hasNextPage = \count($posts) > $limit;
         if ($hasNextPage) {
             array_pop($posts);
@@ -103,7 +102,7 @@ final class ListForumPosts
         }
 
         $nextCursor = null;
-        if (!empty($posts)) {
+        if ($hasNextPage && !empty($posts)) {
             $lastPost = end($posts);
             $nextCursor = CursorCodec::encode([
                 'id' => $lastPost->id()->toString(),

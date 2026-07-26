@@ -10,6 +10,9 @@ interface ForumPostRepository
 {
     public function findById(Uuid $id): ?ForumPost;
 
+    /** Load the post while holding its row lock; caller must already be in a transaction. */
+    public function findByIdForUpdate(Uuid $id): ?ForumPost;
+
     public function findInitialByThreadId(Uuid $threadId): ?ForumPost;
 
     /** @return list<ForumPost> */

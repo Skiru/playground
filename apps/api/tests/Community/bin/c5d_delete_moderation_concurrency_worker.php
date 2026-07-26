@@ -11,6 +11,7 @@ $payloadPath = $argv[1];
 $payload = json_decode((string) file_get_contents($payloadPath), true, 512, \JSON_THROW_ON_ERROR);
 
 $ch = curl_init();
+$startedAt = microtime(true);
 $headers = [];
 foreach ($payload['headers'] ?? [] as $name => $value) {
     $headers[] = $name.': '.$value;
@@ -56,6 +57,7 @@ $json = json_decode($bodyText, true);
 
 echo json_encode([
     'status' => $status,
+    'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
     'error' => '' !== $error ? $error : null,
     'body' => $bodyText,
     'json' => is_array($json) ? $json : null,
