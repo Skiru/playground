@@ -3,7 +3,8 @@ import { fetchSession } from "../../lib/api-session.server"
 import { hardenedFetch } from "../../lib/hardened-fetch.server"
 import type { Route } from "./+types/visits"
 import { AppShell } from "../../components/layout/AppShell"
-import { PageContainer } from "../../components/layout/PageContainer"
+import { AccountLayout } from "~/components/account/AccountLayout"
+import { AccountEmptyState, AccountErrorState } from "~/components/account/AccountPageState"
 import { Card, CardContent } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -16,7 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "~/components/ui/dialog"
-import { Compass, Trash2, Edit2, ArrowLeft, Calendar, MessageSquare, AlertCircle, ShieldAlert } from "lucide-react"
+import { Trash2, Edit2, Calendar, MessageSquare, AlertCircle, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import * as React from "react"
 
@@ -50,7 +51,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!visitsRes.ok) {
     return {
       session: data,
-      visitsList: { items: [], pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 1 } }
+      visitsList: null,
     }
   }
 
@@ -64,7 +65,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function AccountVisits({ loaderData }: Route.ComponentProps) {
   const { session, visitsList } = loaderData
-  const [items, setItems] = React.useState<VisitItem[]>(visitsList.items || [])
+  const [items, setItems] = React.useState<VisitItem[]>(visitsList?.items || [])
   
   // Edit state
   const [editingVisit, setEditingVisit] = React.useState<VisitItem | null>(null)
@@ -154,39 +155,28 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
     }
   }
 
-  const pagination = visitsList.pagination || { page: 1, totalPages: 1 }
+  const pagination = visitsList?.pagination || { page: 1, totalItems: 0, totalPages: 1 }
+  const formatDate = (date: string) => {
+    const parsed = new Date(`${date}T12:00:00`)
+    return Number.isNaN(parsed.getTime()) ? "Brak daty" : new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" }).format(parsed)
+  }
 
   return (
     <AppShell>
-      <PageContainer className="py-10 max-w-4xl">
+      <AccountLayout>
         <div className="flex flex-col gap-6">
-          <nav aria-label="Breadcrumb" className="text-2xs font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Link to="/" className="hover:text-primary transition-colors">Główna</Link>
-            <span className="text-muted-foreground/50">/</span>
-            <Link to="/konto" className="hover:text-primary transition-colors">Moje konto</Link>
-            <span className="text-muted-foreground/50">/</span>
-            <span className="text-foreground font-semibold">Historia wizyt</span>
-          </nav>
-
-          <div className="flex items-center justify-between border-b pb-4">
+          <div className="border-b border-border pb-5">
             <div>
-              <h1 className="font-serif text-3xl font-medium text-foreground">
-                Historia wizyt
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Historia wizyt</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
                 Zapisana historia miejsc, które wspólnie odwiedziliście.
               </p>
             </div>
-            <Button variant="outline" size="sm" asChild className="font-semibold text-xs">
-              <Link to="/konto" className="flex items-center gap-1.5">
-                <ArrowLeft className="size-3.5" />
-                Powrót
-              </Link>
-            </Button>
           </div>
 
-          {items.length > 0 ? (
+          {visitsList === null ? <AccountErrorState /> : items.length > 0 ? (
             <div className="flex flex-col gap-4">
+              <p className="text-sm font-medium text-muted-foreground" aria-live="polite">{pagination.totalItems} {pagination.totalItems === 1 ? "zapisana wizyta" : "zapisanych wizyt"}</p>
               {items.map((item) => {
                 const place = item.place || {}
                 const isPublished = place.published !== false
@@ -240,7 +230,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
                           <Calendar className="size-3.5 text-primary" />
-                          <span>Data wizyty: {item.visitedOn}</span>
+                          <span>Data wizyty: {formatDate(item.visitedOn)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           {place.category && (
@@ -287,20 +277,10 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
               )}
             </div>
           ) : (
-            <Card className="border-dashed p-12 text-center bg-muted/20">
-              <CardContent className="flex flex-col items-center justify-center p-0">
-                <Compass className="size-12 text-muted-foreground/60 mb-4" />
-                <p className="text-base text-muted-foreground max-w-sm mb-4">
-                  Nie masz jeszcze żadnych zapisanych wizyt.
-                </p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/miejsca">Odkrywaj katalog</Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <AccountEmptyState title="Tu pojawi się historia Waszych wizyt" description="Po zapisaniu wizyty przy miejscu zobaczysz ją tutaj w porządku chronologicznym." />
           )}
         </div>
-      </PageContainer>
+      </AccountLayout>
 
       {/* Editing Dialog */}
       <Dialog open={isEditingOpen} onOpenChange={setIsEditingOpen}>
