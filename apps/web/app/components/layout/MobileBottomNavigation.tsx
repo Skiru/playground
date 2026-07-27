@@ -1,9 +1,9 @@
-import { Compass, Map, MessageCircle, UserRound } from "lucide-react"
+import { Compass, MapPin, MessageCircle, UserRound } from "lucide-react"
 import { Link, useLocation } from "react-router"
 
 const items = [
   { href: "/", label: "Odkrywaj", icon: Compass },
-  { href: "/miejsca", label: "Mapa", icon: Map },
+  { href: "/miejsca", label: "Miejsca", icon: MapPin },
   { href: "/spolecznosc", label: "Społeczność", icon: MessageCircle },
   { href: "/konto", label: "Profil", icon: UserRound },
 ]
@@ -13,7 +13,7 @@ export function MobileBottomNavigation() {
 
   return (
     <nav aria-label="Nawigacja mobilna" className="fixed inset-x-0 bottom-0 z-50 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden">
-      <div className="mx-auto grid min-h-16 max-w-md grid-cols-4">
+      <div className="mx-auto grid h-[var(--mobile-navigation-height)] max-w-md grid-cols-4">
         {items.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
           return (

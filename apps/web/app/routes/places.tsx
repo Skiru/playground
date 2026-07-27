@@ -1,5 +1,4 @@
 import type { SearchPlacesData, SearchPlacesResponse, GetCitiesResponse, GetCategoriesResponse, GetAmenitiesResponse } from "@family-places/api-client"
-import { useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { Search, SlidersHorizontal, Map as MapIcon, List, X } from "lucide-react"
 
@@ -62,7 +61,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     loadAmenities(),
   ])
   const anchor = places.items[0]
-  const map = anchor
+  const view = url.searchParams.get("view") === "map" ? "map" : "list"
+  const map = view === "map" && anchor
     ? await loadMapPlaces({
         ...query,
         west: anchor.longitude - 0.3,
@@ -76,6 +76,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   resourceParams.delete("page")
   resourceParams.delete("pageSize")
   resourceParams.delete("sort")
+  resourceParams.delete("view")
   const page = places.pagination.page
   const pageUrl = (target: number) => {
     const next = new URL(url)
@@ -126,10 +127,10 @@ export function PlacesView({
       </div>
 
       {places.items.length ? (
-        <ol className="flex flex-col gap-5">
+        <ol className="grid gap-5 lg:grid-cols-2">
           {places.items.map((place) => (
             <li key={place.id}>
-              <PlaceCard place={place} layout="horizontal" showFavorite />
+              <PlaceCard place={place} showFavorite />
             </li>
           ))}
         </ol>
@@ -173,15 +174,22 @@ export function FilterFields({
   amenities,
   filters,
   resourceQuery,
+  view = "list",
 }: {
   cities: GetCitiesResponse["items"]
   categories: GetCategoriesResponse["items"]
   amenities: GetAmenitiesResponse["items"]
   filters: Record<string, string>
   resourceQuery: string
+  view?: "list" | "map"
 }) {
+  const hasLocationCenter = Boolean(filters.latitude && filters.longitude)
+
   return (
     <div className="flex flex-col gap-6 p-1">
+      <input type="hidden" name="view" value={view} />
+      {filters.latitude ? <input type="hidden" name="latitude" value={filters.latitude} /> : null}
+      {filters.longitude ? <input type="hidden" name="longitude" value={filters.longitude} /> : null}
       {/* Search Input */}
       <div className="grid gap-2">
         <Label htmlFor="q" className="text-sm font-bold">
@@ -256,40 +264,8 @@ export function FilterFields({
         />
       </div>
 
-      {/* Location radius fields */}
-      <div className="grid gap-4 border-t border-b py-4 border-muted/50 my-1">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor="latitude" className="text-sm font-semibold text-muted-foreground">
-              {content.places.formLat}
-            </Label>
-            <Input
-              id="latitude"
-              name="latitude"
-              type="number"
-              min="-90"
-              max="90"
-              step="any"
-              defaultValue={filters.latitude}
-              className="h-11 text-base"
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="longitude" className="text-sm font-semibold text-muted-foreground">
-              {content.places.formLng}
-            </Label>
-            <Input
-              id="longitude"
-              name="longitude"
-              type="number"
-              min="-180"
-              max="180"
-              step="any"
-              defaultValue={filters.longitude}
-              className="h-11 text-base"
-            />
-          </div>
-        </div>
+      {hasLocationCenter ? (
+      <div className="grid gap-4 border-y border-muted/50 py-4">
         <div className="grid gap-2">
           <Label htmlFor="radiusKm" className="text-sm font-bold">
             {content.places.formRadius}
@@ -307,6 +283,7 @@ export function FilterFields({
           />
         </div>
       </div>
+      ) : null}
 
       {/* Toggles */}
       <div className="flex flex-col gap-3">
@@ -355,8 +332,13 @@ export function FilterFields({
 }
 
 export default function Places({ loaderData }: Route.ComponentProps) {
-  const [viewMode, setViewMode] = useState<"list" | "map">("list")
   const [searchParams] = useSearchParams()
+  const viewMode = searchParams.get("view") === "map" ? "map" : "list"
+  const viewUrl = (view: "list" | "map") => {
+    const next = new URLSearchParams(searchParams)
+    next.set("view", view)
+    return `/miejsca?${next.toString()}`
+  }
 
   // Generate active filter badges to display
   const activeFilters: Array<{ key: string; label: string; value: string; paramValue?: string }> = []
@@ -383,30 +365,64 @@ export default function Places({ loaderData }: Route.ComponentProps) {
   })
 
   const hasActiveFilters = activeFilters.length > 0
+  const clearParams = new URLSearchParams()
+  clearParams.set("view", viewMode)
 
   return (
     <AppShell>
       <PageContainer className="py-6">
-        {/* Toggle between list and map on mobile */}
-        <div className="mb-5 flex w-full overflow-hidden rounded-[var(--radius-button)] border bg-card p-1 shadow-xs xl:hidden">
-          <Button
-            variant={viewMode === "list" ? "default" : "ghost"}
-            className="flex-1 font-bold"
-            onClick={() => setViewMode("list")}
-            aria-pressed={viewMode === "list"}
-          >
-            <List className="mr-1.5 size-4" />
-            Lista ({loaderData.places.pagination.totalItems})
+        <div className="sticky top-[4.5rem] z-30 mb-5 flex w-full overflow-hidden rounded-[var(--radius-button)] border bg-background/95 p-1 shadow-sm backdrop-blur md:static md:ml-auto md:w-fit" aria-label="Widok katalogu">
+          <Button variant={viewMode === "list" ? "secondary" : "ghost"} className="min-h-11 flex-1 font-bold md:flex-none" asChild>
+            <Link to={viewUrl("list")} aria-current={viewMode === "list" ? "page" : undefined}>
+              <List className="mr-1.5 size-4" /> Lista ({loaderData.places.pagination.totalItems})
+            </Link>
           </Button>
-          <Button
-            variant={viewMode === "map" ? "default" : "ghost"}
-            className="flex-1 font-bold"
-            onClick={() => setViewMode("map")}
-            aria-pressed={viewMode === "map"}
-          >
-            <MapIcon className="mr-1.5 size-4" />
-            Mapa ({loaderData.map.features.length})
+          <Button variant={viewMode === "map" ? "secondary" : "ghost"} className="min-h-11 flex-1 font-bold md:flex-none" asChild>
+            <Link to={viewUrl("map")} aria-current={viewMode === "map" ? "page" : undefined}>
+              <MapIcon className="mr-1.5 size-4" /> Mapa ({loaderData.places.pagination.totalItems})
+            </Link>
           </Button>
+        </div>
+
+        <div className="mb-5 hidden flex-wrap items-end gap-3 rounded-[var(--radius-card)] border bg-card p-4 shadow-sm lg:flex">
+          <form method="get" action="/miejsca" className="contents">
+            <input type="hidden" name="view" value={viewMode} />
+            {loaderData.filters.latitude ? <input type="hidden" name="latitude" value={loaderData.filters.latitude} /> : null}
+            {loaderData.filters.longitude ? <input type="hidden" name="longitude" value={loaderData.filters.longitude} /> : null}
+            <div className="min-w-56 flex-[2_1_18rem]">
+              <Label htmlFor="catalog-q" className="mb-1.5 block text-sm font-bold">{content.places.formSearch}</Label>
+              <div className="relative"><Search className="absolute left-3 top-3.5 size-4 text-muted-foreground" /><Input id="catalog-q" name="q" defaultValue={loaderData.filters.q} placeholder={content.places.searchPlaceholder} className="h-11 pl-10" /></div>
+            </div>
+            <div className="min-w-44 flex-1"><Label htmlFor="catalog-city" className="mb-1.5 block text-sm font-bold">{content.places.formCity}</Label><select id="catalog-city" name="city" defaultValue={loaderData.filters.city ?? ""} className="h-11 w-full rounded-[var(--radius-control)] border border-input bg-background px-3"><option value="">{content.places.allCitiesOption}</option>{loaderData.cities.map((city) => <option key={city.id} value={city.slug}>{city.name}</option>)}</select></div>
+            <div className="min-w-44 flex-1"><Label htmlFor="catalog-category" className="mb-1.5 block text-sm font-bold">{content.places.formCategory}</Label><select id="catalog-category" name="category" defaultValue={loaderData.filters.category ?? ""} className="h-11 w-full rounded-[var(--radius-control)] border border-input bg-background px-3"><option value="">{content.places.allCategoriesOption}</option>{loaderData.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></div>
+            <div className="w-32"><Label htmlFor="catalog-age" className="mb-1.5 block text-sm font-bold">{content.places.formAge}</Label><Input id="catalog-age" name="ageMonths" type="number" min="0" max="216" defaultValue={loaderData.filters.ageMonths} className="h-11" /></div>
+            {loaderData.filters.latitude && loaderData.filters.longitude ? <div className="w-28"><Label htmlFor="catalog-radius" className="mb-1.5 block text-sm font-bold">{content.places.formRadius}</Label><Input id="catalog-radius" name="radiusKm" type="number" min="1" max="100" defaultValue={loaderData.filters.radiusKm} className="h-11" /></div> : null}
+            <Button type="submit" className="min-h-11 font-bold">Filtruj</Button>
+          </form>
+          <Sheet>
+              <SheetTrigger asChild><Button type="button" variant="outline" className="min-h-11 gap-2"><SlidersHorizontal className="size-4" /> Więcej filtrów</Button></SheetTrigger>
+              <SheetContent side="right" className="w-[min(92vw,360px)] overflow-y-auto p-6"><SheetHeader className="mb-4 border-b pb-4 text-left"><SheetTitle>Więcej filtrów</SheetTitle></SheetHeader><form method="get" action="/miejsca"><FilterFields cities={loaderData.cities} categories={loaderData.categories} amenities={loaderData.amenities} filters={loaderData.filters} resourceQuery={loaderData.resourceQuery} view={viewMode} /></form></SheetContent>
+          </Sheet>
+        </div>
+
+        <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="min-h-11 gap-2 font-semibold">
+                <SlidersHorizontal className="size-4" />
+                Filtry{activeFilters.length ? ` (${activeFilters.length})` : ""}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="max-h-[88vh] overflow-y-auto p-6">
+              <SheetHeader className="mb-4 border-b pb-4 text-left">
+                <SheetTitle className="flex items-center text-lg font-bold"><SlidersHorizontal className="mr-2 size-4 text-primary" />Filtry wyszukiwania</SheetTitle>
+              </SheetHeader>
+              <form method="get" action="/miejsca">
+                <FilterFields cities={loaderData.cities} categories={loaderData.categories} amenities={loaderData.amenities} filters={loaderData.filters} resourceQuery={loaderData.resourceQuery} view={viewMode} />
+              </form>
+            </SheetContent>
+          </Sheet>
+          <span className="text-sm text-muted-foreground">Propozycje: {loaderData.places.pagination.totalItems}</span>
         </div>
 
         {/* Search Toolbar (Active Filters) */}
@@ -444,77 +460,15 @@ export default function Places({ loaderData }: Route.ComponentProps) {
                 )
               })}
             </div>
-            <Button size="sm" variant="ghost" asChild className="font-bold text-muted-foreground hover:text-foreground">
-              <Link to="/miejsca">Wyczyść wszystko</Link>
+              <Button size="sm" variant="ghost" asChild className="font-bold text-muted-foreground hover:text-foreground">
+               <Link to={`/miejsca?${clearParams.toString()}`}>Wyczyść wszystko</Link>
             </Button>
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8">
-          {/* Desktop Filter Panel */}
-          <aside className="hidden lg:block">
-            <Card className="sticky top-[6rem] border-border/90 bg-card/80 shadow-sm backdrop-blur-sm">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between border-b pb-3 mb-4">
-                  <h2 className="flex items-center text-lg font-bold">
-                    <SlidersHorizontal className="mr-2 size-4 text-primary" />
-                    Filtry
-                  </h2>
-                  {hasActiveFilters && (
-                    <Button size="sm" variant="ghost" asChild className="font-bold text-muted-foreground">
-                      <Link to="/miejsca">Reset</Link>
-                    </Button>
-                  )}
-                </div>
-                <form method="get" action="/miejsca">
-                  <FilterFields
-                    cities={loaderData.cities}
-                    categories={loaderData.categories}
-                    amenities={loaderData.amenities}
-                    filters={loaderData.filters}
-                    resourceQuery={loaderData.resourceQuery}
-                  />
-                </form>
-              </CardContent>
-            </Card>
-          </aside>
-
-          {/* Results Layout */}
-          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] xl:gap-8">
+        <div className="min-w-0">
             {/* List View Column */}
-            <div className={`${viewMode === "list" ? "block" : "hidden xl:block"}`}>
-              {/* Mobile Filter Sheet button inside list view */}
-              <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1.5 font-semibold">
-                      <SlidersHorizontal className="size-3.5" />
-                      Filtruj propozycje
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[300px] overflow-y-auto p-6">
-                    <SheetHeader className="text-left border-b pb-4 mb-4">
-                      <SheetTitle className="text-lg font-bold flex items-center">
-                        <SlidersHorizontal className="mr-2 size-4 text-primary" />
-                        Filtry wyszukiwania
-                      </SheetTitle>
-                    </SheetHeader>
-                    <form method="get" action="/miejsca">
-                      <FilterFields
-                        cities={loaderData.cities}
-                        categories={loaderData.categories}
-                        amenities={loaderData.amenities}
-                        filters={loaderData.filters}
-                        resourceQuery={loaderData.resourceQuery}
-                      />
-                    </form>
-                  </SheetContent>
-                </Sheet>
-                <span className="text-sm text-muted-foreground">
-                  Propozycje: {loaderData.places.pagination.totalItems}
-                </span>
-              </div>
-
+            <div className={viewMode === "list" ? "block" : "hidden"}>
               <PlacesView
                 places={loaderData.places}
                 previousPageUrl={loaderData.previousPageUrl}
@@ -523,8 +477,9 @@ export default function Places({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Map View Column */}
-            <div className={`relative ${viewMode === "map" ? "block" : "hidden xl:block"}`}>
-              <Card className="sticky top-[6rem] overflow-hidden border-border/90 bg-card py-0 shadow-sm">
+            <div className={`relative ${viewMode === "map" ? "block" : "hidden"}`}>
+              <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm font-semibold text-muted-foreground">{loaderData.places.pagination.totalItems} miejsc</p><Button variant="outline" asChild><Link to={viewUrl("list")}><List className="size-4" /> Pokaż listę</Link></Button></div>
+              <Card className="overflow-hidden border-border/90 bg-card py-0 shadow-sm">
                 <CardContent className="p-0">
                   <MapExplorer
                     initialFeatures={loaderData.map.features}
@@ -535,7 +490,6 @@ export default function Places({ loaderData }: Route.ComponentProps) {
                 </CardContent>
               </Card>
             </div>
-          </div>
         </div>
       </PageContainer>
     </AppShell>

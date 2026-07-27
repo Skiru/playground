@@ -217,17 +217,26 @@ describe("AppImage and PlaceImage fallbacks", () => {
     expect(img.src).toContain("/real-image.jpg");
   });
 
-  it("PlaceImage selects appropriate category fallback", () => {
-    const { container } = render(<PlaceImage placeName="Park" categorySlug="parks" />);
+  it.each([
+    ["bawialnie", "playrooms.svg", "Bawialnie i sale zabaw"],
+    ["parki", "parks.svg", "Parki rodzinne"],
+    ["kawiarnie", "cafes.svg", "Kawiarnie rodzinne"],
+    ["muzea", "museums.svg", "Muzea i edukacja"],
+    ["sport", "outdoor.svg", "Sport i rekreacja"],
+    ["natura", "outdoor.svg", "Natura i wypoczynek"],
+  ])("PlaceImage selects the canonical fallback for %s", (slug, file, alt) => {
+    const { container } = render(<PlaceImage placeName="Testowe miejsce" categorySlug={slug} />);
     const img = container.querySelector("img") as HTMLImageElement;
-    expect(img.src).toContain("/brand/categories/parks.svg");
-    expect(img.alt).toBe(""); // Empty alt for decorative fallback when name is nearby
+    expect(img.src).toContain(`/brand/categories/${file}`);
+    expect(img.alt).toContain(alt);
+    expect(img.alt).toContain("Testowe miejsce");
   });
 
   it("PlaceImage uses generic fallback if category is unknown", () => {
     const { container } = render(<PlaceImage placeName="Somewhere" categorySlug="unknown-category" />);
     const img = container.querySelector("img") as HTMLImageElement;
-    expect(img.src).toContain("/brand/place-placeholder.svg");
+    expect(img.src).toContain("/brand/categories/generic.svg");
+    expect(img.alt).toBe("Rodzinne miejsce: Somewhere");
   });
 
   // 11. Regression test for avoiding synchronous setState in useEffect

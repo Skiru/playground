@@ -26,8 +26,17 @@ export function PlaceCard({ place, layout = "vertical", showFavorite = false, he
   const hasReviews = place.total_reviews > 0
 
   return (
-    <Card className="place-card group relative overflow-hidden border-border/90 bg-card py-0 transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[var(--shadow-card)]">
-      <CardContent className={`p-0 ${layout === "horizontal" ? "md:grid md:grid-cols-[minmax(190px,0.8fr)_minmax(0,1.25fr)]" : ""}`}>
+    <Card className="place-card group relative overflow-hidden border-border/90 bg-card py-0 transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[var(--shadow-card)] focus-within:border-primary focus-within:shadow-[var(--shadow-card)]">
+      <Link
+        to={`/miejsca/${place.slug}`}
+        className="absolute inset-0 z-10 rounded-[inherit]"
+        aria-label={`Zobacz miejsce: ${place.name}`}
+      >
+        <span className="absolute bottom-5 right-5 flex items-center gap-1 text-sm font-bold text-primary sm:bottom-6 sm:right-6">
+          Zobacz miejsce <ArrowUpRight className="size-4" aria-hidden="true" />
+        </span>
+      </Link>
+      <CardContent className={`relative p-0 ${layout === "horizontal" ? "md:grid md:grid-cols-[minmax(190px,0.8fr)_minmax(0,1.25fr)]" : ""}`}>
         <div className={`relative overflow-hidden bg-muted ${layout === "horizontal" ? "aspect-[16/10] md:aspect-auto md:min-h-60" : "aspect-[16/10]"}`}>
           <PlaceImage
             mainPhotoUrl={place.main_photo?.card ?? place.main_photo?.thumbnail}
@@ -53,12 +62,10 @@ export function PlaceCard({ place, layout = "vertical", showFavorite = false, he
                 {place.city}
               </p>
               <Heading className="text-xl font-bold leading-tight tracking-tight text-foreground sm:text-2xl">
-                <Link to={`/miejsca/${place.slug}`} className="rounded-sm">
-                  {place.name}
-                </Link>
+                {place.name}
               </Heading>
             </div>
-            {showFavorite ? <div className="relative z-10"><FavoriteButton placeId={place.id} /></div> : null}
+            {showFavorite ? <div className="relative z-20"><FavoriteButton placeId={place.id} /></div> : null}
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
@@ -79,9 +86,7 @@ export function PlaceCard({ place, layout = "vertical", showFavorite = false, he
               {place.categories.slice(0, 2).map((category) => <Badge key={category.slug} variant="secondary" className="font-semibold text-primary">{category.name}</Badge>)}
               {place.amenities.slice(0, 2).map((amenity) => <Badge key={amenity.slug} variant="outline">{amenity.name}</Badge>)}
             </div>
-            <span className="flex items-center gap-1 text-sm font-bold text-primary" aria-hidden="true">
-              Zobacz miejsce <ArrowUpRight className="size-4" />
-            </span>
+            <span className="h-5 min-w-32" aria-hidden="true" />
           </div>
         </div>
       </CardContent>

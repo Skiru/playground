@@ -73,7 +73,7 @@ export function ReviewForm({
         <textarea
           id="review-form-body"
           rows={4}
-          className="w-full border rounded-md p-2 bg-background text-sm focus:ring-1 focus:ring-primary"
+          className="w-full rounded-[var(--radius-control)] border border-input bg-background p-3 text-base leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:border-primary"
           placeholder="Co najbardziej podobało się Twoim dzieciom? Jak oceniasz obsługę i czystość?"
           value={body}
           onChange={(e) => setBody(e.target.value)}

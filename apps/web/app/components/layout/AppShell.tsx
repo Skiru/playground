@@ -14,7 +14,7 @@ export function AppShell({ children }: AppShellProps) {
         Przejdź do treści
       </a>
       <SiteHeader />
-      <main id="main-content" className="flex-1 pb-20 md:pb-0">{children}</main>
+      <main id="main-content" className="flex-1 pb-[calc(var(--mobile-navigation-height)+env(safe-area-inset-bottom)+1rem)] md:pb-0">{children}</main>
       <SiteFooter />
       <MobileBottomNavigation />
     </div>

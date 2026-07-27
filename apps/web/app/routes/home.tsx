@@ -7,6 +7,7 @@ import { PageContainer } from "../components/layout/PageContainer"
 import { loadCategories, loadCities, loadPlaces } from "../lib/api.server"
 import { content } from "../content"
 import { brand } from "../brand/default-brand"
+import { resolveCategoryMedia } from "../brand/category-media"
 import type { Route } from "./+types/home"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -154,7 +155,7 @@ export function HomeView({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {categories.map((category, index) => {
-                const categoryImg = brand.categoryImageMapping[category.slug] || brand.placePlaceholder
+                const categoryImg = resolveCategoryMedia(category.slug)
                 return (
                   <Link
                     key={category.id}

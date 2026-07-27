@@ -10,8 +10,9 @@ export function SiteHeader() {
 
   const navLinks = [
     { href: "/", label: "Odkrywaj" },
-    { href: "/miejsca", label: "Mapa" },
+    { href: "/miejsca", label: "Miejsca" },
     { href: "/spolecznosc", label: "Społeczność" },
+    { href: "/konto", label: "Profil" },
   ]
 
   const isActive = (href: string) => href === "/" ? location.pathname === "/" : location.pathname === href || location.pathname.startsWith(`${href}/`)

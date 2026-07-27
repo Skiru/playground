@@ -21,46 +21,39 @@ test("city, category, age, radius, amenities AND and search reach results and de
   await expect(page).toHaveURL(/city=warszawa/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("propozyc");
 
-  const filterTrigger = page.getByRole("button", { name: "Filtruj propozycje" });
   const isMobile = (page.viewportSize()?.width ?? 1280) < 1024;
-  if (isMobile) {
-    await expect(filterTrigger).toBeVisible();
-    await filterTrigger.click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-  }
+  const filterTrigger = isMobile
+    ? page.getByRole("button", { name: /^Filtry/ })
+    : page.getByRole("button", { name: "Więcej filtrów" });
+  await expect(filterTrigger).toBeVisible();
+  await filterTrigger.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
 
-  const container = isMobile ? page.getByRole("dialog") : page.locator("aside");
+  const container = page.getByRole("dialog");
 
   await container.locator("select[name='category']").selectOption("bawialnie");
-  await container.locator("input[name='latitude']").fill("52.2297");
-  await container.locator("input[name='longitude']").fill("21.0122");
-  await container.locator("input[name='radiusKm']").fill("20");
+  await expect(container.locator("input[name='latitude']")).toHaveCount(0);
+  await expect(container.locator("input[name='longitude']")).toHaveCount(0);
   const amenities = container.getByRole("checkbox");
   await amenities.nth(0).check();
   await amenities.nth(1).check();
   await container.getByRole("button", { name: "Filtruj" }).click();
-  await expect(page).toHaveURL(/radiusKm=20/);
+  await expect(page).toHaveURL(/category=bawialnie/);
   await expect(page.locator(".place-card").first()).toBeVisible();
-  await page.locator(".place-card h2 a").first().click();
+  await page.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Demo");
   await expect(page.getByRole("heading", { name: "Informacje" })).toBeVisible();
 });
 
 test("map, empty results, fallback, API error and 404 remain understandable", async ({ page }) => {
-  await page.goto("/miejsca?city=warszawa");
-  const mapToggle = page.getByRole("button", { name: /Mapa/i });
-  if (await mapToggle.isVisible()) {
-    await mapToggle.click();
-  }
+  await page.goto("/miejsca?city=warszawa&view=map");
   await expect(page.getByRole("region", { name: "Interaktywna mapa" })).toBeVisible();
   await expect(page.locator(".map-fallback a").first()).toBeAttached();
 
   await page.goto("/miejsca?q=definitely-no-family-place-xyz");
   await expect(page.getByText("Brak miejsc dla tych filtrów")).toBeVisible();
   
-  if (await mapToggle.isVisible()) {
-    await mapToggle.click();
-  }
+  await page.goto("/miejsca?q=definitely-no-family-place-xyz&view=map");
   await expect(page.getByText("Brak miejsc w tym obszarze")).toBeVisible();
 
   await page.goto("/miejsca?pageSize=51");
@@ -70,6 +63,15 @@ test("map, empty results, fallback, API error and 404 remain understandable", as
 
   const response = await page.request.get(`${API}/api/v1/places`);
   expect(response.ok()).toBeTruthy();
+});
+
+test("legacy coordinate URLs remain compatible without exposing coordinate inputs", async ({ page }) => {
+  await page.goto("/miejsca?latitude=52.2297&longitude=21.0122&radiusKm=20");
+  await expect(page.getByLabel("Szerokość geograficzna")).toHaveCount(0);
+  await expect(page.getByLabel("Długość geograficzna")).toHaveCount(0);
+  await expect(page.locator("input[name='latitude'][type='hidden']").first()).toHaveValue("52.2297");
+  await expect(page.locator("input[name='longitude'][type='hidden']").first()).toHaveValue("21.0122");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("propozyc");
 });
 
 test("keyboard-only navigation reaches the catalogue", async ({ page }) => {
