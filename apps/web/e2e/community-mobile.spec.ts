@@ -1,6 +1,6 @@
 import { expect, test, devices, type Page } from "@playwright/test";
 
-test.use({ ...devices["iPhone 14"] });
+test.use({ ...devices["Pixel 7"] });
 
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
