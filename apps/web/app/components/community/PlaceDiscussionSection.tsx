@@ -54,6 +54,12 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
   const [showMainForm, setShowMainForm] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [formError, setFormError] = React.useState<string | null>(null)
+  const composerTriggerRef = React.useRef<HTMLButtonElement>(null)
+
+  const closeComposer = React.useCallback(() => {
+    setShowMainForm(false)
+    requestAnimationFrame(() => composerTriggerRef.current?.focus())
+  }, [])
 
   // Accessible delete confirmation state
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
@@ -111,7 +117,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
       })
 
       if (res.response?.status === 201) {
-        setShowMainForm(false)
+        closeComposer()
         loadComments()
       } else {
         const errorData = mapApiError(res.error)
@@ -192,16 +198,17 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
   const rootComments = comments.filter((c) => c.parentId === null)
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-        <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground">
+        <h2 className="text-xl font-bold text-foreground sm:text-2xl">
           Dyskusja ({comments.length})
         </h2>
         {!showMainForm && session.authenticated && (
           <Button
+            ref={composerTriggerRef}
             size="sm"
             variant="outline"
-            className="font-semibold text-xs"
+            className="min-h-11 font-semibold"
             onClick={() => setShowMainForm(true)}
           >
             Napisz komentarz
@@ -215,7 +222,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
           formError={formError}
           onSubmit={handleMainCommentSubmit}
           onCancel={() => {
-            setShowMainForm(false)
+            closeComposer()
             setFormError(null)
           }}
         />
@@ -247,7 +254,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
           Ładowanie komentarzy...
         </div>
       ) : rootComments.length > 0 ? (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
           {rootComments.map((parent) => {
             const replies = parent.replies || []
             return (
@@ -267,7 +274,7 @@ export function PlaceDiscussionSection({ placeId }: PlaceDiscussionSectionProps)
       ) : (
         <div className="text-center p-6 border border-dashed rounded-lg">
           <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground italic">
+          <p className="text-base leading-relaxed text-muted-foreground">
             Brak komentarzy dla tego miejsca. Bądź pierwszym, który rozpocznie dyskusję!
           </p>
         </div>

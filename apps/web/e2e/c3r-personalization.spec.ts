@@ -35,8 +35,8 @@ test.describe("C3R Personalization and Security E2E", () => {
     await expect(page.locator(".place-card").first()).toBeVisible();
 
     // Get the name of the first place
-    const firstPlaceLink = page.locator(".place-card h2 a").first();
-    const firstPlaceName = await firstPlaceLink.textContent();
+    const firstPlaceLink = page.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ });
+    const firstPlaceName = await page.locator(".place-card").first().getByRole("heading").textContent();
     
     // Toggle favorite on the list card
     const favButton = page.locator(".place-card").first().locator('button[aria-pressed]');
@@ -63,7 +63,7 @@ test.describe("C3R Personalization and Security E2E", () => {
 
     // Record a visit to this place
     await page.goto("/miejsca?city=warszawa");
-    await page.locator(".place-card h2 a").first().click();
+    await page.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ }).click();
 
     // Click "Byliśmy tutaj" button to open the visit form
     await page.getByRole("button", { name: "Byliśmy tutaj" }).first().click();

@@ -65,7 +65,7 @@ test.describe("Real Playwright Image Fallbacks", () => {
     for (const img of placeCardImages) {
       const src = await img.getAttribute("src");
       if (src && !src.includes("/brand/wordmark.svg") && !src.includes("/brand/compact-mark.svg")) {
-        expect(src).toContain("/brand/place-placeholder.svg");
+        expect(src).toMatch(/\/brand\/(categories\/|place-placeholder\.svg)/);
       }
     }
 
@@ -76,7 +76,7 @@ test.describe("Real Playwright Image Fallbacks", () => {
     const resultsImages = await page.locator(".place-card img").all();
     for (const img of resultsImages) {
       const src = await img.getAttribute("src");
-      expect(src).toContain("/brand/place-placeholder.svg");
+      expect(src).toContain("/brand/categories/");
     }
 
     // Visit Details page
@@ -87,7 +87,7 @@ test.describe("Real Playwright Image Fallbacks", () => {
     for (const img of detailImages) {
       const src = await img.getAttribute("src");
       if (src && !src.includes("/brand/wordmark.svg") && !src.includes("/brand/compact-mark.svg")) {
-        expect(src).toContain("/brand/place-placeholder.svg");
+        expect(src).toMatch(/\/brand\/(categories\/|place-placeholder\.svg)/);
       }
     }
   });
@@ -112,9 +112,9 @@ test.describe("Real Playwright Image Fallbacks", () => {
     await page.waitForLoadState("networkidle");
 
     // Primary has failed and transitioned to local placeholder (errorCount is 1)
-    const img = page.locator(".relative.rounded-2xl.overflow-hidden img").first();
+    const img = page.getByTestId("place-hero-image");
     await expect(img).toBeVisible();
-    await expect(img).toHaveAttribute("src", "/brand/place-placeholder.svg");
+    await expect(img).toHaveAttribute("src", "/brand/categories/playrooms.svg");
 
     const brokenSrcs = await page.evaluate(() => {
       const imgs = Array.from(document.querySelectorAll("img"));
@@ -187,7 +187,7 @@ test.describe("Real Playwright Image Fallbacks", () => {
     for (const img of favoriteImages) {
       const src = await img.getAttribute("src");
       if (src && !src.includes("/brand/wordmark.svg") && !src.includes("/brand/compact-mark.svg") && !src.includes("avatar")) {
-        expect(src).toContain("/brand/place-placeholder.svg");
+        expect(src).toMatch(/\/brand\/(categories\/|place-placeholder\.svg)/);
         checkedAtLeastOne = true;
       }
     }

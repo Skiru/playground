@@ -101,9 +101,9 @@ export function LoginDialog({ isOpen, onOpenChange }: LoginDialogProps) {
           )}
 
           {isLinkRequired ? (
-            <div className="flex flex-col gap-3 items-center text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <ShieldAlert className="size-8 text-amber-600" />
-              <p className="text-xs font-semibold text-amber-900 leading-normal">
+            <div className="flex flex-col items-center gap-3 rounded-[var(--radius-control)] border border-warning/30 bg-muted p-3 text-center">
+              <ShieldAlert className="size-8 text-warning" />
+              <p className="text-sm font-semibold leading-normal text-foreground">
                 {authContent.accountLinkRequired}
               </p>
             </div>
@@ -116,19 +116,19 @@ export function LoginDialog({ isOpen, onOpenChange }: LoginDialogProps) {
                   onError={handleGoogleError}
                 />
               ) : (
-                <p className="text-xs text-muted-foreground italic">
+                <p className="text-sm italic text-muted-foreground">
                   {authContent.googleUnavailable}
                 </p>
               )}
 
               {devAuthEnabled && (
                 <div className="w-full flex flex-col gap-2 mt-4 border-t pt-4">
-                  <p className="text-3xs uppercase tracking-widest text-muted-foreground font-mono font-bold">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     {authContent.devModeTitle}
                   </p>
                   <Button
                     variant="secondary"
-                    className="w-full font-mono text-xs font-bold"
+                    className="w-full font-bold"
                     onClick={handleDevLogin}
                     disabled={isLoading}
                   >
@@ -141,7 +141,7 @@ export function LoginDialog({ isOpen, onOpenChange }: LoginDialogProps) {
           )}
 
           {errorMsg && (
-            <div className="text-xs font-semibold text-destructive mt-2 leading-relaxed">
+            <div className="mt-2 text-sm font-semibold leading-relaxed text-destructive" role="alert">
               {errorMsg}
             </div>
           )}

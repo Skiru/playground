@@ -1,15 +1,15 @@
 /* Semantic Typography Scale */
 :root {
   /* Font Families */
-  --font-family-serif: Georgia, "Times New Roman", serif;
-  --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-serif: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-family-sans: "Avenir Next", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Font Sizes */
-  --font-size-xs: 0.7rem;
-  --font-size-sm: 0.72rem;
-  --font-size-base: 0.75rem;
-  --font-size-md: 0.9rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1rem;
   --font-size-lg: 1rem;
   --font-size-xl: 1.15rem;
   --font-size-2xl: 1.35rem;
@@ -19,12 +19,12 @@
   --font-size-6xl: 2.5rem;
   --font-size-7xl: 3rem;
   --font-size-8xl: 3.2rem;
-  --font-size-9xl: 6rem;
-  --font-size-10xl: 6.8rem;
+  --font-size-9xl: 4rem;
+  --font-size-10xl: 4.5rem;
 
   /* Line Heights */
-  --line-height-tight: 0.92;
-  --line-height-normal: 1.2;
+  --line-height-tight: 1.08;
+  --line-height-normal: 1.35;
   --line-height-relaxed: 1.5;
   --line-height-loose: 1.65;
 

@@ -1,4 +1,5 @@
 import type { BrandManifest } from "./brand.schema";
+import { genericCategoryMedia, realCategorySlugs, resolveCategoryMedia } from "./category-media";
 
 export const defaultBrand: BrandManifest = {
   wordmark: {
@@ -49,32 +50,10 @@ export const defaultBrand: BrandManifest = {
     width: 100,
     height: 100,
   },
-  categoryImageMapping: {
-    parks: {
-      path: "/brand/categories/parks.svg",
-      alt: "Parki i rekreacja",
-    },
-    cafes: {
-      path: "/brand/categories/cafes.svg",
-      alt: "Kawiarnie i restauracje",
-    },
-    playrooms: {
-      path: "/brand/categories/playrooms.svg",
-      alt: "Bawialnie i sale zabaw",
-    },
-    museums: {
-      path: "/brand/categories/museums.svg",
-      alt: "Muzea i edukacja",
-    },
-    outdoor: {
-      path: "/brand/categories/outdoor.svg",
-      alt: "Sport i rekreacja",
-    },
-    generic: {
-      path: "/brand/categories/generic.svg",
-      alt: "Inne miejsca",
-    },
-  },
+  categoryImageMapping: Object.fromEntries([
+    ...realCategorySlugs.map((slug) => [slug, resolveCategoryMedia(slug)]),
+    ["generic", genericCategoryMedia],
+  ]),
 };
 
 export const brand = defaultBrand;

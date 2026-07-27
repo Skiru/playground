@@ -39,7 +39,7 @@ test.describe("Community Reviews E2E Real Journey", () => {
     const initialReviewsResponsePromise = alicePage.waitForResponse((response) =>
       response.url().includes("/api/v1/places/") && response.url().includes("/reviews") && response.request().method() === "GET"
     );
-    await alicePage.locator(".place-card h2 a").first().click();
+    await alicePage.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ }).click();
     const initialReviewsResponse = await initialReviewsResponsePromise;
     const initialReviewsPayload = await initialReviewsResponse.json() as { summary: { totalReviews: number } };
     await expect(alicePage.getByRole("heading", { name: "Opinie i oceny rodziców" }).first()).toBeVisible();

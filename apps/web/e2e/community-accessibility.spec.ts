@@ -62,7 +62,7 @@ test.describe("Community Accessibility Axe Scan Real Journey", () => {
     await loginAs(page, `author_axe_${uniqueSuffix}@example.com`, "AxeAuthor");
     await page.goto("/miejsca?city=warszawa");
     await expect(page.locator(".place-card").first()).toBeVisible();
-    await page.locator(".place-card h2 a").first().click();
+    await page.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ }).click();
     await expect(page).toHaveURL(/\/miejsca\/[^/?#]+$/);
     await expect(page.getByRole("heading", { name: "Opinie i oceny rodziców" }).first()).toBeVisible();
     const placeUrl = page.url();

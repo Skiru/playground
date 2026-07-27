@@ -1,37 +1,27 @@
-import * as React from "react"
 import { Link, useLocation } from "react-router"
-import { Menu } from "lucide-react"
+import { Heart, Search } from "lucide-react"
 import { brand } from "~/brand/default-brand"
-import { content } from "~/content"
 import { Button } from "~/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/components/ui/sheet"
 import { UserArea } from "./UserArea"
 import { AppImage } from "../media/AppImage"
 
 export function SiteHeader() {
-  const [isOpen, setIsOpen] = React.useState(false)
   const location = useLocation()
 
   const navLinks = [
-    { href: "/miejsca", label: content.navigation.placesCatalog },
-    { href: "/forum", label: "Forum" },
+    { href: "/", label: "Odkrywaj" },
+    { href: "/miejsca", label: "Miejsca" },
     { href: "/spolecznosc", label: "Społeczność" },
+    { href: "/konto", label: "Profil" },
   ]
 
-  const isActive = (href: string) => location.pathname === href
+  const isActive = (href: string) => href === "/" ? location.pathname === "/" : location.pathname === href || location.pathname.startsWith(`${href}/`)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-md support-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo and Brand */}
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center space-x-2">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/85">
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-8">
+          <Link to="/" className="flex shrink-0 items-center" aria-label="FamilyPlaces, strona główna">
             <span className="hidden sm:inline-block">
               <AppImage
                 src={brand.wordmark.path}
@@ -39,7 +29,7 @@ export function SiteHeader() {
                 alt={brand.wordmark.alt}
                 width={brand.wordmark.width || 120}
                 height={brand.wordmark.height || 30}
-                className="h-8 w-auto object-contain"
+                className="h-7 w-auto object-contain"
               />
             </span>
             <span className="sm:hidden">
@@ -54,15 +44,15 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav aria-label="Nawigacja główna" className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 to={link.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors hover:bg-secondary/70 hover:text-primary ${
                   isActive(link.href)
-                    ? "text-primary font-semibold"
+                    ? "bg-secondary text-primary"
                     : "text-muted-foreground"
                 }`}
               >
@@ -72,55 +62,20 @@ export function SiteHeader() {
           </nav>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-4">
-          <div className="hidden md:block">
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
+            <Link to="/miejsca">
+              <Search className="size-4" />
+              Szukaj miejsc
+            </Link>
+          </Button>
+          <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex" title="Ulubione miejsca">
+            <Link to="/konto/ulubione" aria-label="Ulubione miejsca">
+              <Heart className="size-5" />
+            </Link>
+          </Button>
+          <div>
             <UserArea />
-          </div>
-
-          {/* Mobile Menu Trigger */}
-          <div className="md:hidden flex items-center gap-2">
-            <UserArea />
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 px-0 hover:bg-transparent"
-                  aria-label="Toggle Menu"
-                >
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] p-6">
-                <SheetHeader className="text-left border-b pb-4 mb-4">
-                  <SheetTitle className="text-lg font-bold">
-                    <AppImage
-                      src={brand.wordmark.path}
-                      fallback={brand.wordmark.path}
-                      alt={brand.wordmark.alt}
-                      width={120}
-                      className="h-6 w-auto object-contain"
-                    />
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-4">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`text-base font-semibold py-2 border-b border-muted/50 transition-colors ${
-                        isActive(link.href) ? "text-primary" : "text-muted-foreground"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </nav>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </div>

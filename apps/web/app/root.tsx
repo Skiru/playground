@@ -104,7 +104,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{message} | {content.common.siteTitle}</title>
+        <title>{`${message} | ${content.common.siteTitle}`}</title>
         <Meta />
         <Links />
       </head>
@@ -118,7 +118,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
                       <AlertCircle className="h-6 w-6" />
                     </div>
-                    <CardTitle className="font-serif text-3xl font-medium tracking-tight text-foreground">
+                    <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
                       {status === "404" ? "404" : message}
                     </CardTitle>
                     <CardDescription className="text-sm text-muted-foreground mt-2">
@@ -127,13 +127,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
                   </CardHeader>
                   <CardContent className="p-6 pt-0 text-center">
                     {stack && (
-                      <pre className="mt-4 max-h-40 overflow-y-auto text-left rounded-md bg-muted p-4 font-mono text-3xs text-muted-foreground leading-normal border">
+                        <pre className="mt-4 max-h-40 overflow-y-auto rounded-md border bg-muted p-4 text-left font-mono text-xs leading-normal text-muted-foreground">
                         <code>{stack}</code>
                       </pre>
                     )}
                   </CardContent>
                   <CardFooter className="flex flex-col gap-2 p-6 pt-0">
-                    <Button className="w-full font-bold bg-primary hover:bg-primary/95 text-white" onClick={() => window.location.reload()}>
+                    <Button type="button" className="w-full font-bold" onClick={() => window.location.reload()}>
                       Spróbuj ponownie
                     </Button>
                     <Button variant="outline" className="w-full font-bold" asChild>

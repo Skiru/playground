@@ -28,12 +28,12 @@ test.describe("Community Mobile Viewport E2E Real Journey", () => {
     // 1. Log in mobile user
     await loginAs(page, userEmail, "MobileUser");
 
-    // 2. Open Forum via Mobile menu toggler
+    // 2. Verify the new mobile navigation and preserve the Forum deep link.
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Toggle Menu" })).toBeVisible();
-    await page.getByRole("button", { name: "Toggle Menu" }).click();
-
-    await expect(page.getByRole("link", { name: "Forum" })).toBeVisible();
+    const mobileNavigation = page.getByRole("navigation", { name: "Nawigacja mobilna" });
+    await expect(mobileNavigation.getByRole("link", { name: "Społeczność" })).toBeVisible();
+    await mobileNavigation.getByRole("link", { name: "Społeczność" }).click();
+    await expect(page).toHaveURL(/\/spolecznosc$/);
     await page.goto("/forum");
 
     // 3. Create Thread

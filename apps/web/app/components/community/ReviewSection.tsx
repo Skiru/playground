@@ -225,23 +225,23 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
 
   const renderStars = (rating: number) => {
     return (
-      <div className="flex text-amber-500 font-bold" aria-label={`Ocena: ${rating} na 5`}>
+      <div className="flex font-bold text-accent" aria-label={`Ocena: ${rating} na 5`}>
         {"★".repeat(rating)}{"☆".repeat(5 - rating)}
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-        <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground">
+        <h2 className="text-xl font-bold text-foreground sm:text-2xl">
           Opinie i oceny rodziców
         </h2>
         {!showForm && session.authenticated && (
           <Button
             size="sm"
             variant="outline"
-            className="font-semibold text-xs"
+            className="font-semibold"
             onClick={() => {
               setEditingReview(null)
               setShowForm(true)
@@ -299,7 +299,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
       {summary.totalReviews > 0 && (
         <div className="flex flex-col gap-4 mt-2">
           <div className="flex items-center justify-between gap-4 border-b pb-2">
-            <h3 className="font-semibold text-sm">Lista opinii</h3>
+            <h3 className="text-lg font-bold text-foreground">Lista opinii</h3>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Sortuj:</span>
               <select
@@ -334,10 +334,10 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
                           {rev.author?.initials || "U"}
                         </div>
                         <div>
-                          <p className="font-semibold text-xs text-foreground leading-none">
+                           <p className="text-sm font-bold leading-tight text-foreground">
                             {rev.author?.displayName || "Użytkownik"}
                           </p>
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                           <p className="mt-1 text-xs text-muted-foreground">
                             Dodano: {new Date(rev.createdAt).toLocaleDateString("pl-PL")}
                           </p>
                         </div>
@@ -345,13 +345,13 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
                       <div className="flex flex-col items-end gap-1">
                         {renderStars(rev.rating)}
                         {rev.visitedOn && (
-                          <span className="text-[10px] text-muted-foreground">
+                           <span className="text-xs text-muted-foreground">
                             Wizyta: {rev.visitedOn}
                           </span>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap pl-9">
+                     <p className="whitespace-pre-wrap break-words pl-9 text-base leading-[1.6] text-foreground sm:text-[1.0625rem]">
                       {rev.body}
                     </p>
                     <div className="flex gap-2 justify-end pl-9 items-center">

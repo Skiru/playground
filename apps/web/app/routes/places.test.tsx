@@ -40,7 +40,8 @@ describe("places route", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("1 propozycja dla rodziny");
-    expect(screen.getByRole("link", { name: "Demo Bawialnia" })).toHaveAttribute("href", "/miejsca/demo-bawialnia");
+    expect(screen.getByRole("link", { name: "Zobacz miejsce: Demo Bawialnia" })).toHaveAttribute("href", "/miejsca/demo-bawialnia");
+    expect(screen.getByRole("button", { name: "Dodaj do ulubionych" })).toBeInTheDocument();
     expect(screen.getByText("bezpłatnie")).toBeInTheDocument();
   });
 });

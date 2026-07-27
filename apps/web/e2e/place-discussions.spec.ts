@@ -33,7 +33,7 @@ test.describe("Place Discussions E2E Real Journey", () => {
 
     // 2. Alice creates a comment
     await alicePage.goto("/miejsca?city=warszawa");
-    await alicePage.locator(".place-card h2 a").first().click();
+    await alicePage.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ }).click();
     await expect(alicePage).toHaveURL(/\/miejsca\/[^/?#]+$/);
     const placeUrl = alicePage.url();
 
