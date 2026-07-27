@@ -1,9 +1,9 @@
 # FamilyPlaces
 
 Production-oriented monorepo for a server-rendered catalogue of child-friendly
-places. The first delivery covers architecture, a deployable walking skeleton,
-and a public geospatial catalogue. Public-user identity and community features
-are deferred; administrator session authentication is part of C2.
+places. Features include a public geospatial catalogue, Google session identity,
+a complete public community forum with categories, threads and replies, a global community activity
+feed, content reporting, and an explicit concurrency-safe, audit-logged moderator queue.
 
 ## Planned Runtime
 

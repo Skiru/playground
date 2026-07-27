@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 import { loader } from "./root"
 import { fetchSession } from "./lib/api-session.server"
@@ -7,11 +6,11 @@ vi.mock("./lib/api-session.server", () => ({
   fetchSession: vi.fn(),
 }))
 
-async function getLoaderData(result: any) {
+async function getLoaderData(result: Awaited<ReturnType<typeof loader>>) {
   if (result instanceof Response) {
     return await result.json()
   }
-  return result
+  return result.data
 }
 
 describe("root loader", () => {
@@ -33,7 +32,7 @@ describe("root loader", () => {
     const result = await loader({
       request: new Request("http://localhost/"),
       params: {},
-    } as any)
+    } as Parameters<typeof loader>[0])
 
     const data = await getLoaderData(result)
     expect(data.publicRuntimeConfig).toEqual({
@@ -51,7 +50,7 @@ describe("root loader", () => {
       loader({
         request: new Request("http://localhost/"),
         params: {},
-      } as any)
+      } as Parameters<typeof loader>[0])
     ).rejects.toThrow(/Configuration error/)
   })
 
@@ -64,7 +63,7 @@ describe("root loader", () => {
     const result = await loader({
       request: new Request("http://localhost/"),
       params: {},
-    } as any)
+    } as Parameters<typeof loader>[0])
 
     const data = await getLoaderData(result)
     expect(data.publicRuntimeConfig).toEqual({
@@ -83,7 +82,7 @@ describe("root loader", () => {
     const result = await loader({
       request: new Request("http://localhost/"),
       params: {},
-    } as any)
+    } as Parameters<typeof loader>[0])
 
     const data = await getLoaderData(result)
     expect(data.publicRuntimeConfig).toEqual({

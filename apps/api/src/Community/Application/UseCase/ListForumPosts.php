@@ -1,0 +1,122 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Community\Application\UseCase;
+
+use App\Community\Application\Pagination\CursorCodec;
+use App\Community\Application\Port\PublicAuthorProfileLookup;
+use App\Community\Domain\Forum\ForumPostRepository;
+use App\Community\Domain\Forum\ForumPostStatus;
+use App\Community\Domain\Forum\ForumThreadRepository;
+use App\Community\Domain\Forum\ForumThreadStatus;
+use App\Shared\Application\Exception\ApiException;
+use Symfony\Component\Uid\Uuid;
+
+final class ListForumPosts
+{
+    public function __construct(
+        private readonly ForumThreadRepository $threadRepository,
+        private readonly ForumPostRepository $postRepository,
+        private readonly PublicAuthorProfileLookup $authorProfileLookup,
+    ) {
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function execute(Uuid $threadId, int $limit, ?string $cursorStr): array
+    {
+        $thread = $this->threadRepository->findById($threadId);
+        if (null === $thread || ForumThreadStatus::HIDDEN === $thread->status() || ForumThreadStatus::REMOVED_BY_MODERATOR === $thread->status()) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+
+        $initialPost = $this->postRepository->findInitialByThreadId($threadId);
+        if (null === $initialPost) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+        if (ForumThreadStatus::PUBLISHED === $thread->status() && ForumPostStatus::PUBLISHED !== $initialPost->status()) {
+            throw new ApiException(404, 'Thread not found.', 'MISSING_PUBLIC_RESOURCE');
+        }
+
+        // Decode cursor
+        $cursorId = null;
+        $cursorCreatedAt = null;
+
+        if (null !== $cursorStr && '' !== $cursorStr) {
+            $decoded = CursorCodec::decode($cursorStr, [
+                'id' => CursorCodec::uuidField(),
+                'createdAt' => CursorCodec::timestampField(),
+                'threadId' => CursorCodec::uuidField(expected: $threadId->toRfc4122(), hasExpected: true),
+            ]);
+            \assert(null !== $decoded);
+            $cursorId = (string) $decoded['id'];
+            $cursorCreatedAt = new \DateTimeImmutable((string) $decoded['createdAt']);
+        }
+
+        // Fetch posts (+1 to check for next page)
+        $posts = $this->postRepository->findByThreadId($threadId, $cursorId, $cursorCreatedAt, $limit + 1);
+        $hasNextPage = \count($posts) > $limit;
+        if ($hasNextPage) {
+            array_pop($posts);
+        }
+
+        // Batch load profiles to avoid N+1
+        $authorIds = array_map(static fn ($p) => $p->authorId(), $posts);
+        $profiles = $this->authorProfileLookup->getProfiles($authorIds);
+
+        $items = [];
+        foreach ($posts as $post) {
+            $authorIdStr = $post->authorId()->toString();
+
+            if (ForumPostStatus::DELETED_BY_AUTHOR === $post->status()) {
+                $author = [
+                    'id' => null,
+                    'displayName' => 'Usunięty użytkownik',
+                    'initials' => 'U',
+                ];
+                $body = 'Treść usunięta przez autora';
+            } else {
+                $author = $profiles[$authorIdStr] ?? [
+                    'id' => $authorIdStr,
+                    'displayName' => 'Usunięty użytkownik',
+                    'initials' => 'U',
+                ];
+                $body = $post->body();
+            }
+
+            $items[] = [
+                'id' => $post->id()->toString(),
+                'threadId' => $post->threadId()->toString(),
+                'authorId' => ForumPostStatus::DELETED_BY_AUTHOR === $post->status() ? null : $authorIdStr,
+                'author' => $author,
+                'parentId' => $post->parentId()?->toString(),
+                'isInitial' => $post->isInitial(),
+                'body' => $body,
+                'status' => $post->status()->value,
+                'createdAt' => $post->createdAt()->format(\DateTimeInterface::ATOM),
+                'updatedAt' => $post->updatedAt()->format(\DateTimeInterface::ATOM),
+                'version' => $post->version(),
+            ];
+        }
+
+        $nextCursor = null;
+        if ($hasNextPage && !empty($posts)) {
+            $lastPost = end($posts);
+            $nextCursor = CursorCodec::encode([
+                'id' => $lastPost->id()->toString(),
+                'createdAt' => $lastPost->createdAt()->format('Y-m-d H:i:s'),
+                'threadId' => $threadId->toRfc4122(),
+            ]);
+        }
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'nextCursor' => $nextCursor,
+                'hasNextPage' => $hasNextPage,
+            ],
+        ];
+    }
+}

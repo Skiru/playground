@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Personalization\UI\Http;
 
-use App\Identity\UI\Security\CsrfValidator;
 use App\Personalization\Application\FavoriteRepository;
 use App\Personalization\Application\UseCase\AddFavorite;
 use App\Personalization\Application\UseCase\AddVisit;
@@ -12,7 +11,7 @@ use App\Personalization\Application\UseCase\DeleteVisit;
 use App\Personalization\Application\UseCase\RemoveFavorite;
 use App\Personalization\Application\UseCase\UpdateVisit;
 use App\Personalization\Application\VisitRepository;
-use App\Shared\Application\Clock;
+use App\Shared\Application\Security\CsrfValidator;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,7 +35,6 @@ final class PersonalizationController
         private readonly Connection $connection,
         private readonly Security $security,
         private readonly CsrfValidator $csrfValidator,
-        private readonly Clock $clock,
     ) {
     }
 
@@ -60,26 +58,14 @@ final class PersonalizationController
         $response->headers->set('Vary', 'Cookie');
     }
 
-    private function parseDate(string $dateStr): \DateTimeImmutable
-    {
-        $date = \DateTimeImmutable::createFromFormat('Y-m-d', $dateStr);
-        if (!$date || $date->format('Y-m-d') !== $dateStr) {
-            throw new \InvalidArgumentException('Date must be in exact Y-m-d format.');
-        }
-
-        return $date->setTime(0, 0, 0);
-    }
-
     #[Route('/api/v1/me/favorites', name: 'api_get_favorites', methods: ['GET'])]
     public function listFavorites(Request $request): JsonResponse
     {
         $user = $this->getAuthenticatedUser();
 
-        $page = $request->query->get('page');
-        $pageSize = $request->query->get('pageSize');
-
-        $pageInt = null !== $page ? max(1, (int) $page) : 1;
-        $pageSizeInt = null !== $pageSize ? min(50, max(1, (int) $pageSize)) : 20;
+        $input = \App\Personalization\Application\Dto\PaginationInput::fromRequest($request);
+        $pageInt = $input->page;
+        $pageSizeInt = $input->pageSize;
 
         $favorites = $this->favoriteRepository->findByUserId($user->getId(), $pageInt, $pageSizeInt);
         $totalItems = $this->favoriteRepository->countByUserId($user->getId());
@@ -186,11 +172,9 @@ final class PersonalizationController
     {
         $user = $this->getAuthenticatedUser();
 
-        $page = $request->query->get('page');
-        $pageSize = $request->query->get('pageSize');
-
-        $pageInt = null !== $page ? max(1, (int) $page) : 1;
-        $pageSizeInt = null !== $pageSize ? min(50, max(1, (int) $pageSize)) : 20;
+        $input = \App\Personalization\Application\Dto\PaginationInput::fromRequest($request);
+        $pageInt = $input->page;
+        $pageSizeInt = $input->pageSize;
 
         $visits = $this->visitRepository->findByUserId($user->getId(), $pageInt, $pageSizeInt);
         $totalItems = $this->visitRepository->countByUserId($user->getId());
@@ -252,40 +236,9 @@ final class PersonalizationController
             throw new BadRequestHttpException('Invalid place ID format.');
         }
 
-        $content = $request->getContent();
-        if (\strlen($content) > 8192) {
-            throw new BadRequestHttpException('Request body exceeds size limits.');
-        }
-
-        $data = json_decode($content, true) ?? [];
-        $visitedOnStr = $data['visitedOn'] ?? null;
-        $note = $data['note'] ?? null;
-
-        if (null === $visitedOnStr || !\is_string($visitedOnStr)) {
-            throw new BadRequestHttpException('Missing or invalid visitedOn parameter.');
-        }
-
-        try {
-            $visitedOn = $this->parseDate($visitedOnStr);
-        } catch (\InvalidArgumentException $e) {
-            throw new BadRequestHttpException($e->getMessage(), $e);
-        }
-
-        if ($visitedOn > $this->clock->now()->setTime(0, 0, 0)) {
-            return new JsonResponse([
-                'title' => 'Validation Error',
-                'status' => Response::HTTP_UNPROCESSABLE_ENTITY,
-                'detail' => 'Visited date cannot be in the future.',
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        if (null !== $note && mb_strlen($note) > 1000) {
-            return new JsonResponse([
-                'title' => 'Validation Error',
-                'status' => Response::HTTP_UNPROCESSABLE_ENTITY,
-                'detail' => 'Visit note cannot exceed 1000 characters.',
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        $input = \App\Personalization\Application\Dto\CreateVisitInput::fromRequest($request);
+        $visitedOn = $input->visitedOn;
+        $note = $input->note;
 
         try {
             $visit = $this->addVisitUseCase->execute($user, $placeUuid, $visitedOn, $note);
@@ -325,44 +278,11 @@ final class PersonalizationController
             throw new BadRequestHttpException('Invalid visit ID format.');
         }
 
-        $content = $request->getContent();
-        if (\strlen($content) > 8192) {
-            throw new BadRequestHttpException('Request body exceeds size limits.');
-        }
-
-        $data = json_decode($content, true) ?? [];
-        $visitedOnStr = $data['visitedOn'] ?? null;
-        $note = $data['note'] ?? null;
-
-        $hasVisitedOn = \array_key_exists('visitedOn', $data);
-        $hasNote = \array_key_exists('note', $data);
-
-        $visitedOn = null;
-        if ($hasVisitedOn) {
-            if (null === $visitedOnStr || !\is_string($visitedOnStr)) {
-                throw new BadRequestHttpException('Invalid visitedOn parameter.');
-            }
-            try {
-                $visitedOn = $this->parseDate($visitedOnStr);
-                if ($visitedOn > $this->clock->now()->setTime(0, 0, 0)) {
-                    return new JsonResponse([
-                        'title' => 'Validation Error',
-                        'status' => Response::HTTP_UNPROCESSABLE_ENTITY,
-                        'detail' => 'Visited date cannot be in the future.',
-                    ], Response::HTTP_UNPROCESSABLE_ENTITY);
-                }
-            } catch (\InvalidArgumentException $e) {
-                throw new BadRequestHttpException($e->getMessage(), $e);
-            }
-        }
-
-        if ($hasNote && null !== $note && mb_strlen($note) > 1000) {
-            return new JsonResponse([
-                'title' => 'Validation Error',
-                'status' => Response::HTTP_UNPROCESSABLE_ENTITY,
-                'detail' => 'Visit note cannot exceed 1000 characters.',
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        $input = \App\Personalization\Application\Dto\UpdateVisitInput::fromRequest($request);
+        $visitedOn = $input->visitedOn;
+        $hasVisitedOn = $input->hasVisitedOn;
+        $note = $input->note;
+        $hasNote = $input->hasNote;
 
         try {
             $visit = $this->updateVisitUseCase->execute(
@@ -421,26 +341,15 @@ final class PersonalizationController
     public function getPlaceState(Request $request): JsonResponse
     {
         $user = $this->getAuthenticatedUser();
-        $placeIdsRaw = $request->query->all('placeIds') ?: $request->query->all('placeIds[]');
 
-        if (empty($placeIdsRaw)) {
+        $input = \App\Personalization\Application\Dto\PlaceStateInput::fromRequest($request);
+        $placeIds = $input->placeIds;
+
+        if (empty($placeIds)) {
             $response = new JsonResponse([]);
             $this->setPrivateNoCache($response);
 
             return $response;
-        }
-
-        if (\count($placeIdsRaw) > 50) {
-            throw new BadRequestHttpException('Exceeded maximum of 50 place IDs.');
-        }
-
-        $placeIds = [];
-        foreach ($placeIdsRaw as $idStr) {
-            try {
-                $placeIds[] = Uuid::fromString($idStr);
-            } catch (\InvalidArgumentException) {
-                throw new BadRequestHttpException('Invalid place ID format inside list.');
-            }
         }
 
         // Optimized batch query: only 2 queries total instead of N+1

@@ -30,6 +30,8 @@ final readonly class PlaceListItem implements \JsonSerializable
         public OpeningStatus $opening,
         public bool $complete,
         public float $relevanceScore,
+        public float $averageRating = 0.0,
+        public int $totalReviews = 0,
         public ?array $mainPhoto = null,
     ) {
     }
@@ -37,6 +39,6 @@ final readonly class PlaceListItem implements \JsonSerializable
     /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
-        return ['id' => $this->id, 'slug' => $this->slug, 'name' => $this->name, 'short_description' => $this->shortDescription, 'city' => $this->city, 'categories' => $this->categories, ...$this->age->jsonSerialize(), 'indoor' => $this->indoor, 'outdoor' => $this->outdoor, 'free_entry' => $this->freeEntry, 'verification_status' => $this->verificationStatus, 'amenities' => $this->amenities, 'distance_meters' => $this->distanceMeters, 'longitude' => $this->longitude, 'latitude' => $this->latitude, 'is_open_now' => $this->opening->jsonSerialize(), 'complete' => $this->complete, 'relevance_score' => $this->relevanceScore, 'main_photo' => $this->mainPhoto];
+        return ['id' => $this->id, 'slug' => $this->slug, 'name' => $this->name, 'short_description' => $this->shortDescription, 'city' => $this->city, 'categories' => $this->categories, ...$this->age->jsonSerialize(), 'indoor' => $this->indoor, 'outdoor' => $this->outdoor, 'free_entry' => $this->freeEntry, 'verification_status' => $this->verificationStatus, 'amenities' => $this->amenities, 'distance_meters' => $this->distanceMeters, 'longitude' => $this->longitude, 'latitude' => $this->latitude, 'is_open_now' => $this->opening->jsonSerialize(), 'complete' => $this->complete, 'relevance_score' => $this->relevanceScore, 'average_rating' => $this->averageRating, 'total_reviews' => $this->totalReviews, 'main_photo' => $this->mainPhoto];
     }
 }

@@ -8,6 +8,7 @@ use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
+use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
@@ -75,7 +76,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'loginWithGoogle',
                 tags: ['Authentication'],
-                requestBody: new \ApiPlatform\OpenApi\Model\RequestBody('Google ID token.', new \ArrayObject([
+                requestBody: new RequestBody('Google ID token.', new \ArrayObject([
                     'application/json' => [
                         'schema' => [
                             'type' => 'object',
@@ -158,7 +159,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 operationId: 'addVisit',
                 tags: ['Personalization'],
                 parameters: [new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid'])],
-                requestBody: new \ApiPlatform\OpenApi\Model\RequestBody('Visit details.', new \ArrayObject([
+                requestBody: new RequestBody('Visit details.', new \ArrayObject([
                     'application/json' => [
                         'schema' => [
                             'type' => 'object',
@@ -203,7 +204,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
                 operationId: 'updateVisit',
                 tags: ['Personalization'],
                 parameters: [new Parameter('visitId', 'path', 'Visit UUID.', true, schema: ['type' => 'string', 'format' => 'uuid'])],
-                requestBody: new \ApiPlatform\OpenApi\Model\RequestBody('Updated visit details.', new \ArrayObject([
+                requestBody: new RequestBody('Updated visit details.', new \ArrayObject([
                     'application/json' => [
                         'schema' => [
                             'type' => 'object',
@@ -250,6 +251,506 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             )
         ));
 
+        // 9. GET & POST /api/v1/places/{placeId}/reviews
+        $openApi->getPaths()->addPath('/api/v1/places/{placeId}/reviews', new PathItem(
+            get: new Operation(
+                operationId: 'listReviews',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer', 'minimum' => 1]),
+                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                    new Parameter('sort', 'query', 'Sort parameter.', false, schema: ['type' => 'string', 'enum' => ['newest', 'highest', 'lowest']]),
+                ],
+                responses: [
+                    '200' => new Response('List of reviews.', new \ArrayObject(['application/json' => ['schema' => [
+                        'type' => 'object',
+                        'required' => ['summary', 'items', 'pagination'],
+                        'properties' => [
+                            'summary' => ['type' => 'object', 'required' => ['averageRating', 'totalReviews', 'histogram'], 'properties' => [
+                                'averageRating' => ['type' => 'number'],
+                                'totalReviews' => ['type' => 'integer'],
+                                'histogram' => ['type' => 'object'],
+                            ]],
+                            'items' => ['type' => 'array', 'items' => self::reviewSchema()],
+                            'pagination' => ['type' => 'object'],
+                        ],
+                    ]]])),
+                ],
+                summary: 'Get reviews for a place',
+            ),
+            post: new Operation(
+                operationId: 'addReview',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Review body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['rating', 'body'],
+                    'properties' => [
+                        'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
+                        'body' => ['type' => 'string', 'minLength' => 20, 'maxLength' => 5000],
+                        'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Review created.', new \ArrayObject(['application/json' => ['schema' => self::reviewSchema()]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Add review for a place',
+            )
+        ));
+
+        // 10. PATCH & DELETE /api/v1/me/reviews/{reviewId}
+        $openApi->getPaths()->addPath('/api/v1/me/reviews/{reviewId}', new PathItem(
+            patch: new Operation(
+                operationId: 'updateReview',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('reviewId', 'path', 'Review UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Update review body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['version'],
+                    'properties' => [
+                        'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
+                        'body' => ['type' => 'string', 'minLength' => 20, 'maxLength' => 5000],
+                        'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
+                        'version' => ['type' => 'integer'],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Review updated.', new \ArrayObject(['application/json' => ['schema' => self::reviewSchema()]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Update review',
+            ),
+            delete: new Operation(
+                operationId: 'deleteReview',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('reviewId', 'path', 'Review UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Delete review',
+            )
+        ));
+
+        // 11. GET /api/v1/me/reviews
+        $openApi->getPaths()->addPath('/api/v1/me/reviews', new PathItem(
+            get: new Operation(
+                operationId: 'myReviews',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('page', 'query', 'Page number.', false, schema: ['type' => 'integer', 'minimum' => 1]),
+                    new Parameter('pageSize', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                ],
+                responses: [
+                    '200' => new Response('My reviews list.', new \ArrayObject(['application/json' => ['schema' => self::reviewCollectionSchema()]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Get my reviews',
+            )
+        ));
+
+        // 12. GET & POST /api/v1/places/{placeId}/comments
+        $openApi->getPaths()->addPath('/api/v1/places/{placeId}/comments', new PathItem(
+            get: new Operation(
+                operationId: 'listComments',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('limit', 'query', 'Page size.', false, schema: ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                ],
+                responses: [
+                    '200' => new Response('List of comments.', new \ArrayObject(['application/json' => ['schema' => [
+                        'type' => 'object',
+                        'required' => ['items', 'pagination'],
+                        'properties' => [
+                            'items' => ['type' => 'array', 'items' => self::commentSchema()],
+                            'pagination' => self::cursorPaginationSchema(),
+                        ],
+                    ]]])),
+                ],
+                summary: 'Get discussion comments for a place',
+            ),
+            post: new Operation(
+                operationId: 'addComment',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('placeId', 'path', 'Place UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Comment body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Comment created.', new \ArrayObject(['application/json' => ['schema' => self::commentSchema()]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Add a comment to place discussion',
+            )
+        ));
+
+        // 13. POST /api/v1/place-comments/{commentId}/replies
+        $openApi->getPaths()->addPath('/api/v1/place-comments/{commentId}/replies', new PathItem(
+            post: new Operation(
+                operationId: 'addReply',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('commentId', 'path', 'Parent comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Reply body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Reply created.', new \ArrayObject(['application/json' => ['schema' => self::commentSchema()]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Reply to a comment',
+            )
+        ));
+
+        // 14. PATCH & DELETE /api/v1/me/place-comments/{commentId}
+        $openApi->getPaths()->addPath('/api/v1/me/place-comments/{commentId}', new PathItem(
+            patch: new Operation(
+                operationId: 'updateComment',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('commentId', 'path', 'Comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Update comment body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['version', 'body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 3000],
+                        'version' => ['type' => 'integer'],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Comment updated.', new \ArrayObject(['application/json' => ['schema' => self::commentSchema()]])),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Update comment',
+            ),
+            delete: new Operation(
+                operationId: 'deleteComment',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('commentId', 'path', 'Comment UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                    '401' => new Response('Unauthorized.', new \ArrayObject(['application/problem+json' => ['schema' => self::problemSchema()]])),
+                ],
+                summary: 'Delete comment',
+            )
+        ));
+
+        // 15. Forum, reporting, and moderation endpoints
+        $openApi->getPaths()->addPath('/api/v1/forum/categories', new PathItem(
+            get: new Operation(
+                operationId: 'listForumCategories',
+                tags: ['Forum'],
+                responses: [
+                    '200' => new Response('Forum categories list.', new \ArrayObject(['application/json' => ['schema' => ['type' => 'array', 'items' => self::forumCategorySchema()]]])),
+                ],
+                summary: 'Get all forum categories',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/categories/{slug}/threads', new PathItem(
+            get: new Operation(
+                operationId: 'listCategoryThreads',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('slug', 'path', 'Category slug.', true, schema: ['type' => 'string']),
+                    new Parameter('limit', 'query', 'Page limit.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                ],
+                responses: [
+                    '200' => new Response('Category threads list.', new \ArrayObject(['application/json' => ['schema' => self::threadCollectionSchema()]])),
+                ],
+                summary: 'Get category threads',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/categories/{categoryId}/threads', new PathItem(
+            post: new Operation(
+                operationId: 'createForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('categoryId', 'path', 'Category UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Thread content', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['title', 'body'],
+                    'properties' => [
+                        'title' => ['type' => 'string', 'minLength' => 5, 'maxLength' => 160],
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Thread created.', new \ArrayObject(['application/json' => ['schema' => self::threadSchema()]])),
+                ],
+                summary: 'Create forum thread',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/threads/{threadId}', new PathItem(
+            get: new Operation(
+                operationId: 'getForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Thread detail.', new \ArrayObject(['application/json' => ['schema' => self::threadSchema()]])),
+                ],
+                summary: 'Get forum thread by ID',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/me/forum-threads/{threadId}', new PathItem(
+            patch: new Operation(
+                operationId: 'editOwnForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Edit thread body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['title', 'version'],
+                    'properties' => [
+                        'title' => ['type' => 'string', 'minLength' => 5, 'maxLength' => 160],
+                        'version' => ['type' => 'integer'],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Thread updated.', new \ArrayObject(['application/json' => ['schema' => self::threadSchema()]])),
+                ],
+                summary: 'Edit own forum thread',
+            ),
+            delete: new Operation(
+                operationId: 'deleteOwnForumThread',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                ],
+                summary: 'Delete own forum thread',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/forum/threads/{threadId}/posts', new PathItem(
+            get: new Operation(
+                operationId: 'listForumPosts',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('limit', 'query', 'Page limit.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                ],
+                responses: [
+                    '200' => new Response('Posts list.', new \ArrayObject(['application/json' => ['schema' => self::postCollectionSchema()]])),
+                ],
+                summary: 'Get posts in thread',
+            ),
+            post: new Operation(
+                operationId: 'createForumPost',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('threadId', 'path', 'Thread UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                requestBody: new RequestBody('Post body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['body'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
+                        'replyToPostId' => ['type' => 'string', 'format' => 'uuid', 'description' => 'Optional top-level parent; replying to a reply is rejected with FORUM_REPLY_DEPTH_LIMIT.'],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Post created.', new \ArrayObject(['application/json' => ['schema' => self::postSchema()]])),
+                ],
+                summary: 'Create forum post',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/me/forum-posts/{postId}', new PathItem(
+            patch: new Operation(
+                operationId: 'editOwnForumPost',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('postId', 'path', 'Post UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                requestBody: new RequestBody('Edit post body', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['body', 'version'],
+                    'properties' => [
+                        'body' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000],
+                        'version' => ['type' => 'integer'],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Post updated.', new \ArrayObject(['application/json' => ['schema' => self::postSchema()]])),
+                ],
+                summary: 'Edit own forum post',
+            ),
+            delete: new Operation(
+                operationId: 'deleteOwnForumPost',
+                tags: ['Forum'],
+                parameters: [
+                    new Parameter('postId', 'path', 'Post UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                responses: [
+                    '204' => new Response('Success (no content)'),
+                ],
+                summary: 'Delete own forum post',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/community/feed', new PathItem(
+            get: new Operation(
+                operationId: 'getCommunityFeed',
+                tags: ['Community'],
+                parameters: [
+                    new Parameter('limit', 'query', 'Page limit.', false, schema: ['type' => 'integer']),
+                    new Parameter('cursor', 'query', 'Pagination cursor.', false, schema: ['type' => 'string']),
+                    new Parameter('type', 'query', 'Filter by activity type.', false, schema: ['type' => 'string']),
+                    new Parameter('cityId', 'query', 'Filter by city UUID.', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                    new Parameter('categoryId', 'query', 'Filter by category UUID.', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Community activity feed.', new \ArrayObject(['application/json' => ['schema' => self::communityFeedSchema()]])),
+                ],
+                summary: 'Get community activity feed',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/content-reports', new PathItem(
+            post: new Operation(
+                operationId: 'reportContent',
+                tags: ['Moderation'],
+                parameters: [self::csrfParameter()],
+                requestBody: new RequestBody('Report details', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'required' => ['targetId', 'targetType', 'reason'],
+                    'properties' => [
+                        'targetId' => ['type' => 'string', 'format' => 'uuid'],
+                        'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST'], 'description' => 'Initial forum posts are canonicalized to their FORUM_THREAD target. Replies remain FORUM_POST.'],
+                        'reason' => ['type' => 'string', 'enum' => ['SPAM', 'HARASSMENT', 'INAPPROPRIATE', 'MISINFORMATION', 'PRIVACY_CONCERN', 'OTHER']],
+                        'details' => ['type' => 'string', 'maxLength' => 1000],
+                    ],
+                ]]])),
+                responses: [
+                    '201' => new Response('Report created.', new \ArrayObject(['application/json' => ['schema' => self::reportSchema()]])),
+                ],
+                summary: 'Report offensive content',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/queue', new PathItem(
+            get: new Operation(
+                operationId: 'listModerationQueue',
+                tags: ['Moderation'],
+                parameters: [
+                    new Parameter('status', 'query', 'Filter by report status.', false, schema: ['type' => 'string']),
+                    new Parameter('cursor', 'query', 'Cursor for pagination.', false, schema: ['type' => 'string']),
+                    new Parameter('limit', 'query', 'Limit of items per page.', false, schema: ['type' => 'integer']),
+                ],
+                responses: [
+                    '200' => new Response('Moderation queue reports list.', new \ArrayObject(['application/json' => ['schema' => self::moderationQueueSchema()]])),
+                ],
+                summary: 'Get moderator queue of reports',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/case/{reportId}', new PathItem(
+            get: new Operation(
+                operationId: 'getModerationCase',
+                tags: ['Moderation'],
+                parameters: [
+                    new Parameter('reportId', 'path', 'The report UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                ],
+                responses: [
+                    '200' => new Response('Moderation case details.', new \ArrayObject(['application/json' => ['schema' => self::moderationCaseSchema()]])),
+                ],
+                summary: 'Get moderation case details by report ID',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/case/{reportId}/claim', new PathItem(
+            post: new Operation(
+                operationId: 'claimModerationCase',
+                tags: ['Moderation'],
+                parameters: [
+                    new Parameter('reportId', 'path', 'The report UUID.', true, schema: ['type' => 'string', 'format' => 'uuid']),
+                    self::csrfParameter(),
+                ],
+                responses: [
+                    '200' => new Response('Case claimed successfully.', new \ArrayObject(['application/json' => ['schema' => self::successSchema()]])),
+                ],
+                summary: 'Claim a moderation case by report ID',
+            )
+        ));
+
+        $openApi->getPaths()->addPath('/api/v1/moderation/action', new PathItem(
+            post: new Operation(
+                operationId: 'moderateContent',
+                tags: ['Moderation'],
+                parameters: [
+                    self::csrfParameter(),
+                    new Parameter('Idempotency-Key', 'header', 'UUID idempotency key for exact moderation request retries.', true, schema: ['type' => 'string', 'format' => 'uuid', 'maxLength' => 36]),
+                    new Parameter('X-Correlation-ID', 'header', 'Optional request correlation identifier for observability.', false, schema: ['type' => 'string', 'format' => 'uuid', 'maxLength' => 36]),
+                ],
+                requestBody: new RequestBody('Moderation action details', new \ArrayObject(['application/json' => ['schema' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['reportId', 'action', 'reason'],
+                    'properties' => [
+                        'reportId' => ['type' => 'string', 'format' => 'uuid'],
+                        'action' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']],
+                        'reason' => ['type' => 'string', 'minLength' => 1],
+                    ],
+                ]]])),
+                responses: [
+                    '200' => new Response('Perform moderator action.', new \ArrayObject(['application/json' => ['schema' => self::successSchema()]])),
+                ],
+                summary: 'Perform moderator action on content',
+            )
+        ));
+
         return $openApi;
     }
 
@@ -268,6 +769,11 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
         };
 
         return new Parameter($name, 'query', $name.' filter.', $required, schema: $schema);
+    }
+
+    private static function csrfParameter(): Parameter
+    {
+        return new Parameter('X-CSRF-Token', 'header', 'Current api_session CSRF token.', true, schema: ['type' => 'string', 'minLength' => 1, 'maxLength' => 255]);
     }
 
     /**
@@ -293,6 +799,234 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     }
 
     /** @return array<string, mixed> */
+    private static function publicAuthorSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'displayName', 'initials'], 'additionalProperties' => false, 'properties' => [
+            'id' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'displayName' => ['type' => 'string'],
+            'initials' => ['type' => 'string'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function forumCategorySchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'slug', 'name', 'description', 'displayOrder'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'slug' => ['type' => 'string'],
+            'name' => ['type' => 'string'],
+            'description' => ['type' => ['string', 'null']],
+            'displayOrder' => ['type' => 'integer'],
+            'cityId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function reviewSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'rating', 'body', 'visitedOn', 'createdAt', 'updatedAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'placeId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'rating' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5],
+            'body' => ['type' => 'string'],
+            'visitedOn' => ['type' => ['string', 'null'], 'format' => 'date'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function commentSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'placeId', 'authorId', 'parentId', 'body', 'status', 'createdAt', 'updatedAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'placeId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'parentId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'body' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+            'replies' => ['type' => 'array', 'items' => ['type' => 'object']],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function threadSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'categoryId', 'authorId', 'title', 'status', 'createdAt', 'updatedAt', 'lastActivityAt', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'categoryId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'title' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'lastActivityAt' => ['type' => 'string', 'format' => 'date-time'],
+            'lockedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'pinnedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+            'firstPost' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'body' => ['type' => 'string']]],
+            'category' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string']]],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function postSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'threadId', 'authorId', 'parentId', 'body', 'status', 'createdAt', 'updatedAt', 'isInitial', 'version'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'threadId' => ['type' => 'string', 'format' => 'uuid'],
+            'authorId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'author' => self::publicAuthorSchema(),
+            'parentId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'isInitial' => ['type' => 'boolean'],
+            'body' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => ['PUBLISHED', 'HIDDEN', 'REMOVED_BY_MODERATOR', 'DELETED_BY_AUTHOR']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'updatedAt' => ['type' => 'string', 'format' => 'date-time'],
+            'version' => ['type' => 'integer', 'minimum' => 1],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function cursorPaginationSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['nextCursor', 'hasNextPage'], 'properties' => [
+            'nextCursor' => ['type' => ['string', 'null']],
+            'hasNextPage' => ['type' => 'boolean'],
+            'totalItems' => ['type' => 'integer'],
+            'rootCount' => ['type' => 'integer'],
+            'replyCount' => ['type' => 'integer'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function reviewCollectionSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => ['items' => ['type' => 'array', 'items' => self::reviewSchema()], 'pagination' => ['type' => 'object']]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function threadCollectionSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['category', 'items', 'pagination'], 'properties' => [
+            'category' => ['type' => 'object', 'required' => ['id', 'slug', 'name', 'description'], 'properties' => [
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'slug' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+                'description' => ['type' => ['string', 'null']],
+            ]],
+            'items' => ['type' => 'array', 'items' => self::threadSchema()],
+            'pagination' => self::cursorPaginationSchema(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function postCollectionSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => ['items' => ['type' => 'array', 'items' => self::postSchema()], 'pagination' => self::cursorPaginationSchema()]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function communityFeedSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => [
+            'items' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['type', 'id', 'activityAt', 'author', 'title', 'excerpt', 'sourceId', 'parentSourceId', 'placeSlug'], 'properties' => [
+                'type' => ['type' => 'string', 'enum' => ['forum_thread', 'forum_post', 'review', 'place_comment']],
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'activityAt' => ['type' => 'string', 'format' => 'date-time'],
+                'author' => self::publicAuthorSchema(),
+                'title' => ['type' => ['string', 'null']],
+                'excerpt' => ['type' => 'string'],
+                'sourceId' => ['type' => 'string', 'format' => 'uuid'],
+                'parentSourceId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'placeSlug' => ['type' => ['string', 'null']],
+            ]]],
+            'pagination' => self::cursorPaginationSchema(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function reportSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'targetId', 'targetType', 'reason', 'details', 'status', 'createdAt'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'targetId' => ['type' => 'string', 'format' => 'uuid'],
+            'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+            'reason' => ['type' => 'string'],
+            'details' => ['type' => ['string', 'null']],
+            'status' => ['type' => 'string', 'enum' => ['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function moderationCaseSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt', 'claimedBy', 'claimedAt', 'allowedActions'], 'properties' => [
+            ...self::reportSchema()['properties'],
+            'reporterId' => ['type' => 'string', 'format' => 'uuid'],
+            'claimedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'claimedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'resolvedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'resolvedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'allowedActions' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']]],
+            'targetPreview' => ['oneOf' => [
+                ['type' => 'null'],
+                ['type' => 'object', 'required' => ['title', 'body', 'status'], 'properties' => ['title' => ['type' => 'string'], 'body' => ['type' => 'string'], 'status' => ['type' => 'string'], 'rating' => ['type' => 'integer'], 'threadId' => ['type' => 'string', 'format' => 'uuid'], 'isInitial' => ['type' => 'boolean']]],
+            ]],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function moderationQueueSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['items', 'pagination'], 'properties' => [
+            'items' => ['type' => 'array', 'items' => self::moderationQueueItemSchema()],
+            'pagination' => self::cursorPaginationSchema(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function moderationQueueItemSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['id', 'reporterId', 'reporter', 'targetId', 'targetType', 'reason', 'details', 'status', 'createdAt', 'resolvedAt', 'resolvedBy', 'claimedAt', 'claimedBy', 'evidence', 'author', 'publicLink', 'adminLink', 'moderationHistory'], 'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'reporterId' => ['type' => 'string', 'format' => 'uuid'],
+            'reporter' => self::publicAuthorSchema(),
+            'targetId' => ['type' => 'string', 'format' => 'uuid'],
+            'targetType' => ['type' => 'string', 'enum' => ['REVIEW', 'PLACE_COMMENT', 'FORUM_THREAD', 'FORUM_POST']],
+            'reason' => ['type' => 'string'],
+            'details' => ['type' => ['string', 'null']],
+            'status' => ['type' => 'string', 'enum' => ['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED']],
+            'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            'resolvedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'resolvedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'claimedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'claimedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'evidence' => ['type' => 'string'],
+            'author' => ['oneOf' => [['type' => 'null'], self::publicAuthorSchema()]],
+            'publicLink' => ['type' => 'string'],
+            'adminLink' => ['type' => 'string'],
+            'moderationHistory' => ['type' => 'array', 'items' => ['type' => 'object']],
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    private static function successSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['status'], 'additionalProperties' => false, 'properties' => ['status' => ['type' => 'string', 'enum' => ['success']]]];
+    }
+
+    /** @return array<string, mixed> */
     private static function collectionSchema(string $collection): array
     {
         $properties = ['id' => ['type' => 'string', 'format' => 'uuid'], 'name' => ['type' => 'string'], 'slug' => ['type' => 'string']];
@@ -314,13 +1048,146 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
     /** @return array<string, mixed> */
     private static function listItemSchema(): array
     {
-        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'city', 'categories', 'min_age_months', 'max_age_months', 'indoor', 'outdoor', 'free_entry', 'verification_status', 'amenities', 'distance_meters', 'longitude', 'latitude', 'is_open_now', 'complete', 'relevance_score'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'city' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'min_age_months' => ['type' => 'integer'], 'max_age_months' => ['type' => ['integer', 'null']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'verification_status' => ['type' => 'string'], 'amenities' => self::namedItemsSchema(), 'distance_meters' => ['type' => ['number', 'null']], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'is_open_now' => ['type' => ['boolean', 'null']], 'complete' => ['type' => 'boolean'], 'relevance_score' => ['type' => 'number'], 'main_photo' => ['type' => ['object', 'null'], 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]]]];
+        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'city', 'categories', 'min_age_months', 'max_age_months', 'indoor', 'outdoor', 'free_entry', 'verification_status', 'amenities', 'distance_meters', 'longitude', 'latitude', 'is_open_now', 'complete', 'relevance_score', 'average_rating', 'total_reviews'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'city' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'min_age_months' => ['type' => 'integer'], 'max_age_months' => ['type' => ['integer', 'null']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'verification_status' => ['type' => 'string'], 'amenities' => self::namedItemsSchema(), 'distance_meters' => ['type' => ['number', 'null']], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'is_open_now' => ['type' => ['boolean', 'null']], 'complete' => ['type' => 'boolean'], 'relevance_score' => ['type' => 'number'], 'average_rating' => ['type' => 'number'], 'total_reviews' => ['type' => 'integer'], 'main_photo' => ['type' => ['object', 'null'], 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]]]];
     }
 
     /** @return array<string, mixed> */
     private static function placeSchema(): array
     {
-        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'slug', 'name', 'short_description', 'description', 'city_name', 'city_slug', 'address_line1', 'address_line2', 'postal_code', 'country_code', 'categories', 'amenities', 'age_zones', 'weekly_opening', 'special_opening', 'indoor', 'outdoor', 'free_entry', 'price_description', 'website_url', 'phone', 'verification_status', 'longitude', 'latitude'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'slug' => ['type' => 'string'], 'name' => ['type' => 'string'], 'short_description' => ['type' => 'string'], 'description' => ['type' => 'string'], 'city_name' => ['type' => 'string'], 'city_slug' => ['type' => 'string'], 'address_line1' => ['type' => 'string'], 'address_line2' => ['type' => ['string', 'null']], 'postal_code' => ['type' => 'string'], 'country_code' => ['type' => 'string'], 'categories' => self::namedItemsSchema(), 'amenities' => self::namedItemsSchema(), 'age_zones' => ['type' => 'array', 'items' => ['type' => 'object']], 'weekly_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'special_opening' => ['type' => 'array', 'items' => ['type' => 'object']], 'indoor' => ['type' => 'boolean'], 'outdoor' => ['type' => 'boolean'], 'free_entry' => ['type' => 'boolean'], 'price_description' => ['type' => ['string', 'null']], 'website_url' => ['type' => ['string', 'null']], 'phone' => ['type' => ['string', 'null']], 'verification_status' => ['type' => 'string'], 'longitude' => ['type' => 'number'], 'latitude' => ['type' => 'number'], 'main_photo' => ['type' => ['object', 'null'], 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]], 'photos' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'is_main' => ['type' => 'boolean'], 'alt_text' => ['type' => ['string', 'null']], 'caption' => ['type' => ['string', 'null']], 'variants' => ['type' => 'object', 'properties' => ['thumbnail_mini' => ['type' => 'string'], 'thumbnail' => ['type' => 'string'], 'card' => ['type' => 'string'], 'hero' => ['type' => 'string'], 'original_max' => ['type' => 'string']]]]]]]];
+        return [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'required' => [
+                'id', 'slug', 'name', 'short_description', 'description', 'city_name', 'city_slug',
+                'address_line1', 'address_line2', 'postal_code', 'country_code', 'categories', 'amenities',
+                'age_zones', 'weekly_opening', 'special_opening', 'indoor', 'outdoor', 'free_entry',
+                'price_description', 'website_url', 'phone', 'verification_status', 'longitude', 'latitude',
+                'ageZones', 'openingSchedule', 'specialOpeningDays',
+            ],
+            'properties' => [
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'slug' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+                'short_description' => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+                'city_name' => ['type' => 'string'],
+                'city_slug' => ['type' => 'string'],
+                'address_line1' => ['type' => 'string'],
+                'address_line2' => ['type' => ['string', 'null']],
+                'postal_code' => ['type' => 'string'],
+                'country_code' => ['type' => 'string'],
+                'categories' => self::namedItemsSchema(),
+                'amenities' => self::namedItemsSchema(),
+                'age_zones' => ['type' => 'array', 'items' => ['type' => 'object']],
+                'weekly_opening' => ['type' => 'array', 'items' => ['type' => 'object']],
+                'special_opening' => ['type' => 'array', 'items' => ['type' => 'object']],
+                'ageZones' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'required' => ['minAgeMonths', 'maxAgeMonths', 'label'],
+                        'properties' => [
+                            'minAgeMonths' => ['type' => 'integer'],
+                            'maxAgeMonths' => ['type' => ['integer', 'null']],
+                            'label' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
+                'openingSchedule' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'required' => ['dayOfWeek', 'periods', 'closed'],
+                        'properties' => [
+                            'dayOfWeek' => ['type' => 'integer'],
+                            'closed' => ['type' => 'boolean'],
+                            'periods' => [
+                                'type' => 'array',
+                                'items' => [
+                                    'type' => 'object',
+                                    'additionalProperties' => false,
+                                    'required' => ['opensAt', 'closesAt', 'closesNextDay'],
+                                    'properties' => [
+                                        'opensAt' => ['type' => 'string'],
+                                        'closesAt' => ['type' => 'string'],
+                                        'closesNextDay' => ['type' => 'boolean'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'specialOpeningDays' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'required' => ['date', 'mode', 'periods', 'note'],
+                        'properties' => [
+                            'date' => ['type' => 'string'],
+                            'mode' => ['type' => 'string'],
+                            'note' => ['type' => ['string', 'null']],
+                            'periods' => [
+                                'type' => 'array',
+                                'items' => [
+                                    'type' => 'object',
+                                    'additionalProperties' => false,
+                                    'required' => ['opensAt', 'closesAt', 'closesNextDay'],
+                                    'properties' => [
+                                        'opensAt' => ['type' => 'string'],
+                                        'closesAt' => ['type' => 'string'],
+                                        'closesNextDay' => ['type' => 'boolean'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'indoor' => ['type' => 'boolean'],
+                'outdoor' => ['type' => 'boolean'],
+                'free_entry' => ['type' => 'boolean'],
+                'price_description' => ['type' => ['string', 'null']],
+                'website_url' => ['type' => ['string', 'null']],
+                'phone' => ['type' => ['string', 'null']],
+                'verification_status' => ['type' => 'string'],
+                'longitude' => ['type' => 'number'],
+                'latitude' => ['type' => 'number'],
+                'main_photo' => [
+                    'type' => ['object', 'null'],
+                    'properties' => [
+                        'thumbnail_mini' => ['type' => 'string'],
+                        'thumbnail' => ['type' => 'string'],
+                        'card' => ['type' => 'string'],
+                        'hero' => ['type' => 'string'],
+                        'original_max' => ['type' => 'string'],
+                    ],
+                ],
+                'photos' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'string', 'format' => 'uuid'],
+                            'is_main' => ['type' => 'boolean'],
+                            'alt_text' => ['type' => ['string', 'null']],
+                            'caption' => ['type' => ['string', 'null']],
+                            'variants' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'thumbnail_mini' => ['type' => 'string'],
+                                    'thumbnail' => ['type' => 'string'],
+                                    'card' => ['type' => 'string'],
+                                    'hero' => ['type' => 'string'],
+                                    'original_max' => ['type' => 'string'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
     }
 
     /** @return array<string, mixed> */

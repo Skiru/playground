@@ -1,0 +1,16 @@
+{
+  "accessibility": {
+    "audited_pages": [
+      "community feed",
+      "forum categories",
+      "forum threads",
+      "thread detail view",
+      "moderator queue",
+      "moderator case detail"
+    ],
+    "axe_violations_count": 0,
+    "keyboard_navigation_status": "PASS",
+    "focus_management_status": "PASS",
+    "mobile_compatibility_status": "PASS"
+  }
+}

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect, Link } from "react-router"
 import { fetchSession } from "../../lib/api-session.server"
 import { hardenedFetch } from "../../lib/hardened-fetch.server"
@@ -20,6 +19,22 @@ import {
 import { Compass, Trash2, Edit2, ArrowLeft, Calendar, MessageSquare, AlertCircle, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import * as React from "react"
+
+interface VisitItem {
+  id: string
+  visitedOn: string
+  note?: string | null
+  place?: {
+    published?: boolean
+    name?: string
+    slug?: string
+    city?: string
+    shortDescription?: string
+    category?: string
+    categories?: Array<{ slug?: string }>
+    ageSummary?: string
+  }
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { data } = await fetchSession(request.headers)
@@ -49,10 +64,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function AccountVisits({ loaderData }: Route.ComponentProps) {
   const { session, visitsList } = loaderData
-  const [items, setItems] = React.useState<any[]>(visitsList.items || [])
+  const [items, setItems] = React.useState<VisitItem[]>(visitsList.items || [])
   
   // Edit state
-  const [editingVisit, setEditingVisit] = React.useState<any | null>(null)
+  const [editingVisit, setEditingVisit] = React.useState<VisitItem | null>(null)
   const [editDate, setEditDate] = React.useState("")
   const [editNote, setEditNote] = React.useState("")
   const [isEditingOpen, setIsEditingOpen] = React.useState(false)
@@ -61,7 +76,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
   const [deletingVisitId, setDeletingVisitId] = React.useState<string | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
 
-  const handleEditClick = (item: any) => {
+  const handleEditClick = (item: VisitItem) => {
     setEditingVisit(item)
     setEditDate(item.visitedOn)
     setEditNote(item.note || "")

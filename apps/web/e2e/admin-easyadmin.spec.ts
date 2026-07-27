@@ -1,11 +1,11 @@
 import { createRequire } from "node:module";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
 const API = process.env.API_BASE_URL_BROWSER ?? "http://127.0.0.1:8080";
 
-async function assertAccessible(page: any) {
+async function assertAccessible(page: Page) {
   // Dynamically set lang if it's missing to satisfy axe-core in this test
   await page.evaluate(() => {
     if (!document.documentElement.getAttribute("lang")) {
@@ -15,18 +15,18 @@ async function assertAccessible(page: any) {
 
   await page.addScriptTag({ path: axePath });
   const violations = await page.evaluate(async () => {
-    const result = await (window as any).axe.run();
-    return result.violations.filter((v: any) => v.impact === "critical" || v.impact === "serious");
+    type AxeViolation = { impact: string | null };
+    const axeWindow = window as typeof window & {
+      axe: { run: () => Promise<{ violations: AxeViolation[] }> };
+    };
+    const result = await axeWindow.axe.run();
+    return result.violations.filter((violation) => violation.impact === "critical" || violation.impact === "serious");
   });
   expect(violations).toEqual([]);
 }
 
 test.describe("EasyAdmin Panel Tests", () => {
-  test("Desktop Flow", async ({ page }, testInfo) => {
-    if (testInfo.project.name !== "chromium-desktop") {
-      test.skip();
-    }
-
+  test("Desktop Flow", async ({ page }) => {
     // 1. Admin login page has EasyAdmin styles
     await page.goto(`${API}/admin/login`);
     await expect(page.locator("body")).toHaveClass(/page-login/);
@@ -37,7 +37,7 @@ test.describe("EasyAdmin Panel Tests", () => {
     await page.getByLabel("Hasło").fill("test-password");
 
     // 5. CSS and JS returns 200
-    const assetResponses: Promise<any>[] = [];
+    const assetResponses: Promise<void>[] = [];
     page.on("response", (res) => {
       const url = res.url();
       if (url.includes("/build/") || url.includes("/bundles/") || url.endsWith(".css") || url.endsWith(".js")) {
@@ -103,10 +103,8 @@ test.describe("EasyAdmin Panel Tests", () => {
     expect(overflow).toBeFalsy();
   });
 
-  test("Mobile Flow", async ({ page }, testInfo) => {
-    if (testInfo.project.name !== "chromium-mobile") {
-      test.skip();
-    }
+  test("Mobile Flow", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
 
     // 1. Mobile login
     await page.goto(`${API}/admin/login`);

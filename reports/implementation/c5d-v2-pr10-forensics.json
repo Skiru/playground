@@ -1,0 +1,52 @@
+{
+  "prNumber": 10,
+  "prBase": "main",
+  "prHeadBranch": "feat/family-places-c3-product-experience",
+  "prHeadFullSha": "e1b7959d8ed9e6ffe886b7f0532198add87d7ee7",
+  "commitsCount": 21,
+  "commitsList": [
+    { "sha": "e1b7959d8ed9e6ffe886b7f0532198add87d7ee7", "subject": "feat(places): add C4 places media and gallery module" },
+    { "sha": "fed43846f4a1b4a7d35b6f42837012fbe2c2c506", "subject": "fix(web): prevent concurrent database mutations and state leaks in E2E" },
+    { "sha": "1ea869695beee78f6f5fe0bc2a2f9be740e53a3e", "subject": "fix(web): stabilize C3 browser journeys at responsive interaction boundaries" },
+    { "sha": "cb2f42be7e85c889f07a00f40fb1fcb910b8cf14", "subject": "fix: protect E2E clicks from sticky header intersections using force clicks" },
+    { "sha": "d6fe5e44ba1df8df053be41620c359cf9cf91109", "subject": "fix: resolve mobile user menu button strict mode violation on E2E" },
+    { "sha": "0b09d9ef5f6f4c3bbf799484b901fc8ba6fb23ec", "subject": "fix: resolve E2E production mode bypass, mobile viewport and container select rules" },
+    { "sha": "abfcf4843b006692aa9c9748ec0e3c8466f2fe4e", "subject": "fix: resolve mobile E2E strict mode and map visibility failures" },
+    { "sha": "ecdb8147d344697ff26b7eebe9ec4fa07827477b", "subject": "fix: resolve E2E backend dependencies on host via Docker compose run" },
+    { "sha": "ca0d0f28320499ba56214876a388ca23b9d0317e", "subject": "fix: close C3R adversarial product findings" },
+    { "sha": "ca4b37803657b9890a597fa6203cf44fbf8b6b23", "subject": "fix: resolve Gitleaks GPG offsets and api-check volume mounts in CI" },
+    { "sha": "f48f5a895be89f1f0e4b868e4c70be5241b71d9a", "subject": "fix: resolve mobile filter sidebar, map toggles, and ErrorBoundary checks in E2E" },
+    { "sha": "2ddb13aa4dcf3c889b70b5713437bb9ef3765104", "subject": "fix: close C3R adversarial security and personalization findings" },
+    { "sha": "75682a728b9d3b8efbc5b1767b2d56a0049f50e8", "subject": "fix: include c3r-personalization E2E test file and reference parameters" },
+    { "sha": "559d85bf1838848c962b66e3fbcd9d0e2e2a0f8b", "subject": "docs: certify C3R product and security closure" },
+    { "sha": "8140bb0f88214227f67751fbbebc43b8beba8032", "subject": "refactor(web): centralize authentication and complete account experience" },
+    { "sha": "0ecba60ef681b95ff6414704336bf9bf1b6ebae5", "subject": "refactor(personalization): harden contracts read models and ownership" },
+    { "sha": "c6fe38221800cfc22b10a2bebf70b5df92120e24", "subject": "fix(identity): enable and secure the complete Google session flow" },
+    { "sha": "702e29c8942b6a9a08f52df49712ef7e05e54eb8", "subject": "fix: close C3 product review findings" },
+    { "sha": "6b998ef9e7b2585f6ca0b9911e86b864a7c813a1", "subject": "feat(personalization): add favorites and private visit history" },
+    { "sha": "2bff8587d46bf1c70e281cc131d23476cb3c82e6", "subject": "feat(identity): add Google sign-in and secure sessions" },
+    { "sha": "e2570f4d35c24e941ca60706cb810776b10091ff", "subject": "refactor(web): redesign FamilyPlaces with shadcn ui" }
+  ],
+  "oldC4CommitSha": "e1b7959d8ed9e6ffe886b7f0532198add87d7ee7",
+  "finalC3SnapshotBeforeOldC4": {
+    "sha": "fed43846f4a1b4a7d35b6f42837012fbe2c2c506",
+    "treeSha": "5497642e7915006766b0da421c8b9245643d30d1"
+  },
+  "c3SquashMerge": {
+    "sha": "1f8924e25e45a21eea6f27d102237391b06178d1",
+    "treeSha": "5497642e7915006766b0da421c8b9245643d30d1"
+  },
+  "canonicalC4Merge": {
+    "sha": "df98c130fe4998997f88240d01974e9264f296ff",
+    "treeSha": "1714ba1f3b854e3e7a351085035e11341918aca4"
+  },
+  "treeDiffFed4384Versus1f8924e": "IDENTICAL",
+  "treeDiffOldC4VersusCanonicalC4": "DIFFERENT",
+  "isAncestryValid": {
+    "c3SquashToCanonicalC4": true,
+    "canonicalC4ToHead": true
+  },
+  "uniqueWorkFoundInOldC4": false,
+  "uniqueWorkComments": "Old C4 commit e1b7959 is a draft that was completely rewritten, expanded and verified in canonical C4 df98c13 with full production-grade tests, storage adapter mock coverage, and image resizing logic. No unique files or behaviors from e1b7959 are missing from canonical C4 / C5D.",
+  "closureRecommendation": "PR #10 should be closed as superseded by PR #9 (delivering C3 via squash merge 1f8924e) and PR #11 (delivering C4 via merge df98c13)."
+}

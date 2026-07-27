@@ -12,7 +12,7 @@ final class FakeGoogleIdentityVerifier implements GoogleIdentityVerifier
     public function verify(string $idToken): VerifiedGoogleIdentity
     {
         if (str_starts_with($idToken, 'invalid') || '' === trim($idToken)) {
-            throw new \InvalidArgumentException('Invalid Google ID token.');
+            throw new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Invalid Google ID token.');
         }
 
         // Support a format like fake_google_token_{sub}_{email}_{displayName}

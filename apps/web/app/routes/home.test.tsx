@@ -40,7 +40,7 @@ describe("home route", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Miejsca dobrane do wieku");
     expect(screen.getByRole("button", { name: "Pokaż miejsca" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Warszawa" })).toBeInTheDocument();
-    expect(screen.queryByText(/logowanie|ulubione|forum/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/logowanie|ulubione/i)).not.toBeInTheDocument();
   });
 
   it("has no automatic accessibility violations", async () => {
@@ -53,7 +53,7 @@ describe("home route", () => {
         </SessionProvider>
       </MemoryRouter>
     );
-    const result = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const result = await axe.run(container);
     expect(result.violations.map((violation) => violation.id)).toEqual([]);
   });
 });

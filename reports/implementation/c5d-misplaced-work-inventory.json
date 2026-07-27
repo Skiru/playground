@@ -1,0 +1,48 @@
+{
+  "inventory": [
+    {
+      "change": "infra/docker/api.Dockerfile using --ignore-platform-reqs",
+      "branch": "feat/family-places-c5d-forum-moderation-production-grade",
+      "commitSha": null,
+      "remotePresence": false,
+      "prUrl": null,
+      "reachableFromC5D": true,
+      "relevantToC5D": false,
+      "safe": false,
+      "reason": "Global --ignore-platform-reqs is forbidden. It can bypass critical missing extensions at build time, leading to container runtime crashes."
+    },
+    {
+      "change": "apps/web/app/lib/hardened-fetch.server.ts automatic JSON Content-Type injection",
+      "branch": "feat/family-places-c5d-forum-moderation-production-grade",
+      "commitSha": null,
+      "remotePresence": false,
+      "prUrl": null,
+      "reachableFromC5D": true,
+      "relevantToC5D": false,
+      "safe": false,
+      "reason": "Sets Content-Type: application/json for any request with a body without checking if the body is actually JSON, which breaks FormData, URLSearchParams, and other body types."
+    },
+    {
+      "change": "apps/web/e2e/image-fallbacks.spec.ts waiting for the 'DU' avatar",
+      "branch": "feat/family-places-c5d-forum-moderation-production-grade",
+      "commitSha": null,
+      "remotePresence": false,
+      "prUrl": null,
+      "reachableFromC5D": true,
+      "relevantToC5D": false,
+      "safe": false,
+      "reason": "Uses a literal data-dependent 'DU' text selector which is fragile and unstable if test user data changes."
+    },
+    {
+      "change": "apps/web/e2e/accessibility.spec.ts EasyAdmin exclusions",
+      "branch": "feat/family-places-c5d-forum-moderation-production-grade",
+      "commitSha": null,
+      "remotePresence": false,
+      "prUrl": null,
+      "reachableFromC5D": true,
+      "relevantToC5D": false,
+      "safe": false,
+      "reason": "Globally excludes multiple large selectors of EasyAdmin navigation chrome without attempting to repair contrast/naming first, and violates the rule to exclude only narrow exact selectors."
+    }
+  ]
+}

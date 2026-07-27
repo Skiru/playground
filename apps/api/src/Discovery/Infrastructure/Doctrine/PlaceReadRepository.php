@@ -54,6 +54,8 @@ final readonly class PlaceReadRepository implements PlaceReadModel
                 '.$distance.' AS distance_meters, p.longitude, p.latitude,
                 '.self::openExpression().' AS is_open_now,
                 true AS complete, '.$score.' AS relevance_score,
+                COALESCE((SELECT AVG(r.rating) FROM reviews r WHERE r.place_id = p.id AND r.status = \'PUBLISHED\'), 0.0) as average_rating,
+                (SELECT COUNT(*) FROM reviews r WHERE r.place_id = p.id AND r.status = \'PUBLISHED\') as total_reviews,
                 (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'COMPLETED\' LIMIT 1) AS main_photo_variants
             FROM places p JOIN cities c ON c.id = p.city_id
             WHERE '.implode(' AND ', $where).'
@@ -90,7 +92,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             COALESCE((SELECT json_agg(json_build_object(\'slug\', a.slug, \'name\', a.name) ORDER BY a.display_order) FROM place_amenities pa JOIN amenities a ON a.id=pa.amenity_id WHERE pa.place_id=p.id), \'[]\'::json) amenities,
             COALESCE((SELECT json_agg(json_build_object(\'name\', z.name, \'minAgeMonths\', z.min_age_months, \'maxAgeMonths\', z.max_age_months, \'notes\', z.notes) ORDER BY z.min_age_months) FROM place_age_zones z WHERE z.place_id=p.id), \'[]\'::json) age_zones,
             COALESCE((SELECT json_agg(json_build_object(\'weekday\', w.weekday, \'sequence\', w.sequence, \'opensAt\', w.opens_at, \'closesAt\', w.closes_at, \'closesNextDay\', w.closes_next_day) ORDER BY w.weekday,w.sequence) FROM weekly_opening_intervals w WHERE w.place_id=p.id), \'[]\'::json) weekly_opening,
-            COALESCE((SELECT json_agg(json_build_object(\'localDate\', s.local_date, \'closed\', s.mode=\'closed\', \'note\', s.note) ORDER BY s.local_date) FROM special_opening_days s WHERE s.place_id=p.id), \'[]\'::json) special_opening,
+            COALESCE((SELECT json_agg(json_build_object(\'id\', s.id, \'localDate\', s.local_date, \'mode\', s.mode, \'closed\', s.mode=\'closed\', \'note\', s.note, \'periods\', COALESCE((SELECT json_agg(json_build_object(\'opensAt\', si.opens_at, \'closesAt\', si.closes_at, \'closesNextDay\', si.closes_next_day) ORDER BY si.sequence) FROM special_opening_intervals si WHERE si.special_opening_day_id = s.id), \'[]\'::json)) ORDER BY s.local_date) FROM special_opening_days s WHERE s.place_id=p.id), \'[]\'::json) special_opening,
             (SELECT variants FROM place_photos WHERE place_id = p.id AND is_main = true AND status = \'COMPLETED\' LIMIT 1) AS main_photo_variants,
             COALESCE((SELECT json_agg(json_build_object(\'id\', id, \'is_main\', is_main, \'alt_text\', alt_text, \'caption\', caption, \'variants\', variants) ORDER BY display_order, id) FROM place_photos WHERE place_id = p.id AND status = \'COMPLETED\'), \'[]\'::json) AS photos
             FROM places p JOIN cities c ON c.id=p.city_id WHERE p.slug=:slug AND p.status=\'published\'', ['slug' => $slug]);
@@ -199,7 +201,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             }
         }
 
-        return new PlaceListItem((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['city'], self::namedItems($row['categories']), new AgeSummary((int) $row['min_age_months'], null === $row['max_age_months'] ? null : (int) $row['max_age_months']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], (string) $row['verification_status'], self::namedItems($row['amenities']), null === $row['distance_meters'] ? null : (float) $row['distance_meters'], (float) $row['longitude'], (float) $row['latitude'], new OpeningStatus(null === $row['is_open_now'] ? null : (bool) $row['is_open_now']), (bool) $row['complete'], (float) $row['relevance_score'], $mainPhoto);
+        return new PlaceListItem((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['city'], self::namedItems($row['categories']), new AgeSummary((int) $row['min_age_months'], null === $row['max_age_months'] ? null : (int) $row['max_age_months']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], (string) $row['verification_status'], self::namedItems($row['amenities']), null === $row['distance_meters'] ? null : (float) $row['distance_meters'], (float) $row['longitude'], (float) $row['latitude'], new OpeningStatus(null === $row['is_open_now'] ? null : (bool) $row['is_open_now']), (bool) $row['complete'], (float) $row['relevance_score'], (float) ($row['average_rating'] ?? 0.0), (int) ($row['total_reviews'] ?? 0), $mainPhoto);
     }
 
     /** @param array<string, mixed> $row */
@@ -244,7 +246,7 @@ final readonly class PlaceReadRepository implements PlaceReadModel
             }
         }
 
-        return new PlaceDetails((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['description'], (string) $row['city_name'], (string) $row['city_slug'], (string) $row['address_line1'], null === $row['address_line2'] ? null : (string) $row['address_line2'], (string) $row['postal_code'], (string) $row['country_code'], self::namedItems($row['categories']), self::namedItems($row['amenities']), self::ageZones($row['age_zones']), self::weeklyOpening($row['weekly_opening']), self::specialOpening($row['special_opening']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], null === $row['price_description'] ? null : (string) $row['price_description'], null === $row['website_url'] ? null : (string) $row['website_url'], null === $row['phone'] ? null : (string) $row['phone'], (string) $row['verification_status'], (float) $row['longitude'], (float) $row['latitude'], $mainPhoto, $photosList);
+        return new PlaceDetails((string) $row['id'], (string) $row['slug'], (string) $row['name'], (string) $row['short_description'], (string) $row['description'], (string) $row['city_name'], (string) $row['city_slug'], (string) $row['address_line1'], null === $row['address_line2'] ? null : (string) $row['address_line2'], (string) $row['postal_code'], (string) $row['country_code'], self::namedItems($row['categories']), self::namedItems($row['amenities']), self::ageZones($row['age_zones']), self::weeklyOpening($row['weekly_opening']), self::specialOpening($row['special_opening']), self::ageZonesCamel($row['age_zones']), self::openingSchedule($row['weekly_opening']), self::specialOpeningDays($row['special_opening']), (bool) $row['indoor'], (bool) $row['outdoor'], (bool) $row['free_entry'], null === $row['price_description'] ? null : (string) $row['price_description'], null === $row['website_url'] ? null : (string) $row['website_url'], null === $row['phone'] ? null : (string) $row['phone'], (string) $row['verification_status'], (float) $row['longitude'], (float) $row['latitude'], $mainPhoto, $photosList);
     }
 
     /** @return list<array{slug: string, name: string}> */
@@ -272,6 +274,111 @@ final readonly class PlaceReadRepository implements PlaceReadModel
     private static function specialOpening(mixed $value): array
     {
         return array_map(static fn (array $item): array => ['localDate' => (string) $item['localDate'], 'closed' => (bool) $item['closed'], 'note' => null === $item['note'] ? null : (string) $item['note']], self::jsonList($value));
+    }
+
+    /** @return list<array{minAgeMonths: int, maxAgeMonths: ?int, label: string}> */
+    private static function ageZonesCamel(mixed $value): array
+    {
+        return array_map(static function (array $item): array {
+            $min = (int) $item['minAgeMonths'];
+            $max = null === $item['maxAgeMonths'] ? null : (int) $item['maxAgeMonths'];
+
+            return [
+                'minAgeMonths' => $min,
+                'maxAgeMonths' => $max,
+                'label' => self::formatAgeLabel($min, $max),
+            ];
+        }, self::jsonList($value));
+    }
+
+    private static function formatAgeLabel(int $min, ?int $max): string
+    {
+        if (0 === $min && null === $max) {
+            return 'Dowolny wiek';
+        }
+        $minYears = $min / 12;
+        $minIsYear = (0 === $min % 12);
+        $maxYears = null !== $max ? $max / 12 : null;
+        $maxIsYear = null !== $max ? (0 === $max % 12) : false;
+
+        if (null === $max) {
+            return $minIsYear ? "Od {$minYears} ".self::yearsWord((int) $minYears) : "Od {$min} m.";
+        }
+
+        if (0 === $min) {
+            return $maxIsYear ? "Do {$maxYears} ".self::yearsWord((int) $maxYears) : "Do {$max} m.";
+        }
+
+        if ($minIsYear && $maxIsYear) {
+            return "{$minYears}-{$maxYears} ".self::yearsWord((int) $maxYears);
+        }
+
+        return "{$min}-{$max} m.";
+    }
+
+    private static function yearsWord(int $years): string
+    {
+        if (1 === $years) {
+            return 'roku';
+        }
+        $lastDigit = $years % 10;
+        $lastTwo = $years % 100;
+        if ($lastDigit >= 2 && $lastDigit <= 4 && ($lastTwo < 10 || $lastTwo >= 20)) {
+            return 'lata';
+        }
+
+        return 'lat';
+    }
+
+    /** @return list<array{dayOfWeek: int, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, closed: bool}> */
+    private static function openingSchedule(mixed $value): array
+    {
+        $intervals = self::jsonList($value);
+        $schedule = [];
+        for ($d = 1; $d <= 7; ++$d) {
+            $dayIntervals = array_filter($intervals, static fn (array $item): bool => (int) $item['weekday'] === $d);
+            $periods = [];
+            foreach ($dayIntervals as $interval) {
+                $periods[] = [
+                    'opensAt' => substr((string) $interval['opensAt'], 0, 5),
+                    'closesAt' => substr((string) $interval['closesAt'], 0, 5),
+                    'closesNextDay' => (bool) $interval['closesNextDay'],
+                ];
+            }
+            $schedule[] = [
+                'dayOfWeek' => $d,
+                'periods' => $periods,
+                'closed' => [] === $periods,
+            ];
+        }
+
+        return $schedule;
+    }
+
+    /** @return list<array{date: string, mode: string, periods: list<array{opensAt: string, closesAt: string, closesNextDay: bool}>, note: ?string}> */
+    private static function specialOpeningDays(mixed $value): array
+    {
+        $days = self::jsonList($value);
+
+        return array_map(static function (array $day): array {
+            $periods = [];
+            if (isset($day['periods']) && \is_array($day['periods'])) {
+                foreach ($day['periods'] as $period) {
+                    $periods[] = [
+                        'opensAt' => substr((string) $period['opensAt'], 0, 5),
+                        'closesAt' => substr((string) $period['closesAt'], 0, 5),
+                        'closesNextDay' => (bool) $period['closesNextDay'],
+                    ];
+                }
+            }
+
+            return [
+                'date' => (string) $day['localDate'],
+                'mode' => (string) ($day['mode'] ?? ($day['closed'] ? 'closed' : 'custom')),
+                'periods' => $periods,
+                'note' => isset($day['note']) && '' !== trim((string) $day['note']) ? (string) $day['note'] : null,
+            ];
+        }, $days);
     }
 
     /** @return list<array<string, mixed>> */

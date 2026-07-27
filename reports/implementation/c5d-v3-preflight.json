@@ -1,0 +1,38 @@
+{
+  "taskId": "PLAYGROUND_C5D_RELEASE_EVIDENCE_AND_REAL_JOURNEYS_V3",
+  "checkedAt": "2026-07-21T07:35:00+02:00",
+  "statusAtStart": "FAILED_CERTIFICATION",
+  "decisionAtStart": "NOT_READY",
+  "repository": "https://github.com/Skiru/playground",
+  "workBranch": "feat/family-places-c5d-forum-moderation-production-grade",
+  "requiredStartSha": "a3ca3b3cd3e3a6f788f5e6a0b6f0514772608032",
+  "localHead": "a3ca3b3cd3e3a6f788f5e6a0b6f0514772608032",
+  "remoteHead": "a3ca3b3cd3e3a6f788f5e6a0b6f0514772608032",
+  "parentSha": "6aeba0dff2366df47727db34161ce9cdc9b45405",
+  "treeSha": "d9c6089c766a58ef2d2a347d8072550ac003b3ff",
+  "worktreeClean": true,
+  "stashes": "stash@{0}: WIP on feat/family-places-platform-v1: 5436570 docs: certify FamilyPlaces C2 production release closure",
+  "commitsNotOnRemote": "",
+  "commandsRun": [
+    {
+      "command": "git remote -v && git branch -a && git rev-parse HEAD && git rev-parse origin/feat/family-places-c5d-forum-moderation-production-grade && git rev-parse HEAD~1 && git rev-parse HEAD^{tree} && git stash list && git worktree list",
+      "workdir": "/Users/mkoziol/projects/playground",
+      "startTimestamp": "2026-07-21T07:30:11+02:00",
+      "endTimestamp": "2026-07-21T07:30:13+02:00",
+      "exitCode": 0,
+      "stdoutLog": "origin\tgit@github.com:Skiru/playground.git (fetch)\norigin\tgit@github.com:Skiru/playground.git (push)\n...\na3ca3b3cd3e3a6f788f5e6a0b6f0514772608032\na3ca3b3cd3e3a6f788f5e6a0b6f0514772608032\n6aeba0dff2366df47727db34161ce9cdc9b45405\nd9c6089c766a58ef2d2a347d8072550ac003b3ff\nstash@{0}: WIP on feat/family-places-platform-v1: 5436570 docs: certify FamilyPlaces C2 production release closure\n/Users/mkoziol/projects/playground  a3ca3b3 [feat/family-places-c5d-forum-moderation-production-grade]",
+      "stderrLog": "",
+      "testedFullSha": "a3ca3b3cd3e3a6f788f5e6a0b6f0514772608032"
+    },
+    {
+      "command": "curl -s https://api.github.com/repos/Skiru/playground/commits/a3ca3b3cd3e3a6f788f5e6a0b6f0514772608032",
+      "workdir": "/Users/mkoziol/projects/playground",
+      "startTimestamp": "2026-07-21T07:31:00+02:00",
+      "endTimestamp": "2026-07-21T07:31:02+02:00",
+      "exitCode": 0,
+      "stdoutLog": "Tree SHA from GitHub API: d9c6089c766a58ef2d2a347d8072550ac003b3ff",
+      "stderrLog": "",
+      "testedFullSha": "a3ca3b3cd3e3a6f788f5e6a0b6f0514772608032"
+    }
+  ]
+}

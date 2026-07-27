@@ -20,11 +20,11 @@ final class GoogleApiClientIdentityVerifier implements GoogleIdentityVerifier
     public function verify(string $idToken): VerifiedGoogleIdentity
     {
         if ('' === trim($this->clientId)) {
-            throw new \InvalidArgumentException('Google client ID cannot be empty.');
+            throw new \App\Identity\Application\Exception\GoogleConfigurationException('Google client ID cannot be empty.');
         }
 
         if ('' === trim($idToken)) {
-            throw new \InvalidArgumentException('Google ID token cannot be empty.');
+            throw new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Google ID token cannot be empty.');
         }
 
         // We instantiate Google Client with our Client ID
@@ -33,26 +33,26 @@ final class GoogleApiClientIdentityVerifier implements GoogleIdentityVerifier
         try {
             $payload = $client->verifyIdToken($idToken);
         } catch (\Throwable $e) {
-            throw new \InvalidArgumentException('Google token verification failed: '.$e->getMessage(), 0, $e);
+            throw new \App\Identity\Application\Exception\GoogleProviderUnavailableException('Google token verification failed', 0, $e);
         }
 
         if (false === $payload) {
-            throw new \InvalidArgumentException('Invalid Google ID token.');
+            throw new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Invalid Google ID token.');
         }
 
         $subject = $payload['sub'] ?? '';
         if ('' === $subject) {
-            throw new \InvalidArgumentException('Google ID token is missing subject (sub) claim.');
+            throw new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Google ID token is missing subject (sub) claim.');
         }
 
         $email = $payload['email'] ?? '';
         if ('' === $email) {
-            throw new \InvalidArgumentException('Google ID token is missing email claim.');
+            throw new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Google ID token is missing email claim.');
         }
 
         $emailVerified = $payload['email_verified'] ?? false;
         if (true !== $emailVerified && 'true' !== $emailVerified) {
-            throw new \InvalidArgumentException('Google account email is not verified.');
+            throw new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Google account email is not verified.');
         }
 
         $displayName = $payload['name'] ?? $email;

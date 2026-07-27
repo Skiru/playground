@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react"
 import { loadGoogleScript } from "./GoogleScriptLoader"
 
@@ -6,6 +5,11 @@ interface GoogleSignInButtonProps {
   clientId: string
   onCredentialReceived: (credential: string) => void
   onError: (errorMsg: string) => void
+}
+
+interface GoogleIdentityApi {
+  initialize: (options: { client_id: string; callback: (response: { credential: string }) => void }) => void
+  renderButton: (element: HTMLElement, options: { theme: string; size: string; width: number }) => void
 }
 
 export function GoogleSignInButton({ clientId, onCredentialReceived, onError }: GoogleSignInButtonProps) {
@@ -19,7 +23,9 @@ export function GoogleSignInButton({ clientId, onCredentialReceived, onError }: 
         await loadGoogleScript()
         if (!active) return
 
-        const globalWindow = window as any
+        const globalWindow = window as typeof window & {
+          google?: { accounts?: { id?: GoogleIdentityApi } }
+        }
         if (!globalWindow.google?.accounts?.id) {
           throw new Error("Google API not loaded")
         }
@@ -40,9 +46,9 @@ export function GoogleSignInButton({ clientId, onCredentialReceived, onError }: 
             width: 280,
           })
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (active) {
-          onError(err.message || "Błąd podczas inicjalizacji logowania Google.")
+          onError(err instanceof Error ? err.message : "Błąd podczas inicjalizacji logowania Google.")
         }
       }
     }

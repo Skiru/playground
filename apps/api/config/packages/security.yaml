@@ -30,6 +30,11 @@ security:
     access_control:
         - { path: ^/admin/login$, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/api/v1/auth/google, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/session, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/me, roles: ROLE_USER }
+        - { path: ^/api/v1/places/[^/]+/favorite, methods: [PUT, DELETE], roles: ROLE_USER }
+        - { path: ^/api/v1/places/[^/]+/visits, methods: [POST], roles: ROLE_USER }
 
 when@test:
     security:

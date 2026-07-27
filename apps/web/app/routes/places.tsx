@@ -154,6 +154,17 @@ export function PlacesView({
                         {content.places.placeMetaSeparator}
                         {place.indoor ? content.places.indoor : content.places.outdoor}
                       </p>
+                      <div className="flex items-center gap-1.5 mb-1.5" aria-label={place.total_reviews && place.total_reviews > 0 ? `Ocena: ${place.average_rating.toFixed(1)} na podstawie ${place.total_reviews} opinii` : "Brak opinii"}>
+                        {place.total_reviews && place.total_reviews > 0 ? (
+                          <>
+                            <span className="text-amber-500 text-sm">★</span>
+                            <span className="font-semibold text-xs text-foreground">{place.average_rating.toFixed(1)}</span>
+                            <span className="text-2xs text-muted-foreground">({place.total_reviews} {place.total_reviews === 1 ? "opinia" : place.total_reviews % 10 >= 2 && place.total_reviews % 10 <= 4 && (place.total_reviews % 100 < 10 || place.total_reviews % 100 >= 20) ? "opinie" : "opinii"})</span>
+                          </>
+                        ) : (
+                          <span className="text-2xs text-muted-foreground italic">{content.places.noReviews}</span>
+                        )}
+                      </div>
                       <div className="flex items-start justify-between gap-4">
                         <h2 className="font-serif text-xl font-bold tracking-tight mb-2 group-hover:text-primary transition-colors">
                           <Link to={`/miejsca/${place.slug}`}>

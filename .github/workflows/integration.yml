@@ -62,11 +62,16 @@ jobs:
         run: |
           docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d database api web
           docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
-      - name: Playwright desktop, mobile and browser axe
+      - name: Playwright desktop and browser axe
         env:
           WEB_BASE_URL: http://127.0.0.1:3000
           API_BASE_URL_BROWSER: http://127.0.0.1:8080
-        run: pnpm --filter @family-places/web e2e
+        run: pnpm --filter @family-places/web e2e:desktop
+      - name: Playwright mobile and browser axe
+        env:
+          WEB_BASE_URL: http://127.0.0.1:3000
+          API_BASE_URL_BROWSER: http://127.0.0.1:8080
+        run: pnpm --filter @family-places/web e2e:mobile
       - name: Expanded production smoke
         run: ./scripts/smoke
       - name: Upload browser artifacts

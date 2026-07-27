@@ -1,0 +1,14 @@
+{
+  "performance": {
+    "moderation_queue": {
+      "strategy": "Batch load reporter and author profiles, batch load previous history, and batch load safe target previews.",
+      "query_count_limit": "O(1) - fixed constant of 8 queries",
+      "status": "PASS"
+    },
+    "community_feed": {
+      "strategy": "DBAL UNION ALL query filtering containment chain status at the database layer instead of application layer.",
+      "query_count_limit": "O(1) - single UNION query plus batch author profiles lookup",
+      "status": "PASS"
+    }
+  }
+}

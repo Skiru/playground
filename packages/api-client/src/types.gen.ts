@@ -102,6 +102,659 @@ export type LoginWithDevAuthResponses = {
 
 export type LoginWithDevAuthResponse = LoginWithDevAuthResponses[keyof LoginWithDevAuthResponses];
 
+export type GetCommunityFeedData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page limit.
+         */
+        limit?: number;
+        /**
+         * Pagination cursor.
+         */
+        cursor?: string;
+        /**
+         * Filter by activity type.
+         */
+        type?: string;
+        /**
+         * Filter by city UUID.
+         */
+        cityId?: string;
+        /**
+         * Filter by category UUID.
+         */
+        categoryId?: string;
+    };
+    url: '/api/v1/community/feed';
+};
+
+export type GetCommunityFeedResponses = {
+    /**
+     * Community activity feed.
+     */
+    200: {
+        items: Array<{
+            type: 'forum_thread' | 'forum_post' | 'review' | 'place_comment';
+            id: string;
+            activityAt: string;
+            author: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            title: string | null;
+            excerpt: string;
+            sourceId: string;
+            parentSourceId: string | null;
+            placeSlug: string | null;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
+    };
+};
+
+export type GetCommunityFeedResponse = GetCommunityFeedResponses[keyof GetCommunityFeedResponses];
+
+export type DeleteCommentData = {
+    body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Comment UUID.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/place-comments/{commentId}';
+};
+
+export type DeleteCommentErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type DeleteCommentError = DeleteCommentErrors[keyof DeleteCommentErrors];
+
+export type DeleteCommentResponses = {
+    /**
+     * Success (no content)
+     */
+    204: void;
+};
+
+export type DeleteCommentResponse = DeleteCommentResponses[keyof DeleteCommentResponses];
+
+export type UpdateCommentData = {
+    /**
+     * Update comment body
+     */
+    body?: {
+        body: string;
+        version: number;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Comment UUID.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/place-comments/{commentId}';
+};
+
+export type UpdateCommentErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type UpdateCommentError = UpdateCommentErrors[keyof UpdateCommentErrors];
+
+export type UpdateCommentResponses = {
+    /**
+     * Comment updated.
+     */
+    200: {
+        id: string;
+        placeId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+        replies?: Array<{
+            [key: string]: unknown;
+        }>;
+    };
+};
+
+export type UpdateCommentResponse = UpdateCommentResponses[keyof UpdateCommentResponses];
+
+export type MyReviewsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number.
+         */
+        page?: number;
+        /**
+         * Page size.
+         */
+        pageSize?: number;
+    };
+    url: '/api/v1/me/reviews';
+};
+
+export type MyReviewsErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type MyReviewsError = MyReviewsErrors[keyof MyReviewsErrors];
+
+export type MyReviewsResponses = {
+    /**
+     * My reviews list.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            placeId?: string;
+            authorId?: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            rating: number;
+            body: string;
+            visitedOn: string | null;
+            status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+        }>;
+        pagination: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type MyReviewsResponse = MyReviewsResponses[keyof MyReviewsResponses];
+
+export type DeleteReviewData = {
+    body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Review UUID.
+         */
+        reviewId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/reviews/{reviewId}';
+};
+
+export type DeleteReviewErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type DeleteReviewError = DeleteReviewErrors[keyof DeleteReviewErrors];
+
+export type DeleteReviewResponses = {
+    /**
+     * Success (no content)
+     */
+    204: void;
+};
+
+export type DeleteReviewResponse = DeleteReviewResponses[keyof DeleteReviewResponses];
+
+export type UpdateReviewData = {
+    /**
+     * Update review body
+     */
+    body?: {
+        rating?: number;
+        body?: string;
+        visitedOn?: string | null;
+        version: number;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Review UUID.
+         */
+        reviewId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/reviews/{reviewId}';
+};
+
+export type UpdateReviewErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type UpdateReviewError = UpdateReviewErrors[keyof UpdateReviewErrors];
+
+export type UpdateReviewResponses = {
+    /**
+     * Review updated.
+     */
+    200: {
+        id: string;
+        placeId?: string;
+        authorId?: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        rating: number;
+        body: string;
+        visitedOn: string | null;
+        status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+    };
+};
+
+export type UpdateReviewResponse = UpdateReviewResponses[keyof UpdateReviewResponses];
+
+export type AddReplyData = {
+    /**
+     * Reply body
+     */
+    body?: {
+        body: string;
+    };
+    path: {
+        /**
+         * Parent comment UUID.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/api/v1/place-comments/{commentId}/replies';
+};
+
+export type AddReplyErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type AddReplyError = AddReplyErrors[keyof AddReplyErrors];
+
+export type AddReplyResponses = {
+    /**
+     * Reply created.
+     */
+    201: {
+        id: string;
+        placeId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+        replies?: Array<{
+            [key: string]: unknown;
+        }>;
+    };
+};
+
+export type AddReplyResponse = AddReplyResponses[keyof AddReplyResponses];
+
+export type ListCommentsData = {
+    body?: never;
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: {
+        /**
+         * Page size.
+         */
+        limit?: number;
+        /**
+         * Pagination cursor.
+         */
+        cursor?: string;
+    };
+    url: '/api/v1/places/{placeId}/comments';
+};
+
+export type ListCommentsResponses = {
+    /**
+     * List of comments.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            placeId: string;
+            authorId: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            parentId: string | null;
+            body: string;
+            status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+            replies?: Array<{
+                [key: string]: unknown;
+            }>;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
+    };
+};
+
+export type ListCommentsResponse = ListCommentsResponses[keyof ListCommentsResponses];
+
+export type AddCommentData = {
+    /**
+     * Comment body
+     */
+    body?: {
+        body: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: never;
+    url: '/api/v1/places/{placeId}/comments';
+};
+
+export type AddCommentErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type AddCommentError = AddCommentErrors[keyof AddCommentErrors];
+
+export type AddCommentResponses = {
+    /**
+     * Comment created.
+     */
+    201: {
+        id: string;
+        placeId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+        replies?: Array<{
+            [key: string]: unknown;
+        }>;
+    };
+};
+
+export type AddCommentResponse = AddCommentResponses[keyof AddCommentResponses];
+
+export type ListReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: {
+        /**
+         * Page number.
+         */
+        page?: number;
+        /**
+         * Page size.
+         */
+        pageSize?: number;
+        /**
+         * Sort parameter.
+         */
+        sort?: 'newest' | 'highest' | 'lowest';
+    };
+    url: '/api/v1/places/{placeId}/reviews';
+};
+
+export type ListReviewsResponses = {
+    /**
+     * List of reviews.
+     */
+    200: {
+        summary: {
+            averageRating: number;
+            totalReviews: number;
+            histogram: {
+                [key: string]: unknown;
+            };
+        };
+        items: Array<{
+            id: string;
+            placeId?: string;
+            authorId?: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            rating: number;
+            body: string;
+            visitedOn: string | null;
+            status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+        }>;
+        pagination: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type ListReviewsResponse = ListReviewsResponses[keyof ListReviewsResponses];
+
+export type AddReviewData = {
+    /**
+     * Review body
+     */
+    body?: {
+        rating: number;
+        body: string;
+        visitedOn?: string | null;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Place UUID.
+         */
+        placeId: string;
+    };
+    query?: never;
+    url: '/api/v1/places/{placeId}/reviews';
+};
+
+export type AddReviewErrors = {
+    /**
+     * Unauthorized.
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail: string;
+        code: string;
+        correlationId: string;
+    };
+};
+
+export type AddReviewError = AddReviewErrors[keyof AddReviewErrors];
+
+export type AddReviewResponses = {
+    /**
+     * Review created.
+     */
+    201: {
+        id: string;
+        placeId?: string;
+        authorId?: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        rating: number;
+        body: string;
+        visitedOn: string | null;
+        status?: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+    };
+};
+
+export type AddReviewResponse = AddReviewResponses[keyof AddReviewResponses];
+
 export type GetAmenitiesData = {
     body?: never;
     path?: never;
@@ -473,6 +1126,8 @@ export type SearchPlacesResponses = {
             is_open_now: boolean | null;
             complete: boolean;
             relevance_score: number;
+            average_rating: number;
+            total_reviews: number;
             main_photo?: {
                 thumbnail_mini?: string;
                 thumbnail?: string;
@@ -556,6 +1211,30 @@ export type GetPlaceBySlugResponses = {
         special_opening: Array<{
             [key: string]: unknown;
         }>;
+        ageZones: Array<{
+            minAgeMonths: number;
+            maxAgeMonths: number | null;
+            label: string;
+        }>;
+        openingSchedule: Array<{
+            dayOfWeek: number;
+            closed: boolean;
+            periods: Array<{
+                opensAt: string;
+                closesAt: string;
+                closesNextDay: boolean;
+            }>;
+        }>;
+        specialOpeningDays: Array<{
+            date: string;
+            mode: string;
+            note: string | null;
+            periods: Array<{
+                opensAt: string;
+                closesAt: string;
+                closesNextDay: boolean;
+            }>;
+        }>;
         indoor: boolean;
         outdoor: boolean;
         free_entry: boolean;
@@ -589,6 +1268,469 @@ export type GetPlaceBySlugResponses = {
 };
 
 export type GetPlaceBySlugResponse = GetPlaceBySlugResponses[keyof GetPlaceBySlugResponses];
+
+export type ListForumCategoriesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/forum/categories';
+};
+
+export type ListForumCategoriesResponses = {
+    /**
+     * Forum categories list.
+     */
+    200: Array<{
+        id: string;
+        slug: string;
+        name: string;
+        description: string | null;
+        displayOrder: number;
+        cityId?: string | null;
+    }>;
+};
+
+export type ListForumCategoriesResponse = ListForumCategoriesResponses[keyof ListForumCategoriesResponses];
+
+export type CreateForumThreadData = {
+    /**
+     * Thread content
+     */
+    body?: {
+        title: string;
+        body: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Category UUID.
+         */
+        categoryId: string;
+    };
+    query?: never;
+    url: '/api/v1/forum/categories/{categoryId}/threads';
+};
+
+export type CreateForumThreadResponses = {
+    /**
+     * Thread created.
+     */
+    201: {
+        id: string;
+        categoryId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        title: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        lastActivityAt: string;
+        lockedAt?: string | null;
+        pinnedAt?: string | null;
+        version: number;
+        firstPost?: {
+            id?: string;
+            body?: string;
+        };
+        category?: {
+            id?: string;
+            slug?: string;
+            name?: string;
+        };
+    };
+};
+
+export type CreateForumThreadResponse = CreateForumThreadResponses[keyof CreateForumThreadResponses];
+
+export type ListCategoryThreadsData = {
+    body?: never;
+    path: {
+        /**
+         * Category slug.
+         */
+        slug: string;
+    };
+    query?: {
+        /**
+         * Page limit.
+         */
+        limit?: number;
+        /**
+         * Pagination cursor.
+         */
+        cursor?: string;
+    };
+    url: '/api/v1/forum/categories/{slug}/threads';
+};
+
+export type ListCategoryThreadsResponses = {
+    /**
+     * Category threads list.
+     */
+    200: {
+        category: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+        };
+        items: Array<{
+            id: string;
+            categoryId: string;
+            authorId: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            title: string;
+            status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            lastActivityAt: string;
+            lockedAt?: string | null;
+            pinnedAt?: string | null;
+            version: number;
+            firstPost?: {
+                id?: string;
+                body?: string;
+            };
+            category?: {
+                id?: string;
+                slug?: string;
+                name?: string;
+            };
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
+    };
+};
+
+export type ListCategoryThreadsResponse = ListCategoryThreadsResponses[keyof ListCategoryThreadsResponses];
+
+export type GetForumThreadData = {
+    body?: never;
+    path: {
+        /**
+         * Thread UUID.
+         */
+        threadId: string;
+    };
+    query?: never;
+    url: '/api/v1/forum/threads/{threadId}';
+};
+
+export type GetForumThreadResponses = {
+    /**
+     * Thread detail.
+     */
+    200: {
+        id: string;
+        categoryId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        title: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        lastActivityAt: string;
+        lockedAt?: string | null;
+        pinnedAt?: string | null;
+        version: number;
+        firstPost?: {
+            id?: string;
+            body?: string;
+        };
+        category?: {
+            id?: string;
+            slug?: string;
+            name?: string;
+        };
+    };
+};
+
+export type GetForumThreadResponse = GetForumThreadResponses[keyof GetForumThreadResponses];
+
+export type ListForumPostsData = {
+    body?: never;
+    path: {
+        /**
+         * Thread UUID.
+         */
+        threadId: string;
+    };
+    query?: {
+        /**
+         * Page limit.
+         */
+        limit?: number;
+        /**
+         * Pagination cursor.
+         */
+        cursor?: string;
+    };
+    url: '/api/v1/forum/threads/{threadId}/posts';
+};
+
+export type ListForumPostsResponses = {
+    /**
+     * Posts list.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            threadId: string;
+            authorId: string | null;
+            author?: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            parentId: string | null;
+            isInitial: boolean;
+            body: string;
+            status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+            createdAt: string;
+            updatedAt: string;
+            version: number;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
+    };
+};
+
+export type ListForumPostsResponse = ListForumPostsResponses[keyof ListForumPostsResponses];
+
+export type CreateForumPostData = {
+    /**
+     * Post body
+     */
+    body?: {
+        body: string;
+        /**
+         * Optional top-level parent; replying to a reply is rejected with FORUM_REPLY_DEPTH_LIMIT.
+         */
+        replyToPostId?: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Thread UUID.
+         */
+        threadId: string;
+    };
+    query?: never;
+    url: '/api/v1/forum/threads/{threadId}/posts';
+};
+
+export type CreateForumPostResponses = {
+    /**
+     * Post created.
+     */
+    201: {
+        id: string;
+        threadId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        isInitial: boolean;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+    };
+};
+
+export type CreateForumPostResponse = CreateForumPostResponses[keyof CreateForumPostResponses];
+
+export type DeleteOwnForumPostData = {
+    body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Post UUID.
+         */
+        postId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/forum-posts/{postId}';
+};
+
+export type DeleteOwnForumPostResponses = {
+    /**
+     * Success (no content)
+     */
+    204: void;
+};
+
+export type DeleteOwnForumPostResponse = DeleteOwnForumPostResponses[keyof DeleteOwnForumPostResponses];
+
+export type EditOwnForumPostData = {
+    /**
+     * Edit post body
+     */
+    body?: {
+        body: string;
+        version: number;
+    };
+    path: {
+        /**
+         * Post UUID.
+         */
+        postId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/forum-posts/{postId}';
+};
+
+export type EditOwnForumPostResponses = {
+    /**
+     * Post updated.
+     */
+    200: {
+        id: string;
+        threadId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        parentId: string | null;
+        isInitial: boolean;
+        body: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        version: number;
+    };
+};
+
+export type EditOwnForumPostResponse = EditOwnForumPostResponses[keyof EditOwnForumPostResponses];
+
+export type DeleteOwnForumThreadData = {
+    body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Thread UUID.
+         */
+        threadId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/forum-threads/{threadId}';
+};
+
+export type DeleteOwnForumThreadResponses = {
+    /**
+     * Success (no content)
+     */
+    204: void;
+};
+
+export type DeleteOwnForumThreadResponse = DeleteOwnForumThreadResponses[keyof DeleteOwnForumThreadResponses];
+
+export type EditOwnForumThreadData = {
+    /**
+     * Edit thread body
+     */
+    body?: {
+        title: string;
+        version: number;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * Thread UUID.
+         */
+        threadId: string;
+    };
+    query?: never;
+    url: '/api/v1/me/forum-threads/{threadId}';
+};
+
+export type EditOwnForumThreadResponses = {
+    /**
+     * Thread updated.
+     */
+    200: {
+        id: string;
+        categoryId: string;
+        authorId: string | null;
+        author?: {
+            id: string | null;
+            displayName: string;
+            initials: string;
+        };
+        title: string;
+        status: 'PUBLISHED' | 'HIDDEN' | 'REMOVED_BY_MODERATOR' | 'DELETED_BY_AUTHOR';
+        createdAt: string;
+        updatedAt: string;
+        lastActivityAt: string;
+        lockedAt?: string | null;
+        pinnedAt?: string | null;
+        version: number;
+        firstPost?: {
+            id?: string;
+            body?: string;
+        };
+        category?: {
+            id?: string;
+            slug?: string;
+            name?: string;
+        };
+    };
+};
+
+export type EditOwnForumThreadResponse = EditOwnForumThreadResponses[keyof EditOwnForumThreadResponses];
 
 export type GetHealthLiveData = {
     body?: never;
@@ -624,6 +1766,225 @@ export type GetHealthReadyResponses = {
      */
     200: unknown;
 };
+
+export type ReportContentData = {
+    /**
+     * Report details
+     */
+    body?: {
+        targetId: string;
+        /**
+         * Initial forum posts are canonicalized to their FORUM_THREAD target. Replies remain FORUM_POST.
+         */
+        targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reason: 'SPAM' | 'HARASSMENT' | 'INAPPROPRIATE' | 'MISINFORMATION' | 'PRIVACY_CONCERN' | 'OTHER';
+        details?: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/content-reports';
+};
+
+export type ReportContentResponses = {
+    /**
+     * Report created.
+     */
+    201: {
+        id: string;
+        targetId: string;
+        targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reason: string;
+        details: string | null;
+        status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+        createdAt: string;
+    };
+};
+
+export type ReportContentResponse = ReportContentResponses[keyof ReportContentResponses];
+
+export type ModerateContentData = {
+    /**
+     * Moderation action details
+     */
+    body?: {
+        reportId: string;
+        action: 'HIDE' | 'REMOVE' | 'RESTORE' | 'LOCK' | 'UNLOCK' | 'PIN' | 'UNPIN' | 'DISMISS_REPORT' | 'RESOLVE_REPORT';
+        reason: string;
+    };
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+        /**
+         * UUID idempotency key for exact moderation request retries.
+         */
+        'Idempotency-Key': string;
+        /**
+         * Optional request correlation identifier for observability.
+         */
+        'X-Correlation-ID'?: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/moderation/action';
+};
+
+export type ModerateContentResponses = {
+    /**
+     * Perform moderator action.
+     */
+    200: {
+        status: 'success';
+    };
+};
+
+export type ModerateContentResponse = ModerateContentResponses[keyof ModerateContentResponses];
+
+export type GetModerationCaseData = {
+    body?: never;
+    path: {
+        /**
+         * The report UUID.
+         */
+        reportId: string;
+    };
+    query?: never;
+    url: '/api/v1/moderation/case/{reportId}';
+};
+
+export type GetModerationCaseResponses = {
+    /**
+     * Moderation case details.
+     */
+    200: {
+        id: string;
+        targetId: string;
+        targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+        reason: string;
+        details?: string | null;
+        status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+        createdAt: string;
+        reporterId: string;
+        claimedBy: string | null;
+        claimedAt: string | null;
+        resolvedBy?: string | null;
+        resolvedAt?: string | null;
+        allowedActions: Array<'HIDE' | 'REMOVE' | 'RESTORE' | 'LOCK' | 'UNLOCK' | 'PIN' | 'UNPIN' | 'DISMISS_REPORT' | 'RESOLVE_REPORT'>;
+        targetPreview?: null | {
+            title: string;
+            body: string;
+            status: string;
+            rating?: number;
+            threadId?: string;
+            isInitial?: boolean;
+        };
+    };
+};
+
+export type GetModerationCaseResponse = GetModerationCaseResponses[keyof GetModerationCaseResponses];
+
+export type ClaimModerationCaseData = {
+    body?: never;
+    headers: {
+        /**
+         * Current api_session CSRF token.
+         */
+        'X-CSRF-Token': string;
+    };
+    path: {
+        /**
+         * The report UUID.
+         */
+        reportId: string;
+    };
+    query?: never;
+    url: '/api/v1/moderation/case/{reportId}/claim';
+};
+
+export type ClaimModerationCaseResponses = {
+    /**
+     * Case claimed successfully.
+     */
+    200: {
+        status: 'success';
+    };
+};
+
+export type ClaimModerationCaseResponse = ClaimModerationCaseResponses[keyof ClaimModerationCaseResponses];
+
+export type ListModerationQueueData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter by report status.
+         */
+        status?: string;
+        /**
+         * Cursor for pagination.
+         */
+        cursor?: string;
+        /**
+         * Limit of items per page.
+         */
+        limit?: number;
+    };
+    url: '/api/v1/moderation/queue';
+};
+
+export type ListModerationQueueResponses = {
+    /**
+     * Moderation queue reports list.
+     */
+    200: {
+        items: Array<{
+            id: string;
+            reporterId: string;
+            reporter: {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            targetId: string;
+            targetType: 'REVIEW' | 'PLACE_COMMENT' | 'FORUM_THREAD' | 'FORUM_POST';
+            reason: string;
+            details: string | null;
+            status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+            createdAt: string;
+            resolvedAt: string | null;
+            resolvedBy: string | null;
+            claimedAt: string | null;
+            claimedBy: string | null;
+            evidence: string;
+            author: null | {
+                id: string | null;
+                displayName: string;
+                initials: string;
+            };
+            publicLink: string;
+            adminLink: string;
+            moderationHistory: Array<{
+                [key: string]: unknown;
+            }>;
+        }>;
+        pagination: {
+            nextCursor: string | null;
+            hasNextPage: boolean;
+            totalItems?: number;
+            rootCount?: number;
+            replyCount?: number;
+        };
+    };
+};
+
+export type ListModerationQueueResponse = ListModerationQueueResponses[keyof ListModerationQueueResponses];
 
 export type ListFavoritesData = {
     body?: never;

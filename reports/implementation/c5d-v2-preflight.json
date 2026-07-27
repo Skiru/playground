@@ -1,0 +1,36 @@
+{
+  "taskId": "PLAYGROUND_C5D_RELEASE_CLOSURE_V2",
+  "checkedAt": "2026-07-20T14:55:00+02:00",
+  "baseSha": "3d8d12a8f5d9862ed935b1760d87f3becb969463",
+  "seedSha": "6aeba0dff2366df47727db34161ce9cdc9b45405",
+  "branch": "feat/family-places-c5d-forum-moderation-production-grade",
+  "localHead": "6aeba0dff2366df47727db34161ce9cdc9b45405",
+  "remoteHead": "6aeba0dff2366df47727db34161ce9cdc9b45405",
+  "treeSha": "4da9f4e8da65621a23afeda22b9b87a4940c225e",
+  "worktreeClean": true,
+  "allWorktrees": "/Users/mkoziol/projects/playground  6aeba0d [feat/family-places-c5d-forum-moderation-production-grade]",
+  "stashes": "stash@{0}: WIP on feat/family-places-platform-v1: 5436570 docs: certify FamilyPlaces C2 production release closure",
+  "commitsNotOnRemote": "",
+  "openPrs": [
+    {
+      "number": 10,
+      "title": "Feat/family places c3 product experience",
+      "url": "https://github.com/Skiru/playground/pull/10"
+    }
+  ],
+  "githubActionsRuns": [],
+  "commandsRun": [
+    {
+      "command": "git fetch origin && git status && git rev-parse HEAD && git rev-parse origin/feat/family-places-c5d-forum-moderation-production-grade",
+      "exitCode": 0,
+      "timestamp": "2026-07-20T14:53:00+02:00",
+      "output": "On branch feat/family-places-c5d-forum-moderation-production-grade\nYour branch is up to date with 'origin/feat/family-places-c5d-forum-moderation-production-grade'.\n\nnothing to commit, working tree clean\n6aeba0dff2366df47727db34161ce9cdc9b45405\n6aeba0dff2366df47727db34161ce9cdc9b45405"
+    },
+    {
+      "command": "git write-tree && git worktree list && git stash list && gh pr list && gh run list --commit 6aeba0dff2366df47727db34161ce9cdc9b45405",
+      "exitCode": 0,
+      "timestamp": "2026-07-20T14:54:00+02:00",
+      "output": "4da9f4e8da65621a23afeda22b9b87a4940c225e\n/Users/mkoziol/projects/playground  6aeba0d [feat/family-places-c5d-forum-moderation-production-grade]\nstash@{0}: WIP on feat/family-places-platform-v1: 5436570 docs: certify FamilyPlaces C2 production release closure"
+    }
+  ]
+}

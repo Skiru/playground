@@ -55,6 +55,9 @@ describe("place detail route", () => {
               website_url: null,
               phone: null,
               verification_status: "admin_verified",
+              ageZones: [],
+              openingSchedule: [],
+              specialOpeningDays: [],
             }} />
           </LoginRequiredActionProvider>
         </SessionProvider>

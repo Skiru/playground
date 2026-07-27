@@ -1,0 +1,96 @@
+{
+  "taskId": "PLAYGROUND_C5D_RELEASE_EVIDENCE_AND_REAL_JOURNEYS_V3",
+  "findings": [
+    {
+      "id": "F_V3_P0_1",
+      "severity": "P0",
+      "title": "no real PR/CI",
+      "status": "OPEN",
+      "description": "No actual pull request exists for C5D, and no remote GitHub Actions execution has validated the SHA."
+    },
+    {
+      "id": "F_V3_P0_2",
+      "severity": "P0",
+      "title": "Playwright journeys do not execute declared moderation/forum flows",
+      "status": "OPEN",
+      "description": "Playwright tests are missing concrete verification steps for locking/unlocking, post hiding, multi-user isolation, etc., often skipping major steps using optional locator patterns."
+    },
+    {
+      "id": "F_V3_P0_3",
+      "severity": "P0",
+      "title": "mixed REVIEW/PLACE_COMMENT moderator queue indexing defect",
+      "status": "OPEN",
+      "description": "DbalModerationQueueQuery contains an incorrect key assignment where PLACE_COMMENT and REVIEW comment IDs overwrite one another due to map collision."
+    },
+    {
+      "id": "F_V3_P1_1",
+      "severity": "P1",
+      "title": "no real Axe execution",
+      "status": "OPEN",
+      "description": "The accessibility audit was asserted with a static JSON of 0 violations without running AxeBuilder scans."
+    },
+    {
+      "id": "F_V3_P1_2",
+      "severity": "P1",
+      "title": "raw fetch and manual moderator DTO",
+      "status": "OPEN",
+      "description": "The moderator queue/case and forum components use manual native fetch instead of the generated API client."
+    },
+    {
+      "id": "F_V3_P1_3",
+      "severity": "P1",
+      "title": "remaining any, alert and confirm",
+      "status": "OPEN",
+      "description": "Web app uses native alert and window.confirm browser dialogs and loose 'any' casts."
+    },
+    {
+      "id": "F_V3_P1_4",
+      "severity": "P1",
+      "title": "missing pagination in forum and moderator UI",
+      "status": "OPEN",
+      "description": "The moderator queue is locked to page 1 and size 50, and forum categories/threads lack proper pagination."
+    },
+    {
+      "id": "F_V3_P1_5",
+      "severity": "P1",
+      "title": "feed cards do not link to sources",
+      "status": "OPEN",
+      "description": "Activity feed cards do not point users to the actual thread/post/review section, leaving cards as dead UI components."
+    },
+    {
+      "id": "F_V3_P1_6",
+      "severity": "P1",
+      "title": "insufficient Vitest community coverage",
+      "status": "OPEN",
+      "description": "Vitest community tests do not cover forum category rendering, thread/post creation, pagination, locking, or custom reporting dialog states."
+    },
+    {
+      "id": "F_V3_P1_7",
+      "severity": "P1",
+      "title": "non-auditable evidence",
+      "status": "OPEN",
+      "description": "Evidence files contain unsupported static YES/NO checklists instead of real command output and execution metrics."
+    },
+    {
+      "id": "F_V3_P1_8",
+      "severity": "P1",
+      "title": "unsafe production rollback semantics",
+      "status": "OPEN",
+      "description": "The down() migration drops core structural linkages and triggers destructive cascades under production environments."
+    },
+    {
+      "id": "F_V3_P1_9",
+      "severity": "P1",
+      "title": "inconsistent tree SHA",
+      "status": "OPEN",
+      "description": "The previous tree SHA report was inconsistent with the actual git commit tree SHA."
+    },
+    {
+      "id": "F_V3_P2_1",
+      "severity": "P2",
+      "title": "PR #10 remains open",
+      "status": "OPEN",
+      "description": "Stale draft pull request #10 is still open."
+    }
+  ]
+}

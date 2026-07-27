@@ -1,0 +1,24 @@
+{
+  "certified": false,
+  "superseded": true,
+  "reason": "The previous certification was rejected due to missing public forum/community routes, missing community Playwright journeys, feed visibility leakage, report button not submitting, lack of exact-SHA CI, and multiple design and architectural defects.",
+  "replacementArtifact": "reports/implementation/c5d-v2-final-certification.json",
+  "checklist": {
+    "independent_forum_exists": "NO",
+    "community_feed_exists": "NO",
+    "reporting_works": "NO",
+    "moderator_queue_works": "NO",
+    "hidden_content_does_not_leak": "NO",
+    "place_discussions_remain_distinct": "NO",
+    "two_user_and_moderator_e2e_verified": "NO",
+    "accessibility_scope_honest": "NO",
+    "no_global_composer_ignore": "YES",
+    "openapi_client_synchronized": "NO",
+    "c5d_evidence_exists": "NO",
+    "all_phpunit_tests_pass": "NO",
+    "all_vitest_tests_pass": "NO",
+    "p0_open": 5,
+    "p1_open": 10,
+    "p2_open": 2
+  }
+}

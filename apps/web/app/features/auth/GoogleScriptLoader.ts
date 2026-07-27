@@ -1,4 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+interface GoogleIdentityApi {
+  accounts?: { id?: object }
+}
+
 let loadPromise: Promise<void> | null = null
 
 export function loadGoogleScript(): Promise<void> {
@@ -6,7 +9,7 @@ export function loadGoogleScript(): Promise<void> {
     return Promise.resolve()
   }
 
-  const globalWindow = window as any
+  const globalWindow = window as typeof window & { google?: GoogleIdentityApi }
   if (globalWindow.google?.accounts?.id) {
     return Promise.resolve()
   }

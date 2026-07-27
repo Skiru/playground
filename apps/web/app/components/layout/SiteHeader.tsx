@@ -20,6 +20,8 @@ export function SiteHeader() {
 
   const navLinks = [
     { href: "/miejsca", label: content.navigation.placesCatalog },
+    { href: "/forum", label: "Forum" },
+    { href: "/spolecznosc", label: "Społeczność" },
   ]
 
   const isActive = (href: string) => location.pathname === href

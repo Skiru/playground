@@ -1,0 +1,57 @@
+{
+  "features": [
+    {
+      "name": "Reviews and Ratings",
+      "classes": [
+        "App\\Community\\Domain\\Review\\Review",
+        "App\\Community\\Domain\\Review\\ReviewStatus",
+        "App\\Community\\Domain\\Review\\ReviewRepository"
+      ],
+      "controllers": [
+        "App\\Community\\UI\\Http\\ReviewCommandController",
+        "App\\Community\\UI\\Http\\ReviewQueryController"
+      ]
+    },
+    {
+      "name": "Place-local Discussions",
+      "classes": [
+        "App\\Community\\Domain\\PlaceDiscussion\\PlaceComment",
+        "App\\Community\\Domain\\PlaceDiscussion\\PlaceCommentStatus",
+        "App\\Community\\Domain\\PlaceDiscussion\\PlaceCommentRepository"
+      ],
+      "controllers": [
+        "App\\Community\\UI\\Http\\PlaceDiscussionCommandController",
+        "App\\Community\\UI\\Http\\PlaceDiscussionQueryController"
+      ]
+    },
+    {
+      "name": "Independent Forum",
+      "classes": [
+        "App\\Community\\Domain\\Forum\\ForumCategory",
+        "App\\Community\\Domain\\Forum\\ForumThread",
+        "App\\Community\\Domain\\Forum\\ForumPost",
+        "App\\Community\\Domain\\Forum\\ForumThreadStatus",
+        "App\\Community\\Domain\\Forum\\ForumPostStatus"
+      ],
+      "controllers": [
+        "App\\Community\\UI\\Http\\ForumCommandController",
+        "App\\Community\\UI\\Http\\ForumQueryController"
+      ]
+    },
+    {
+      "name": "Reporting and Moderation",
+      "classes": [
+        "App\\Community\\Domain\\Moderation\\ContentReport",
+        "App\\Community\\Domain\\Moderation\\ReportStatus",
+        "App\\Community\\Domain\\Moderation\\ReportReason",
+        "App\\Community\\Domain\\Moderation\\TargetType",
+        "App\\Community\\Domain\\Moderation\\ModerationActionRecord",
+        "App\\Community\\Domain\\Moderation\\ModerationActionType"
+      ],
+      "controllers": [
+        "App\\Community\\UI\\Http\\ContentReportController",
+        "App\\Community\\UI\\Http\\ModerationController"
+      ]
+    }
+  ]
+}

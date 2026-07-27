@@ -19,6 +19,8 @@ parameters:
     env(STORAGE_S3_REGION): 'us-east-1'
     env(STORAGE_S3_PUBLIC_URL): ''
     env(MEDIA_E2E_MODE): 'false'
+    env(APP_PUBLIC_ORIGIN): 'http://localhost:5173'
+    env(TRUSTED_AUTH_ORIGINS): 'http://localhost:5173'
 
 services:
     # default configuration for services in *this* file
@@ -72,6 +74,15 @@ services:
     App\Discovery\UI\:
         resource: '../src/Discovery/UI/'
 
+    App\Community\Application\:
+        resource: '../src/Community/Application/'
+
+    App\Community\Infrastructure\:
+        resource: '../src/Community/Infrastructure/'
+
+    App\Community\UI\:
+        resource: '../src/Community/UI/'
+
     App\Administration\Infrastructure\:
         resource: '../src/Administration/Infrastructure/'
 
@@ -83,6 +94,7 @@ services:
         public: true
 
     App\Shared\Application\TransactionManager: '@App\Shared\Infrastructure\Doctrine\DbalTransactionManager'
+    App\Shared\Application\Security\CsrfValidator: '@App\Shared\Infrastructure\Http\SessionCsrfValidator'
 
     App\Shared\Infrastructure\Logging\CorrelationIdProcessor:
         tags: [monolog.processor]
@@ -95,12 +107,36 @@ services:
     App\Personalization\Application\VisitRepository: '@App\Personalization\Infrastructure\Doctrine\VisitRepository'
     App\Personalization\Domain\PublishedPlaceLookup: '@App\Personalization\Infrastructure\PublishedPlaceDbalLookup'
 
+    App\Community\Application\Port\PublishedPlaceLookup: '@App\Community\Infrastructure\Port\PublishedPlaceDbalLookup'
+    App\Community\Application\Port\ActiveCommunityUserLookup: '@App\Community\Infrastructure\Port\ActiveCommunityUserDbalLookup'
+    App\Community\Application\Port\PublicAuthorProfileLookup: '@App\Community\Infrastructure\Port\PublicAuthorProfileDbalLookup'
+    App\Community\Application\Port\CommunityFeedQuery: '@App\Community\Infrastructure\Query\DbalCommunityFeedQuery'
+    App\Community\Application\Port\ModerationQueueQuery: '@App\Community\Infrastructure\Query\DbalModerationQueueQuery'
+
     App\Identity\Infrastructure\Google\GoogleApiClientIdentityVerifier:
         arguments:
             $clientId: '%env(resolve:GOOGLE_CLIENT_ID)%'
 
     App\Places\Application\PlaceRepository: '@App\Places\Infrastructure\Doctrine\PlaceRepository'
     App\Discovery\Application\PlaceReadModel: '@App\Discovery\Infrastructure\Doctrine\PlaceReadRepository'
+    App\Community\Domain\Review\ReviewRepository: '@App\Community\Infrastructure\Review\DbalReviewRepository'
+    App\Community\Application\Review\RatingSummaryLookup: '@App\Community\Infrastructure\Review\DbalRatingSummaryLookup'
+    App\Community\Domain\PlaceDiscussion\PlaceCommentRepository: '@App\Community\Infrastructure\PlaceDiscussion\DbalPlaceCommentRepository'
+
+    # Forum and Moderation Repositories
+    App\Community\Domain\Forum\ForumCategoryRepository: '@App\Community\Infrastructure\Forum\DbalForumCategoryRepository'
+    App\Community\Domain\Forum\ForumThreadRepository: '@App\Community\Infrastructure\Forum\DbalForumThreadRepository'
+    App\Community\Domain\Forum\ForumPostRepository: '@App\Community\Infrastructure\Forum\DbalForumPostRepository'
+    App\Community\Domain\Moderation\ContentReportRepository: '@App\Community\Infrastructure\Moderation\DbalContentReportRepository'
+    App\Community\Domain\Moderation\ModerationActionRepository: '@App\Community\Infrastructure\Moderation\DbalModerationActionRepository'
+
+    # Rate Limiter Aliases
+    Symfony\Component\RateLimiter\RateLimiterFactory $reviewWrite: '@limiter.review_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $commentWrite: '@limiter.comment_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $forumThreadWrite: '@limiter.forum_thread_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $forumPostWrite: '@limiter.forum_post_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $reportWrite: '@limiter.report_write'
+    Symfony\Component\RateLimiter\RateLimiterFactory $moderatorWrite: '@limiter.moderator_write'
 
     # Storage Configuration
     App\Shared\Infrastructure\Storage\LocalStorageAdapter:
@@ -119,6 +155,11 @@ services:
 
     App\Shared\Application\Storage\StorageInterface: '@App\Shared\Infrastructure\Storage\StorageService'
     App\Shared\Application\Storage\ImageProcessor: '@App\Shared\Infrastructure\Storage\GdImageProcessor'
+
+    App\Identity\UI\Security\GoogleCredentialAuthenticator:
+        arguments:
+            $publicOrigin: '%env(resolve:APP_PUBLIC_ORIGIN)%'
+            $trustedOrigins: '%env(resolve:TRUSTED_AUTH_ORIGINS)%'
 
     Jsor\Doctrine\PostGIS\Event\ORMSchemaEventListener:
         tags: [{ name: doctrine.event_listener, event: postGenerateSchemaTable, connection: default }]

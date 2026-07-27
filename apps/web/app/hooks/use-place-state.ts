@@ -60,6 +60,7 @@ export function usePlaceStates(placeIds: string[]) {
 
       const res = await fetch(endpoint, {
         method,
+        keepalive: true,
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": session.csrfToken || "",

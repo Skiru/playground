@@ -1,0 +1,23 @@
+{
+  "performanceImprovements": {
+    "databaseIndexes": {
+      "file": "apps/api/migrations/Version20260719183000.php",
+      "appliedIndexes": [
+        "idx_reviews_list ON reviews (place_id, status, created_at DESC, id DESC)",
+        "idx_reviews_rating_summary ON reviews (place_id, status, rating)",
+        "idx_place_comments_parent_list ON place_comments (place_id, status, parent_id, created_at ASC, id ASC)",
+        "idx_place_comments_reply_list ON place_comments (parent_id, status, created_at ASC, id ASC)",
+        "idx_forum_threads_list ON forum_threads (category_id, status, pinned_at DESC, last_activity_at DESC, id DESC)",
+        "idx_forum_posts_list ON forum_posts (thread_id, status, created_at ASC, id ASC)",
+        "idx_content_reports_status_list ON content_reports (status, created_at DESC, id DESC)",
+        "idx_content_reports_target ON content_reports (target_type, target_id)",
+        "idx_moderation_actions_target ON moderation_actions (target_type, target_id, created_at DESC, id DESC)"
+      ]
+    },
+    "nPlusOneQueries": {
+      "port": "App\\Community\\Application\\Port\\PublicAuthorProfileLookup::getProfiles",
+      "dbalImplementation": "App\\Community\\Infrastructure\\Port\\PublicAuthorProfileDbalLookup",
+      "behavior": "Replaces multiple serial queries with exactly 1 batched query using SQL IN (:ids)"
+    }
+  }
+}

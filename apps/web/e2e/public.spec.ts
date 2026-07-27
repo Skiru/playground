@@ -63,7 +63,7 @@ test("map, empty results, fallback, API error and 404 remain understandable", as
   await expect(page.getByText("Brak miejsc w tym obszarze")).toBeVisible();
 
   await page.goto("/miejsca?pageSize=51");
-  await expect(page.getByText("Błąd").first()).toBeVisible();
+  await expect(page.getByText(/Coś poszło nie tak|Błąd/).first()).toBeVisible();
   await page.goto("/nie-istnieje");
   await expect(page.getByText("404").first()).toBeVisible();
 

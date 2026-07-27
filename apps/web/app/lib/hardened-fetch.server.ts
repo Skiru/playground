@@ -40,6 +40,58 @@ function isAllowlisted(path: string): boolean {
   return false
 }
 
+function isBodyJson(body: unknown): boolean {
+  if (!body) return false
+
+  // Never set JSON for FormData
+  if (typeof FormData !== "undefined" && body instanceof FormData) {
+    return false
+  }
+
+  // Never set JSON for URLSearchParams
+  if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) {
+    return false
+  }
+
+  // Never set JSON for Blob / File
+  if (typeof Blob !== "undefined" && body instanceof Blob) {
+    return false
+  }
+
+  // Never set JSON for ArrayBuffer
+  if (typeof ArrayBuffer !== "undefined" && body instanceof ArrayBuffer) {
+    return false
+  }
+
+  // Never set JSON for typed arrays (ArrayBufferView)
+  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView && ArrayBuffer.isView(body)) {
+    return false
+  }
+
+  // Never set JSON for ReadableStream
+  if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) {
+    return false
+  }
+
+  // If it's a string, check if it's valid JSON (object or array structure) and not plain text or multipart
+  if (typeof body === "string") {
+    const trimmed = body.trim()
+    // Valid JSON objects or arrays start with { or [
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        JSON.parse(trimmed)
+        return true
+      } catch {
+        return false
+      }
+    }
+    // Plain text or primitive string is not considered JSON body
+    return false
+  }
+
+  return false
+}
+
 export async function hardenedFetch(
   incomingRequest: Request,
   path: string,
@@ -70,6 +122,10 @@ export async function hardenedFetch(
   }, 5000)
 
   const headers = new Headers(options.headers)
+
+  if (options.body && !headers.has("Content-Type") && isBodyJson(options.body)) {
+    headers.set("Content-Type", "application/json")
+  }
 
   // Forward incoming headers safely
   const incomingCookie = incomingRequest.headers.get("cookie")
