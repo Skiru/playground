@@ -1,8 +1,42 @@
-/* Default Theme Variables - Brand specific concrete values */
+/* Warm Local Discovery palette. Concrete values live only in this theme. */
 :root {
-  --ink: #17231d;
-  --paper: #f3f0e7;
-  --forest: #234c36;
-  --rust: #b43b22;
-  --line: #a8ad9f;
+  --paper: #faf8f3;
+  --surface: #ffffff;
+  --forest: #24513f;
+  --forest-dark: #183b2d;
+  --sage: #dde9df;
+  --rust: #c86f4a;
+  --rust-dark: #a95334;
+  --sand: #eee7da;
+  --ink: #202923;
+  --muted-ink: #66716a;
+  --line: #e3e5e1;
+  --danger: #b84335;
+  --success: #2f6a4d;
+  --warning: #9b6418;
+  --white: #ffffff;
+  --shadow: rgba(32, 41, 35, 0.08);
+  --map-canvas: #d8e2da;
+}
+
+.dark {
+  --paper: #142019;
+  --surface: #1b2b22;
+  --forest: #9bc8ab;
+  --forest-dark: #c4e0cd;
+  --sage: #294335;
+  --rust: #e69a79;
+  --rust-dark: #f1b095;
+  --sand: #2b352f;
+  --ink: #f1f5f1;
+  --muted-ink: #b8c3bc;
+  --dark-muted-ink: #d0d8d2;
+  --line: #3b4b42;
+  --dark-control: #526158;
+  --danger: #f08b7f;
+  --success: #8fc7a5;
+  --warning: #e5bd78;
+  --white: #142019;
+  --shadow: rgba(0, 0, 0, 0.24);
+  --map-canvas: #263a2f;
 }

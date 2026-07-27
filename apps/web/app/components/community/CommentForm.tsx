@@ -52,14 +52,14 @@ export function CommentForm({
         maxLength={3000}
       />
       <div className="flex justify-between items-center gap-4">
-        <span className="text-3xs text-muted-foreground">{body.length}/3000 znaków</span>
+        <span className="text-sm text-muted-foreground">{body.length}/3000 znaków</span>
         <div className="flex gap-2">
           {onCancel && (
             <Button
               type="button"
               size="xs"
               variant="ghost"
-              className="text-2xs font-semibold"
+              className="font-semibold"
               onClick={onCancel}
             >
               Anuluj
@@ -68,7 +68,7 @@ export function CommentForm({
           <Button
             type="submit"
             size="xs"
-            className="text-2xs font-semibold"
+            className="font-semibold"
             disabled={submitting || body.trim().length === 0}
           >
             {submitting ? "Wysyłanie..." : "Wyślij"}

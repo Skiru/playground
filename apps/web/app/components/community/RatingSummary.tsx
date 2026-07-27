@@ -1,4 +1,4 @@
-import * as React from "react"
+import { Star } from "lucide-react"
 
 interface Summary {
   averageRating: number
@@ -11,22 +11,16 @@ interface RatingSummaryProps {
 }
 
 export function RatingSummary({ summary }: RatingSummaryProps) {
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex text-amber-500 font-bold" aria-label={`Ocena: ${rating} na 5`}>
-        {"★".repeat(rating)}{"☆".repeat(5 - rating)}
-      </div>
-    )
-  }
-
   return (
-    <div id="rating-summary-stats" className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6 p-4 rounded-xl border bg-muted/10">
-      <div className="flex flex-col items-center justify-center gap-1.5 border-r md:pr-6">
-        <span className="font-serif text-4xl sm:text-5xl font-semibold text-foreground">
-          {summary.averageRating.toFixed(1)}
+    <div id="rating-summary-stats" className="grid grid-cols-1 gap-6 rounded-[var(--radius-card)] border bg-muted/20 p-5 md:grid-cols-[1fr_2fr]">
+      <div className="flex flex-col items-center justify-center gap-2 md:border-r md:pr-6">
+        <span className="text-3xl font-extrabold text-foreground sm:text-4xl">
+          {summary.totalReviews > 0 ? summary.averageRating.toFixed(1) : "Brak ocen"}
         </span>
-        {renderStars(Math.round(summary.averageRating))}
-        <span className="text-2xs text-muted-foreground">
+        <div role="img" className="flex gap-1 text-accent" aria-label={summary.totalReviews > 0 ? `Ocena ${summary.averageRating.toFixed(1)} na 5` : "Brak ocen"}>
+          {[1, 2, 3, 4, 5].map((value) => <Star key={value} className={`size-4 ${value <= Math.round(summary.averageRating) ? "fill-current" : ""}`} aria-hidden="true" />)}
+        </div>
+        <span className="text-sm text-muted-foreground">
           na podstawie <span data-testid="total-reviews-count" id="total-reviews-number">{summary.totalReviews}</span> opinii
         </span>
       </div>
@@ -35,12 +29,12 @@ export function RatingSummary({ summary }: RatingSummaryProps) {
           const count = summary.histogram[stars] || 0
           const percentage = summary.totalReviews > 0 ? (count / summary.totalReviews) * 100 : 0
           return (
-            <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div key={stars} className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="w-3 text-right">{stars}</span>
-              <span className="text-amber-500">★</span>
+              <Star className="size-3.5 fill-accent text-accent" aria-hidden="true" />
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-amber-500 rounded-full"
+                    className="h-full rounded-full bg-accent"
                   style={{ width: `${percentage}%` }}
                 />
               </div>

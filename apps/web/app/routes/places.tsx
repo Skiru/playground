@@ -1,17 +1,15 @@
 import type { SearchPlacesData, SearchPlacesResponse, GetCitiesResponse, GetCategoriesResponse, GetAmenitiesResponse } from "@family-places/api-client"
 import { useState } from "react"
 import { Link, useSearchParams } from "react-router"
-import { Search, SlidersHorizontal, Map as MapIcon, List, X, Compass, ArrowRight } from "lucide-react"
+import { Search, SlidersHorizontal, Map as MapIcon, List, X } from "lucide-react"
 
 import { MapExplorer } from "../components/MapExplorer"
 import { AppShell } from "../components/layout/AppShell"
 import { PageContainer } from "../components/layout/PageContainer"
-import { FavoriteButton } from "~/components/places/FavoriteButton"
 import { loadAmenities, loadCategories, loadCities, loadMapPlaces, loadPlaces } from "../lib/api.server"
 import { content } from "../content"
 import type { Route } from "./+types/places"
 import { Button } from "~/components/ui/button"
-import { PlaceImage } from "../components/media/PlaceImage"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -23,6 +21,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/components/ui/sheet"
+import { PlaceCard } from "~/components/places/PlaceCard"
+import { StatePanel } from "~/components/states/StatePanel"
 
 type SearchQuery = NonNullable<SearchPlacesData["query"]>
 
@@ -116,106 +116,29 @@ export function PlacesView({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="border-b pb-4">
-        <p className="font-mono text-xs uppercase tracking-wider text-accent font-bold mb-1">
+      <div className="border-b pb-5">
+        <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.12em] text-accent">
           {content.places.resultsEyebrow}
         </p>
-        <h1 className="font-serif text-2xl sm:text-3xl font-medium text-foreground">
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           {content.places.resultsHeadingPlural(places.pagination.totalItems)}
         </h1>
       </div>
 
       {places.items.length ? (
-        <ol className="flex flex-col gap-6">
+        <ol className="flex flex-col gap-5">
           {places.items.map((place) => (
             <li key={place.id}>
-              <Card className="place-card group overflow-hidden bg-card border hover:border-primary/50 hover:shadow-md transition-all duration-300 scroll-mt-20">
-                <CardContent className="p-6 flex flex-col md:flex-row gap-6">
-                  {/* Aspect video thumbnail placeholder */}
-                  <div className="relative w-full md:w-48 aspect-video md:aspect-[4/3] rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                    <PlaceImage
-                      mainPhotoUrl={place.main_photo?.thumbnail}
-                      srcSet={place.main_photo ? `${place.main_photo.thumbnail_mini} 150w, ${place.main_photo.thumbnail} 400w, ${place.main_photo.card} 800w` : undefined}
-                      sizes="(max-width: 768px) 100vw, 192px"
-                      placeName={place.name}
-                      categorySlug={place.categories[0]?.slug}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <Badge className="absolute top-2 left-2 bg-primary text-white font-mono text-2xs py-0.5 px-2 font-bold rounded">
-                      {place.indoor ? content.places.indoor : place.outdoor ? content.places.outdoor : "miejscówka"}
-                    </Badge>
-                  </div>
-
-                  {/* Place Details */}
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <p className="font-mono text-2xs text-muted-foreground uppercase tracking-wider mb-1">
-                        {place.city}
-                        {content.places.placeMetaSeparator}
-                        {place.indoor ? content.places.indoor : content.places.outdoor}
-                      </p>
-                      <div className="flex items-center gap-1.5 mb-1.5" aria-label={place.total_reviews && place.total_reviews > 0 ? `Ocena: ${place.average_rating.toFixed(1)} na podstawie ${place.total_reviews} opinii` : "Brak opinii"}>
-                        {place.total_reviews && place.total_reviews > 0 ? (
-                          <>
-                            <span className="text-amber-500 text-sm">★</span>
-                            <span className="font-semibold text-xs text-foreground">{place.average_rating.toFixed(1)}</span>
-                            <span className="text-2xs text-muted-foreground">({place.total_reviews} {place.total_reviews === 1 ? "opinia" : place.total_reviews % 10 >= 2 && place.total_reviews % 10 <= 4 && (place.total_reviews % 100 < 10 || place.total_reviews % 100 >= 20) ? "opinie" : "opinii"})</span>
-                          </>
-                        ) : (
-                          <span className="text-2xs text-muted-foreground italic">{content.places.noReviews}</span>
-                        )}
-                      </div>
-                      <div className="flex items-start justify-between gap-4">
-                        <h2 className="font-serif text-xl font-bold tracking-tight mb-2 group-hover:text-primary transition-colors">
-                          <Link to={`/miejsca/${place.slug}`}>
-                            {place.name}
-                          </Link>
-                        </h2>
-                        <FavoriteButton placeId={place.id} />
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-4">
-                        {place.short_description}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-4 mt-auto">
-                      <div className="flex flex-wrap gap-1.5">
-                        {place.categories?.map((cat) => (
-                          <Badge key={cat.slug} variant="secondary" className="text-2xs rounded-full py-0 px-2">
-                            {cat.name}
-                          </Badge>
-                        ))}
-                        {place.free_entry && (
-                          <Badge className="text-2xs bg-accent/10 text-accent hover:bg-accent/15 border-transparent rounded-full py-0 px-2 font-semibold">
-                            {content.places.freeEntry}
-                          </Badge>
-                        )}
-                      </div>
-                      <Button variant="ghost" size="sm" asChild className="text-primary font-bold group-hover:translate-x-1 transition-transform">
-                        <Link to={`/miejsca/${place.slug}`}>
-                          {content.places.detailsLabel}
-                          <ArrowRight className="ml-1 size-3.5" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <PlaceCard place={place} layout="horizontal" showFavorite />
             </li>
           ))}
         </ol>
       ) : (
-        <Card className="border-dashed p-12 text-center bg-muted/20">
-          <CardContent className="flex flex-col items-center justify-center p-0">
-            <Compass className="size-12 text-muted-foreground/60 mb-4 animate-pulse" />
-            <p className="text-base text-muted-foreground max-w-sm mb-4">
-              {content.places.noResults}
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/miejsca">{content.places.clearFilters}</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <StatePanel
+          title="Nie znaleźliśmy pasujących miejsc"
+          description={content.places.noResults}
+          action={<Button variant="outline" asChild><Link to="/miejsca">{content.places.clearFilters}</Link></Button>}
+        />
       )}
 
       {/* Pagination */}
@@ -261,7 +184,7 @@ export function FilterFields({
     <div className="flex flex-col gap-6 p-1">
       {/* Search Input */}
       <div className="grid gap-2">
-        <Label htmlFor="q" className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+        <Label htmlFor="q" className="text-sm font-bold">
           {content.places.formSearch}
         </Label>
         <div className="relative">
@@ -271,21 +194,21 @@ export function FilterFields({
             name="q"
             defaultValue={filters.q}
             placeholder={content.places.searchPlaceholder}
-            className="pl-9"
+            className="h-11 pl-10 text-base"
           />
         </div>
       </div>
 
       {/* City Select */}
       <div className="grid gap-2">
-        <Label htmlFor="city" className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+        <Label htmlFor="city" className="text-sm font-bold">
           {content.places.formCity}
         </Label>
         <select
           id="city"
           name="city"
           defaultValue={filters.city ?? ""}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-11 w-full rounded-[var(--radius-control)] border border-input bg-background px-3 text-base shadow-xs focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
         >
           <option value="">{content.places.allCitiesOption}</option>
           {cities.map((city) => (
@@ -298,14 +221,14 @@ export function FilterFields({
 
       {/* Category Select */}
       <div className="grid gap-2">
-        <Label htmlFor="category" className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+        <Label htmlFor="category" className="text-sm font-bold">
           {content.places.formCategory}
         </Label>
         <select
           id="category"
           name="category"
           defaultValue={filters.category ?? ""}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-11 w-full rounded-[var(--radius-control)] border border-input bg-background px-3 text-base shadow-xs focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
         >
           <option value="">{content.places.allCategoriesOption}</option>
           {categories.map((category) => (
@@ -318,7 +241,7 @@ export function FilterFields({
 
       {/* Age Input */}
       <div className="grid gap-2">
-        <Label htmlFor="ageMonths" className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+        <Label htmlFor="ageMonths" className="text-sm font-bold">
           {content.places.formAge}
         </Label>
         <Input
@@ -329,6 +252,7 @@ export function FilterFields({
           max="216"
           defaultValue={filters.ageMonths}
           placeholder={content.places.agePlaceholder}
+          className="h-11 text-base"
         />
       </div>
 
@@ -336,7 +260,7 @@ export function FilterFields({
       <div className="grid gap-4 border-t border-b py-4 border-muted/50 my-1">
         <div className="grid grid-cols-2 gap-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="latitude" className="font-mono text-3xs uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="latitude" className="text-sm font-semibold text-muted-foreground">
               {content.places.formLat}
             </Label>
             <Input
@@ -347,11 +271,11 @@ export function FilterFields({
               max="90"
               step="any"
               defaultValue={filters.latitude}
-              className="h-8 text-xs"
+              className="h-11 text-base"
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="longitude" className="font-mono text-3xs uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="longitude" className="text-sm font-semibold text-muted-foreground">
               {content.places.formLng}
             </Label>
             <Input
@@ -362,12 +286,12 @@ export function FilterFields({
               max="180"
               step="any"
               defaultValue={filters.longitude}
-              className="h-8 text-xs"
+              className="h-11 text-base"
             />
           </div>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="radiusKm" className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+          <Label htmlFor="radiusKm" className="text-sm font-bold">
             {content.places.formRadius}
           </Label>
           <Input
@@ -379,19 +303,20 @@ export function FilterFields({
             step="1"
             defaultValue={filters.radiusKm}
             placeholder={content.places.radiusPlaceholder}
+            className="h-11 text-base"
           />
         </div>
       </div>
 
       {/* Toggles */}
       <div className="flex flex-col gap-3">
-        <label className="flex items-center gap-3 cursor-pointer text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-base">
           <input
             type="checkbox"
             name="indoor"
             value="true"
             defaultChecked={filters.indoor === "true"}
-            className="rounded border-input text-primary focus:ring-primary size-4"
+            className="size-5 rounded border-input text-primary focus:ring-primary"
           />
           <span className="font-semibold">{content.places.formIndoor}</span>
         </label>
@@ -399,7 +324,7 @@ export function FilterFields({
 
       {/* Amenities fieldset */}
       <div role="group" aria-label="Udogodnienia" className="grid gap-3">
-        <Label className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold">
+        <Label className="text-sm font-bold">
           {content.places.formAmenitiesHeader}
         </Label>
         <div className="flex flex-col gap-2.5 max-h-48 overflow-y-auto pr-1">
@@ -407,13 +332,13 @@ export function FilterFields({
             const params = new URLSearchParams(resourceQuery)
             const isChecked = [...params.getAll("amenities"), ...params.getAll("amenities[]")].includes(amenity.slug)
             return (
-              <label key={amenity.id} className="flex items-center gap-3 cursor-pointer text-sm">
+              <label key={amenity.id} className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
                 <input
                   type="checkbox"
                   name="amenities[]"
                   value={amenity.slug}
                   defaultChecked={isChecked}
-                  className="rounded border-input text-primary focus:ring-primary size-4"
+                  className="size-5 rounded border-input text-primary focus:ring-primary"
                 />
                 <span>{amenity.name}</span>
               </label>
@@ -422,7 +347,7 @@ export function FilterFields({
         </div>
       </div>
 
-      <Button type="submit" className="w-full font-bold bg-primary hover:bg-primary/95 text-white mt-2">
+      <Button type="submit" className="mt-2 w-full font-bold">
         {content.places.filterButton}
       </Button>
     </div>
@@ -434,7 +359,7 @@ export default function Places({ loaderData }: Route.ComponentProps) {
   const [searchParams] = useSearchParams()
 
   // Generate active filter badges to display
-  const activeFilters: Array<{ key: string; label: string; value: string }> = []
+  const activeFilters: Array<{ key: string; label: string; value: string; paramValue?: string }> = []
   if (loaderData.filters.q) activeFilters.push({ key: "q", label: "Szukaj", value: loaderData.filters.q })
   if (loaderData.filters.city) {
     const cityName = loaderData.cities.find((c) => c.slug === loaderData.filters.city)?.name || loaderData.filters.city
@@ -446,6 +371,16 @@ export default function Places({ loaderData }: Route.ComponentProps) {
   }
   if (loaderData.filters.ageMonths) activeFilters.push({ key: "ageMonths", label: "Wiek", value: `${loaderData.filters.ageMonths} m-cy` })
   if (loaderData.filters.indoor === "true") activeFilters.push({ key: "indoor", label: "Przestrzeń", value: "wewnątrz" })
+  if (loaderData.filters.outdoor === "true") activeFilters.push({ key: "outdoor", label: "Przestrzeń", value: "na zewnątrz" })
+  if (loaderData.filters.freeEntry === "true") activeFilters.push({ key: "freeEntry", label: "Wstęp", value: "bezpłatny" })
+  if (loaderData.filters.openNow === "true") activeFilters.push({ key: "openNow", label: "Godziny", value: "otwarte teraz" })
+  if (loaderData.filters.radiusKm) activeFilters.push({ key: "radiusKm", label: "Promień", value: `${loaderData.filters.radiusKm} km` })
+  if (loaderData.filters.sort) activeFilters.push({ key: "sort", label: "Sortowanie", value: loaderData.filters.sort })
+  const selectedAmenities = [...searchParams.getAll("amenities"), ...searchParams.getAll("amenities[]")]
+  selectedAmenities.forEach((slug) => {
+    const name = loaderData.amenities.find((amenity) => amenity.slug === slug)?.name ?? slug
+    activeFilters.push({ key: "amenities[]", label: "Udogodnienie", value: name, paramValue: slug })
+  })
 
   const hasActiveFilters = activeFilters.length > 0
 
@@ -453,19 +388,21 @@ export default function Places({ loaderData }: Route.ComponentProps) {
     <AppShell>
       <PageContainer className="py-6">
         {/* Toggle between list and map on mobile */}
-        <div className="md:hidden flex w-full mb-4 border rounded-lg overflow-hidden bg-card shadow-xs">
+        <div className="mb-5 flex w-full overflow-hidden rounded-[var(--radius-button)] border bg-card p-1 shadow-xs xl:hidden">
           <Button
             variant={viewMode === "list" ? "default" : "ghost"}
-            className="flex-1 rounded-none font-bold text-xs"
+            className="flex-1 font-bold"
             onClick={() => setViewMode("list")}
+            aria-pressed={viewMode === "list"}
           >
             <List className="mr-1.5 size-4" />
             Lista ({loaderData.places.pagination.totalItems})
           </Button>
           <Button
             variant={viewMode === "map" ? "default" : "ghost"}
-            className="flex-1 rounded-none font-bold text-xs"
+            className="flex-1 font-bold"
             onClick={() => setViewMode("map")}
+            aria-pressed={viewMode === "map"}
           >
             <MapIcon className="mr-1.5 size-4" />
             Mapa ({loaderData.map.features.length})
@@ -474,8 +411,8 @@ export default function Places({ loaderData }: Route.ComponentProps) {
 
         {/* Search Toolbar (Active Filters) */}
         {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 items-center mb-6 p-3 bg-muted/20 border rounded-lg">
-            <span className="text-2xs uppercase tracking-wider text-muted-foreground font-mono font-bold">
+          <div className="z-30 mb-6 flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border bg-background/95 p-3 shadow-sm backdrop-blur lg:sticky lg:top-[4.5rem]">
+            <span className="text-sm font-bold text-muted-foreground">
               Aktywne filtry:
             </span>
             <div className="flex flex-wrap gap-1.5 flex-1">
@@ -483,9 +420,12 @@ export default function Places({ loaderData }: Route.ComponentProps) {
                 // Build a URL without this filter
                 const nextParams = new URLSearchParams(searchParams)
                 if (filter.key === "amenities[]") {
-                  const items = nextParams.getAll("amenities[]").filter((x) => x !== filter.value)
+                  const items = nextParams.getAll("amenities[]").filter((x) => x !== filter.paramValue)
                   nextParams.delete("amenities[]")
                   items.forEach((x) => nextParams.append("amenities[]", x))
+                  const plainItems = nextParams.getAll("amenities").filter((x) => x !== filter.paramValue)
+                  nextParams.delete("amenities")
+                  plainItems.forEach((x) => nextParams.append("amenities", x))
                 } else {
                   nextParams.delete(filter.key)
                 }
@@ -493,35 +433,35 @@ export default function Places({ loaderData }: Route.ComponentProps) {
                   <Badge
                     key={`${filter.key}-${filter.value}`}
                     variant="secondary"
-                    className="gap-1 bg-background hover:bg-muted font-semibold border"
+                    className="min-h-10 gap-1 border bg-card px-3 font-semibold hover:bg-muted"
                   >
                     <span className="text-muted-foreground font-normal">{filter.label}:</span>
                     {filter.value}
-                    <Link to={`/miejsca?${nextParams.toString()}`} aria-label={`Wyczyść filtr ${filter.label}`}>
-                      <X className="size-3 text-muted-foreground hover:text-foreground cursor-pointer" />
+                    <Link to={`/miejsca?${nextParams.toString()}`} className="inline-flex size-8 items-center justify-center rounded-full" aria-label={`Wyczyść filtr ${filter.label}`}>
+                      <X className="size-4 text-muted-foreground hover:text-foreground" />
                     </Link>
                   </Badge>
                 )
               })}
             </div>
-            <Button size="xs" variant="ghost" asChild className="text-xs font-bold hover:bg-transparent text-muted-foreground hover:text-foreground">
+            <Button size="sm" variant="ghost" asChild className="font-bold text-muted-foreground hover:text-foreground">
               <Link to="/miejsca">Wyczyść wszystko</Link>
             </Button>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8">
           {/* Desktop Filter Panel */}
           <aside className="hidden lg:block">
-            <Card className="sticky top-20 border-muted/60 shadow-sm bg-card/50 backdrop-blur-sm">
+            <Card className="sticky top-[6rem] border-border/90 bg-card/80 shadow-sm backdrop-blur-sm">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between border-b pb-3 mb-4">
-                  <h3 className="font-serif font-bold text-lg flex items-center">
+                  <h2 className="flex items-center text-lg font-bold">
                     <SlidersHorizontal className="mr-2 size-4 text-primary" />
                     Filtry
-                  </h3>
+                  </h2>
                   {hasActiveFilters && (
-                    <Button size="xs" variant="ghost" asChild className="text-2xs font-mono font-bold text-muted-foreground">
+                    <Button size="sm" variant="ghost" asChild className="font-bold text-muted-foreground">
                       <Link to="/miejsca">Reset</Link>
                     </Button>
                   )}
@@ -540,14 +480,14 @@ export default function Places({ loaderData }: Route.ComponentProps) {
           </aside>
 
           {/* Results Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-8">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.88fr)] xl:gap-8">
             {/* List View Column */}
-            <div className={`${viewMode === "list" ? "block" : "hidden md:block"}`}>
+            <div className={`${viewMode === "list" ? "block" : "hidden xl:block"}`}>
               {/* Mobile Filter Sheet button inside list view */}
-              <div className="lg:hidden mb-4 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
                 <Sheet>
                   <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="font-semibold text-xs gap-1.5">
+                    <Button variant="outline" size="sm" className="gap-1.5 font-semibold">
                       <SlidersHorizontal className="size-3.5" />
                       Filtruj propozycje
                     </Button>
@@ -570,7 +510,7 @@ export default function Places({ loaderData }: Route.ComponentProps) {
                     </form>
                   </SheetContent>
                 </Sheet>
-                <span className="text-2xs font-mono text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   Propozycje: {loaderData.places.pagination.totalItems}
                 </span>
               </div>
@@ -583,8 +523,8 @@ export default function Places({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Map View Column */}
-            <div className={`relative ${viewMode === "map" ? "block" : "hidden md:block"}`}>
-              <Card className="sticky top-20 border-muted/60 shadow-sm overflow-hidden bg-card">
+            <div className={`relative ${viewMode === "map" ? "block" : "hidden xl:block"}`}>
+              <Card className="sticky top-[6rem] overflow-hidden border-border/90 bg-card py-0 shadow-sm">
                 <CardContent className="p-0">
                   <MapExplorer
                     initialFeatures={loaderData.map.features}

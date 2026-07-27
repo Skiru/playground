@@ -18,10 +18,10 @@ export const home = {
   trustTitle1: "Rzetelna weryfikacja",
   trustDesc1: "Każde miejsce jest sprawdzane pod kątem bezpieczeństwa, infrastruktury i udogodnień dla dzieci.",
   trustTitle2: "Dopasowane do wieku",
-  trustDesc2: "Odkrywaj rekomendacje dostosowane do konkretnego etapu rozwoju Twojego dziecka.",
+  trustDesc2: "Filtruj miejsca według wieku podanego dla poszczególnych stref i aktywności.",
   trustTitle3: "Współtworzone przez Rodziców",
   trustDesc3: "Budujemy społeczność, która dzieli się rzetelnymi rekomendacjami i historią odwiedzin.",
-  featuredEyebrow: "Wybrane dla Ciebie",
-  featuredHeading: "Polecane miejsca rodzinne",
+  featuredEyebrow: "Z katalogu FamilyPlaces",
+  featuredHeading: "Miejsca na dobry początek",
   exploreMap: "Odkrywaj mapę",
 }

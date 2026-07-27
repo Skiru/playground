@@ -112,7 +112,7 @@ test.describe("Real Playwright Image Fallbacks", () => {
     await page.waitForLoadState("networkidle");
 
     // Primary has failed and transitioned to local placeholder (errorCount is 1)
-    const img = page.locator(".relative.rounded-2xl.overflow-hidden img").first();
+    const img = page.getByTestId("place-hero-image");
     await expect(img).toBeVisible();
     await expect(img).toHaveAttribute("src", "/brand/place-placeholder.svg");
 

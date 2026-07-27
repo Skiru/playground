@@ -35,28 +35,30 @@ export function ReviewForm({
 
   return (
     <form onSubmit={handleSubmit} className="border p-4 rounded-lg bg-muted/30 flex flex-col gap-4">
-      <h3 className="font-semibold text-sm">
+      <h3 className="text-base font-semibold">
         {initialBody ? "Edytuj swoją opinię" : "Napisz nową opinię"}
       </h3>
       {formError && (
-        <p className="text-xs text-destructive font-medium bg-destructive/10 p-2 rounded" role="alert">
+        <p className="rounded bg-destructive/10 p-2 text-sm font-medium text-destructive" role="alert">
           {formError}
         </p>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-muted-foreground">
+        <span className="text-sm font-semibold text-muted-foreground">
           Twoja ocena (1-5 gwiazdek) *
-        </label>
+        </span>
         <div className="flex gap-1.5">
           {[1, 2, 3, 4, 5].map((val) => (
             <button
               key={val}
               type="button"
-              className={`text-xl focus:outline-none focus:ring-1 focus:ring-primary ${
-                val <= rating ? "text-amber-500" : "text-muted-foreground/30"
+              className={`flex size-11 items-center justify-center rounded-lg text-xl focus-visible:ring-3 focus-visible:ring-ring/40 ${
+                val <= rating ? "text-accent" : "text-muted-foreground/40"
               }`}
               onClick={() => setRating(val)}
+              aria-label={`${val} ${val === 1 ? "gwiazdka" : val < 5 ? "gwiazdki" : "gwiazdek"}`}
+              aria-pressed={val === rating}
             >
               ★
             </button>
@@ -65,7 +67,7 @@ export function ReviewForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="review-form-body" className="text-xs font-semibold text-muted-foreground">
+        <label htmlFor="review-form-body" className="text-sm font-semibold text-muted-foreground">
           Treść opinii * (minimum 20 znaków)
         </label>
         <textarea
@@ -77,13 +79,13 @@ export function ReviewForm({
           onChange={(e) => setBody(e.target.value)}
           required
         />
-        <p className="text-3xs text-muted-foreground text-right">
+        <p className="text-right text-sm text-muted-foreground">
           {body.length}/5000 znaków (min. 20)
         </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="review-form-visited-on" className="text-xs font-semibold text-muted-foreground">
+        <label htmlFor="review-form-visited-on" className="text-sm font-semibold text-muted-foreground">
           Kiedy tam byłeś? (Opcjonalnie)
         </label>
         <input
@@ -100,7 +102,7 @@ export function ReviewForm({
           type="button"
           size="sm"
           variant="ghost"
-          className="text-xs font-semibold"
+          className="font-semibold"
           onClick={onCancel}
         >
           Anuluj
@@ -108,7 +110,7 @@ export function ReviewForm({
         <Button
           type="submit"
           size="sm"
-          className="text-xs font-semibold"
+          className="font-semibold"
           disabled={submitting || body.trim().length < 20}
         >
           {submitting ? "Zapisywanie..." : "Zapisz opinię"}

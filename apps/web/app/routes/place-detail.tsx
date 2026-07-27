@@ -1,6 +1,6 @@
 import type { GetPlaceBySlugResponse } from "@family-places/api-client"
 import { Link } from "react-router"
-import { MapPin, Baby, ShieldCheck, Compass, Check, ArrowLeft, ExternalLink, Navigation, Clock } from "lucide-react"
+import { MapPin, Baby, ShieldCheck, Compass, Check, ArrowLeft, ExternalLink, Navigation, Clock, Phone, Globe } from "lucide-react"
 import * as React from "react"
 
 import { AppShell } from "../components/layout/AppShell"
@@ -45,20 +45,19 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
   return (
-    <article className="flex flex-col gap-8 pb-16">
+    <article className="flex min-w-0 flex-col gap-6 pb-10 sm:gap-8 sm:pb-16">
       {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="text-2xs font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <Link to="/" className="hover:text-primary transition-colors">Główna</Link>
         <span className="text-muted-foreground/50">/</span>
         <Link to="/miejsca" className="hover:text-primary transition-colors">Katalog</Link>
         <span className="text-muted-foreground/50">/</span>
-        <span className="hover:text-primary transition-colors">{place.city_name}</span>
-        <span className="text-muted-foreground/50">/</span>
-        <span className="text-foreground font-semibold line-clamp-1">{place.name}</span>
+        <span className="hidden sm:inline">{place.city_name}</span>
+        <span className="hidden text-muted-foreground/50 sm:inline">/</span>
+        <span className="hidden min-w-0 truncate font-semibold text-foreground sm:inline">{place.name}</span>
       </nav>
 
-      {/* Place Hero */}
-      <div className="relative rounded-2xl overflow-hidden bg-muted aspect-video md:aspect-[3/1] border shadow-sm">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] border bg-muted shadow-sm sm:aspect-[16/9] lg:aspect-[3/1]">
         <PlaceImage
           mainPhotoUrl={place.main_photo?.hero}
           srcSet={place.main_photo ? `${place.main_photo.card} 800w, ${place.main_photo.hero} 1200w, ${place.main_photo.original_max} 1920w` : undefined}
@@ -68,42 +67,45 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
           loading="eager"
           fetchPriority="high"
           decoding="async"
+          data-testid="place-hero-image"
           className="h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
-        <div className="absolute bottom-6 left-6 right-6 z-20 text-white flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-primary hover:bg-primary/95 text-white font-mono text-xs py-0.5 px-2.5 font-semibold rounded flex items-center">
-              <ShieldCheck className="size-3.5 mr-1 text-primary-foreground" />
-              {content.places.verifiedPlace}
-            </Badge>
-            <Badge className="bg-accent hover:bg-accent/95 text-white font-mono text-xs py-0.5 px-2.5 font-semibold rounded">
-              {place.city_name}
-            </Badge>
-          </div>
-          <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight">
-            {place.name}
-          </h1>
-          <p className="text-sm sm:text-base text-white/90 leading-relaxed max-w-2xl line-clamp-2">
-            {place.short_description}
-          </p>
-        </div>
       </div>
 
+      <header className="flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 max-w-4xl">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {place.verification_status === "admin_verified" ? (
+              <Badge variant="secondary" className="gap-1.5 text-primary">
+                <ShieldCheck className="size-4" aria-hidden="true" />
+                {content.places.verifiedPlace}
+              </Badge>
+            ) : null}
+            {place.categories.map((category) => <Badge key={category.slug} variant="outline">{category.name}</Badge>)}
+          </div>
+          <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.03em] sm:text-4xl lg:text-5xl">{place.name}</h1>
+          <p className="mt-3 flex items-center gap-2 text-base font-semibold text-muted-foreground">
+            <MapPin className="size-5 text-primary" aria-hidden="true" />
+            {place.city_name}
+          </p>
+          <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">{place.short_description}</p>
+        </div>
+      </header>
+
       {/* Place Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 border rounded-xl bg-card shadow-2xs scroll-mt-20">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild className="font-semibold text-xs">
+      <div className="flex scroll-mt-24 flex-col gap-3 rounded-[var(--radius-card)] border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div>
+          <Button variant="outline" size="sm" asChild className="w-full font-semibold sm:w-auto">
             <Link to="/miejsca" className="flex items-center gap-1.5">
               <ArrowLeft className="size-3.5" />
               {content.common.backToCatalog}
             </Link>
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:items-center">
           <VisitButton placeId={place.id} />
           <FavoriteButton placeId={place.id} />
-          <Button size="sm" variant="outline" className="font-semibold text-xs gap-1.5" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + " " + place.address_line1 + " " + place.city_name)}`, "_blank")}>
+          <Button type="button" size="sm" variant="outline" className="col-span-2 gap-1.5 font-semibold sm:col-span-1" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + " " + place.address_line1 + " " + place.city_name)}`, "_blank", "noopener,noreferrer")}>
             <Navigation className="size-3.5" />
             Nawiguj
             <ExternalLink className="size-3" />
@@ -112,40 +114,40 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
       </div>
 
       {/* Detail Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_0.8fr] gap-8">
+      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)] lg:gap-8">
         {/* Main Content */}
-        <div className="flex flex-col gap-8">
-          <Card className="border shadow-2xs bg-card">
+        <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
+          <Card className="order-3 border bg-card shadow-sm">
             <CardContent className="p-6 sm:p-8 flex flex-col gap-4">
-              <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground pb-2 border-b">
+              <h2 className="border-b pb-3 text-xl font-bold text-foreground sm:text-2xl">
                 {content.places.aboutPlace}
               </h2>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-line">
+              <p className="whitespace-pre-line text-base leading-relaxed text-muted-foreground">
                 {place.description || "Brak szczegółowego opisu dla tego miejsca."}
               </p>
             </CardContent>
           </Card>
 
           {/* Suitability */}
-          <Card className="border shadow-2xs bg-card">
+          <Card className="order-1 border bg-card shadow-sm">
             <CardContent className="p-6 flex flex-col gap-4">
-              <h2 className="font-serif text-lg font-bold text-foreground flex items-center">
+              <h2 className="flex items-center text-xl font-bold text-foreground">
                 <Baby className="size-5 mr-2 text-primary" />
                 {content.places.suitabilityHeading}
               </h2>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {content.places.suitabilitySub}
               </p>
               {place.ageZones && place.ageZones.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {place.ageZones.map((zone, index) => (
-                    <Badge key={index} variant="secondary" className="bg-primary/5 text-primary hover:bg-primary/10 border-primary/20 text-xs py-1 px-3 rounded-full font-bold">
+                    <Badge key={index} variant="secondary" className="border-primary/20 px-3 py-1 text-sm font-bold text-primary">
                       {zone.label}
                     </Badge>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic">
+                <p className="text-sm italic text-muted-foreground">
                   {content.places.noConfirmedInformation}
                 </p>
               )}
@@ -153,18 +155,18 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
           </Card>
 
           {/* Family Amenities */}
-          <Card className="border shadow-2xs bg-card">
+          <Card className="order-2 border bg-card shadow-sm">
             <CardContent className="p-6 flex flex-col gap-4">
-              <h2 className="font-serif text-xl font-medium text-foreground pb-2 border-b">
+              <h2 className="border-b pb-3 text-xl font-bold text-foreground">
                 {content.places.amenitiesHeading}
               </h2>
               {place.amenities && place.amenities.length > 0 ? (
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Udogodnienia rodzinne">
                   {place.amenities.map((amenity) => (
-                    <li key={amenity.slug} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <div className="rounded-full p-0.5 bg-primary/10 text-primary flex-shrink-0">
+                    <li key={amenity.slug} className="flex min-h-10 items-center gap-2.5 text-base text-muted-foreground">
+                      <span className="flex shrink-0 rounded-full bg-secondary p-1 text-primary">
                         <Check className="size-3.5" />
-                      </div>
+                      </span>
                       <span>{amenity.name}</span>
                     </li>
                   ))}
@@ -179,14 +181,14 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
 
           {/* Photo Gallery */}
           {place.photos && place.photos.length > 0 && (
-            <Card className="border shadow-2xs bg-card">
+            <Card className="order-0 border bg-card shadow-sm">
               <CardContent className="p-6 flex flex-col gap-4">
-                <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground pb-2 border-b">
+                <h2 className="border-b pb-3 text-xl font-bold text-foreground sm:text-2xl">
                   Galeria zdjęć
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" aria-label="Galeria zdjęć">
                   {place.photos.map((photo) => (
-                    <figure key={photo.id} tabIndex={0} className="group relative flex flex-col gap-2 rounded-lg border bg-muted p-2 hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary transition-all duration-300">
+                    <figure key={photo.id} tabIndex={0} className="group relative flex flex-col gap-2 rounded-[var(--radius-media)] border bg-muted p-2 transition-colors hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">
                       <div className="aspect-square overflow-hidden rounded-md">
                         <AppImage
                           src={photo.variants?.thumbnail}
@@ -199,7 +201,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       </div>
-                      <figcaption className="text-3xs text-muted-foreground font-medium px-1 line-clamp-2 min-h-[2.5rem] leading-snug">
+                      <figcaption className="min-h-[2.75rem] line-clamp-2 px-1 text-sm font-medium leading-snug text-muted-foreground">
                         {photo.caption || photo.alt_text || "Zdjęcie z galerii"}
                       </figcaption>
                     </figure>
@@ -210,14 +212,14 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
           )}
 
           {/* Reviews Section */}
-          <Card className="border shadow-2xs bg-card">
+          <Card className="order-4 border bg-card shadow-sm">
             <CardContent className="p-6 sm:p-8 flex flex-col gap-6">
               <ReviewSection placeId={place.id} />
             </CardContent>
           </Card>
 
           {/* Dyskusja (Place Comments & Replies) */}
-          <Card className="border shadow-2xs bg-card mt-6">
+          <Card className="order-5 border bg-card shadow-sm">
             <CardContent className="p-6 sm:p-8 flex flex-col gap-6">
               <PlaceDiscussionSection placeId={place.id} />
             </CardContent>
@@ -225,18 +227,18 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
         </div>
 
         {/* Sidebar details */}
-        <div className="flex flex-col gap-6">
+        <aside className="flex min-w-0 flex-col gap-6">
           {/* Place Summary */}
-          <Card className="border shadow-2xs bg-card/60 backdrop-blur-sm">
+          <Card className="border bg-card/80 shadow-sm backdrop-blur-sm">
             <CardContent className="p-6 flex flex-col gap-5">
-              <h2 className="font-serif text-lg font-bold text-foreground">
+              <h2 className="text-xl font-bold text-foreground">
                 {content.places.infoHeading}
               </h2>
               <Separator />
 
               <dl className="flex flex-col gap-4 text-sm">
                 <div>
-                  <dt className="font-mono text-3xs uppercase tracking-wider text-muted-foreground font-bold mb-1">
+                  <dt className="mb-1 text-sm font-bold text-muted-foreground">
                     {content.places.addressLabel}
                   </dt>
                   <dd className="text-foreground flex items-start gap-1.5">
@@ -250,7 +252,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                 </div>
 
                 <div>
-                  <dt className="font-mono text-3xs uppercase tracking-wider text-muted-foreground font-bold mb-1">
+                  <dt className="mb-1 text-sm font-bold text-muted-foreground">
                     {content.places.spaceLabel}
                   </dt>
                   <dd className="text-foreground flex items-center gap-1.5">
@@ -264,7 +266,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                 </div>
 
                 <div>
-                  <dt className="font-mono text-3xs uppercase tracking-wider text-muted-foreground font-bold mb-1">
+                  <dt className="mb-1 text-sm font-bold text-muted-foreground">
                     {content.places.entryLabel}
                   </dt>
                   <dd className="text-foreground">
@@ -274,26 +276,32 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                   </dd>
                 </div>
               </dl>
+              {(place.website_url || place.phone) ? (
+                <div className="flex flex-col gap-2 border-t pt-4">
+                  {place.website_url ? <Button variant="outline" asChild><a href={place.website_url} target="_blank" rel="noreferrer"><Globe className="size-4" />Strona miejsca<ExternalLink className="size-3.5" /></a></Button> : null}
+                  {place.phone ? <Button variant="outline" asChild><a href={`tel:${place.phone}`}><Phone className="size-4" />{place.phone}</a></Button> : null}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
           {/* Opening Hours Card */}
-          <Card className="border shadow-2xs bg-card/60 backdrop-blur-sm">
+          <Card className="border bg-card/80 shadow-sm backdrop-blur-sm">
             <CardContent className="p-6 flex flex-col gap-4">
-              <h2 className="font-serif text-base font-bold text-foreground flex items-center gap-1.5">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
                 <Clock className="size-4.5 text-primary" />
                 {content.places.openingHoursHeading}
               </h2>
               <Separator />
               {place.openingSchedule && place.openingSchedule.some(day => !day.closed) ? (
-                <dl className="grid grid-cols-[100px_1fr] gap-2 text-xs text-muted-foreground">
+                <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-2 text-sm text-muted-foreground">
                   {place.openingSchedule.map((day) => {
                     const dayNames = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"];
                     const name = dayNames[day.dayOfWeek - 1] || `Dzień ${day.dayOfWeek}`;
                     return (
                       <React.Fragment key={day.dayOfWeek}>
                         <dt className="font-semibold">{name}:</dt>
-                        <dd className="text-foreground font-mono">
+                        <dd className="min-w-0 break-words text-foreground">
                           {day.closed ? (
                             content.places.closedLabel
                           ) : (
@@ -319,14 +327,14 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
               {place.specialOpeningDays && place.specialOpeningDays.length > 0 && (
                 <>
                   <Separator className="my-2" />
-                  <h3 className="font-mono text-3xs uppercase tracking-wider text-muted-foreground font-bold">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                     Wyjątki / Dni specjalne
                   </h3>
                   <ul className="flex flex-col gap-2 text-xs text-muted-foreground">
                     {place.specialOpeningDays.map((special, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
                         <span className="font-semibold text-foreground">{special.date}</span>
-                        <span className="font-mono">
+                        <span>
                           {special.mode === "closed" && "Zamknięte"}
                           {special.mode === "open_24_hours" && "Otwarte całą dobę"}
                           {special.mode === "custom" && special.periods.map((p, pi) => (
@@ -336,7 +344,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
                               {p.closesNextDay ? " (następnego dnia)" : ""}
                             </span>
                           ))}
-                          {special.note && <span className="text-3xs italic text-muted-foreground block">({special.note})</span>}
+                          {special.note && <span className="block text-sm italic text-muted-foreground">({special.note})</span>}
                         </span>
                       </li>
                     ))}
@@ -345,7 +353,7 @@ export function PlaceDetailView({ place }: { place: GetPlaceBySlugResponse }) {
               )}
             </CardContent>
           </Card>
-        </div>
+        </aside>
       </div>
     </article>
   )

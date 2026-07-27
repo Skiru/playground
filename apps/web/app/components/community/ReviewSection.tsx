@@ -225,7 +225,7 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
 
   const renderStars = (rating: number) => {
     return (
-      <div className="flex text-amber-500 font-bold" aria-label={`Ocena: ${rating} na 5`}>
+      <div className="flex font-bold text-accent" aria-label={`Ocena: ${rating} na 5`}>
         {"★".repeat(rating)}{"☆".repeat(5 - rating)}
       </div>
     )
@@ -234,14 +234,14 @@ export function ReviewSection({ placeId }: ReviewSectionProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-        <h2 className="font-serif text-xl sm:text-2xl font-medium text-foreground">
+        <h2 className="text-xl font-bold text-foreground sm:text-2xl">
           Opinie i oceny rodziców
         </h2>
         {!showForm && session.authenticated && (
           <Button
             size="sm"
             variant="outline"
-            className="font-semibold text-xs"
+            className="font-semibold"
             onClick={() => {
               setEditingReview(null)
               setShowForm(true)

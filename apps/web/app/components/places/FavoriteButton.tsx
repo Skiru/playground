@@ -24,7 +24,7 @@ export function FavoriteButton({ placeId }: { placeId: string }) {
     <Button
       variant="ghost"
       size="icon"
-      className={`h-9 w-9 rounded-full ${isFav ? "text-accent bg-accent/5 hover:bg-accent/10" : "text-muted-foreground hover:bg-muted"}`}
+      className={`rounded-full ${isFav ? "text-accent bg-accent/10 hover:bg-accent/15" : "text-muted-foreground hover:bg-muted"}`}
       aria-pressed={isFav}
       onClick={(e) => {
         e.preventDefault()
@@ -36,7 +36,7 @@ export function FavoriteButton({ placeId }: { placeId: string }) {
       title={isFav ? "Usuń z ulubionych" : "Dodaj do ulubionych"}
     >
       <Heart className={`h-5 w-5 ${isFav ? "fill-current" : ""}`} />
-      <span className="sr-only">Dodaj do ulubionych</span>
+      <span className="sr-only">{isFav ? "Usuń z ulubionych" : "Dodaj do ulubionych"}</span>
     </Button>
   )
 }

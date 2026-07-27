@@ -22,8 +22,9 @@ test("city, category, age, radius, amenities AND and search reach results and de
   await expect(page.getByRole("heading", { level: 1 })).toContainText("propozyc");
 
   const filterTrigger = page.getByRole("button", { name: "Filtruj propozycje" });
-  const isMobile = await filterTrigger.isVisible();
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 1024;
   if (isMobile) {
+    await expect(filterTrigger).toBeVisible();
     await filterTrigger.click();
     await expect(page.getByRole("dialog")).toBeVisible();
   }

@@ -115,7 +115,7 @@ export function VisitButton({ placeId }: { placeId: string }) {
                 placeholder="Napisz, co najbardziej podobało się dzieciom, na co uważać..."
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
-              <span className="text-3xs text-right text-muted-foreground">
+              <span className="text-right text-sm text-muted-foreground">
                 Maksymalnie 1000 znaków
               </span>
             </div>
