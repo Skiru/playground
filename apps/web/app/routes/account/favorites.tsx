@@ -1,4 +1,4 @@
-import { redirect, Link } from "react-router"
+import { redirect, Link, useNavigate } from "react-router"
 import { fetchSession } from "../../lib/api-session.server"
 import { hardenedFetch } from "../../lib/hardened-fetch.server"
 import type { Route } from "./+types/favorites"
@@ -8,7 +8,7 @@ import { AccountEmptyState, AccountErrorState } from "~/components/account/Accou
 import { Card, CardContent } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
-import { Heart, Trash2, ArrowRight, ShieldAlert } from "lucide-react"
+import { Heart, Trash2, ArrowRight, LoaderCircle, ShieldAlert } from "lucide-react"
 import { PlaceImage } from "../../components/media/PlaceImage"
 import { toast } from "sonner"
 import * as React from "react"
@@ -55,12 +55,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
+export default function AccountFavorites(props: Route.ComponentProps) {
+  return <AccountFavoritesContent key={JSON.stringify(props.loaderData.favoritesList)} {...props} />
+}
+
+function AccountFavoritesContent({ loaderData }: Route.ComponentProps) {
   const { session, favoritesList } = loaderData
   const [items, setItems] = React.useState<FavoriteItem[]>(favoritesList?.items || [])
+  const [totalItems, setTotalItems] = React.useState(favoritesList?.pagination?.totalItems || 0)
   const [removingPlaceId, setRemovingPlaceId] = React.useState<string | null>(null)
+  const removalInFlight = React.useRef(false)
+  const navigate = useNavigate()
+  const pagination = favoritesList?.pagination || { page: 1, totalPages: 1 }
 
   const handleRemoveFavorite = async (placeId: string) => {
+    if (removalInFlight.current) return
+    removalInFlight.current = true
     setRemovingPlaceId(placeId)
     try {
       const res = await fetch(`/resources/favorites?placeId=${placeId}`, {
@@ -71,7 +81,12 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
       })
 
       if (res.ok) {
+        const isLastItemOnLaterPage = items.length === 1 && pagination.page > 1
         setItems((prev) => prev.filter((item) => item.placeId !== placeId))
+        setTotalItems((prev: number) => Math.max(0, prev - 1))
+        if (isLastItemOnLaterPage) {
+          navigate(`/konto/ulubione?page=${pagination.page - 1}`)
+        }
         toast.info("Usunięto z ulubionych.")
       } else {
         toast.error("Nie udało się usunąć z ulubionych.")
@@ -79,11 +94,10 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
     } catch {
       toast.error("Wystąpił błąd sieci.")
     } finally {
+      removalInFlight.current = false
       setRemovingPlaceId(null)
     }
   }
-
-  const pagination = favoritesList?.pagination || { page: 1, totalPages: 1 }
 
   return (
     <AppShell>
@@ -100,7 +114,7 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
 
           {favoritesList === null ? <AccountErrorState /> : items.length > 0 ? (
             <div className="flex flex-col gap-4">
-              <p className="text-sm font-medium text-muted-foreground" aria-live="polite">{pagination.totalItems} {pagination.totalItems === 1 ? "zapisane miejsce" : "zapisanych miejsc"}</p>
+              <p className="text-sm font-medium text-muted-foreground" aria-live="polite">{totalItems} {totalItems === 1 ? "zapisane miejsce" : "zapisanych miejsc"}</p>
               {items.map((item) => {
                 const place = item.place || {}
                 const isPublished = place.published !== false
@@ -155,8 +169,16 @@ export default function AccountFavorites({ loaderData }: Route.ComponentProps) {
                               onClick={() => handleRemoveFavorite(item.placeId)}
                               aria-label="Usuń z ulubionych"
                               disabled={removingPlaceId === item.placeId}
+                              aria-busy={removingPlaceId === item.placeId}
                             >
-                              <Trash2 className="size-4" />
+                              {removingPlaceId === item.placeId ? (
+                                <>
+                                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                                  <span className="sr-only" role="status">Usuwanie z ulubionych...</span>
+                                </>
+                              ) : (
+                                <Trash2 className="size-4" />
+                              )}
                             </Button>
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-2">

@@ -1,4 +1,4 @@
-import { redirect, Link } from "react-router"
+import { redirect, Link, useNavigate } from "react-router"
 import { fetchSession } from "../../lib/api-session.server"
 import { hardenedFetch } from "../../lib/hardened-fetch.server"
 import type { Route } from "./+types/visits"
@@ -63,19 +63,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-export default function AccountVisits({ loaderData }: Route.ComponentProps) {
+export default function AccountVisits(props: Route.ComponentProps) {
+  return <AccountVisitsContent key={JSON.stringify(props.loaderData.visitsList)} {...props} />
+}
+
+function AccountVisitsContent({ loaderData }: Route.ComponentProps) {
   const { session, visitsList } = loaderData
   const [items, setItems] = React.useState<VisitItem[]>(visitsList?.items || [])
+  const [totalItems, setTotalItems] = React.useState(visitsList?.pagination?.totalItems || 0)
+  const navigate = useNavigate()
+  const pagination = visitsList?.pagination || { page: 1, totalItems: 0, totalPages: 1 }
   
   // Edit state
   const [editingVisit, setEditingVisit] = React.useState<VisitItem | null>(null)
   const [editDate, setEditDate] = React.useState("")
   const [editNote, setEditNote] = React.useState("")
   const [isEditingOpen, setIsEditingOpen] = React.useState(false)
+  const [isSavingEdit, setIsSavingEdit] = React.useState(false)
+  const editInFlight = React.useRef(false)
 
   // Delete state
   const [deletingVisitId, setDeletingVisitId] = React.useState<string | null>(null)
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
+  const [isDeletingVisit, setIsDeletingVisit] = React.useState(false)
+  const deleteInFlight = React.useRef(false)
 
   const handleEditClick = (item: VisitItem) => {
     setEditingVisit(item)
@@ -85,7 +96,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
   }
 
   const handleSaveEdit = async () => {
-    if (!editingVisit) return
+    if (!editingVisit || editInFlight.current) return
 
     if (!editDate) {
       toast.error("Wybierz datę wizyty.")
@@ -97,6 +108,8 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
       return
     }
 
+    editInFlight.current = true
+    setIsSavingEdit(true)
     try {
       const res = await fetch(`/resources/visits/${editingVisit.id}`, {
         method: "PATCH",
@@ -124,6 +137,9 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
       }
     } catch {
       toast.error("Wystąpił błąd sieci.")
+    } finally {
+      editInFlight.current = false
+      setIsSavingEdit(false)
     }
   }
 
@@ -133,8 +149,10 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
   }
 
   const handleConfirmDelete = async () => {
-    if (!deletingVisitId) return
+    if (!deletingVisitId || deleteInFlight.current) return
 
+    deleteInFlight.current = true
+    setIsDeletingVisit(true)
     try {
       const res = await fetch(`/resources/visits/${deletingVisitId}`, {
         method: "DELETE",
@@ -144,18 +162,25 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
       })
 
       if (res.ok) {
+        const isLastItemOnLaterPage = items.length === 1 && pagination.page > 1
         setItems((prev) => prev.filter((item) => item.id !== deletingVisitId))
+        setTotalItems((prev: number) => Math.max(0, prev - 1))
         setIsDeleteOpen(false)
+        if (isLastItemOnLaterPage) {
+          navigate(`/konto/odwiedzone?page=${pagination.page - 1}`)
+        }
         toast.info("Wizyta została usunięta z historii.")
       } else {
         toast.error("Nie udało się usunąć wizyty.")
       }
     } catch {
       toast.error("Wystąpił błąd sieci.")
+    } finally {
+      deleteInFlight.current = false
+      setIsDeletingVisit(false)
     }
   }
 
-  const pagination = visitsList?.pagination || { page: 1, totalItems: 0, totalPages: 1 }
   const formatDate = (date: string) => {
     const parsed = new Date(`${date}T12:00:00`)
     return Number.isNaN(parsed.getTime()) ? "Brak daty" : new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" }).format(parsed)
@@ -176,7 +201,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
 
           {visitsList === null ? <AccountErrorState /> : items.length > 0 ? (
             <div className="flex flex-col gap-4">
-              <p className="text-sm font-medium text-muted-foreground" aria-live="polite">{pagination.totalItems} {pagination.totalItems === 1 ? "zapisana wizyta" : "zapisanych wizyt"}</p>
+              <p className="text-sm font-medium text-muted-foreground" aria-live="polite">{totalItems} {totalItems === 1 ? "zapisana wizyta" : "zapisanych wizyt"}</p>
               {items.map((item) => {
                 const place = item.place || {}
                 const isPublished = place.published !== false
@@ -212,6 +237,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
                             className="text-muted-foreground hover:text-primary hover:bg-primary/10 size-8 rounded-full"
                             onClick={() => handleEditClick(item)}
                             aria-label="Edytuj wizytę"
+                            disabled={isDeletingVisit}
                           >
                             <Edit2 className="size-4" />
                           </Button>
@@ -221,6 +247,7 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
                             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8 rounded-full"
                             onClick={() => handleDeleteClick(item.id)}
                             aria-label="Usuń wizytę"
+                            disabled={isDeletingVisit}
                           >
                             <Trash2 className="size-4" />
                           </Button>
@@ -324,11 +351,11 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="flex justify-end gap-2 border-t pt-4">
-            <Button variant="outline" size="sm" className="font-bold" onClick={() => setIsEditingOpen(false)}>
+            <Button variant="outline" size="sm" className="font-bold" onClick={() => setIsEditingOpen(false)} disabled={isSavingEdit}>
               Anuluj
             </Button>
-            <Button size="sm" className="font-bold bg-primary hover:bg-primary/95 text-white" onClick={handleSaveEdit}>
-              Zapisz zmiany
+            <Button size="sm" className="font-bold" onClick={handleSaveEdit} disabled={isSavingEdit} aria-busy={isSavingEdit}>
+              {isSavingEdit ? "Zapisywanie..." : "Zapisz zmiany"}
             </Button>
           </div>
         </DialogContent>
@@ -348,11 +375,11 @@ export default function AccountVisits({ loaderData }: Route.ComponentProps) {
           </DialogHeader>
 
           <div className="flex gap-2 w-full mt-6 border-t pt-4">
-            <Button variant="outline" className="flex-1 font-bold" onClick={() => setIsDeleteOpen(false)}>
+            <Button variant="outline" className="flex-1 font-bold" onClick={() => setIsDeleteOpen(false)} disabled={isDeletingVisit}>
               Anuluj
             </Button>
-            <Button variant="destructive" className="flex-1 font-bold bg-destructive hover:bg-destructive/90 text-white" onClick={handleConfirmDelete}>
-              Usuń trwale
+            <Button variant="destructive" className="flex-1 font-bold" onClick={handleConfirmDelete} disabled={isDeletingVisit} aria-busy={isDeletingVisit}>
+              {isDeletingVisit ? <span role="status">Usuwanie...</span> : "Usuń trwale"}
             </Button>
           </div>
         </DialogContent>

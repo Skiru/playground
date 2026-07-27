@@ -62,13 +62,13 @@ test("capture deterministic review and discussion evidence", async ({ browser },
   await alice.getByRole("button", { name: "5 gwiazdek" }).click()
   await alice.locator("#review-form-body").fill(review)
   await alice.getByRole("button", { name: "Zapisz opinię" }).click()
-  await expect(alice.getByText(review, { exact: true })).toBeVisible()
+  await expect(alice.getByRole("paragraph").filter({ hasText: review })).toBeVisible()
 
   for (const body of [shortComment, longComment]) {
     await alice.getByRole("button", { name: "Napisz komentarz" }).click()
     await alice.getByLabel("Treść komentarza").fill(body)
     await alice.getByRole("button", { name: "Wyślij" }).click()
-    await expect(alice.getByText(body, { exact: true })).toBeVisible()
+    await expect(alice.getByRole("paragraph").filter({ hasText: body })).toBeVisible()
   }
 
   await loginAs(bob, `c6a-r1-bartosz-${runId}@example.test`, "Bartosz Testowy")
