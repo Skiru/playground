@@ -25,6 +25,7 @@ final class PlacesFixtures extends Fixture
             ['Wrocław', 'wroclaw', 51.1079, 17.0385],
             ['Gdańsk', 'gdansk', 54.3520, 18.6466],
             ['Poznań', 'poznan', 52.4064, 16.9252],
+            ['Rzeszów', 'rzeszow', 50.0413, 21.9990],
         ];
         foreach ($cities as $index => [$name, $slug, $lat, $lon]) {
             $this->connection->executeStatement(

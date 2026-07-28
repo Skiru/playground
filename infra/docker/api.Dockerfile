@@ -44,3 +44,14 @@ RUN chown -R www-data:www-data /app \
     && chmod -R u=rwX,g=rX,o= /app \
     && chmod -R u=rwX,g=rwX /app/var
 USER www-data
+
+FROM production AS discovery
+USER root
+ARG OVERTUREMAPS_VERSION=1.0.1
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && pip3 install --break-system-packages --no-cache-dir "overturemaps==${OVERTUREMAPS_VERSION}" \
+    && rm -rf /var/lib/apt/lists/*
+COPY tools/place-discovery/overture_helper.py /opt/familyplaces/overture_helper.py
+RUN chmod 0555 /opt/familyplaces/overture_helper.py
+USER www-data

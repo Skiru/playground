@@ -21,6 +21,9 @@ parameters:
     env(MEDIA_E2E_MODE): 'false'
     env(APP_PUBLIC_ORIGIN): 'http://localhost:5173'
     env(TRUSTED_AUTH_ORIGINS): 'http://localhost:5173'
+    env(PLACE_DISCOVERY_ENABLED): 'false'
+    env(PLACE_DISCOVERY_HELPER): '/opt/familyplaces/overture_helper.py'
+    env(PLACE_DISCOVERY_TRANSPORT_DSN): 'doctrine://default?auto_setup=0&queue_name=place_discovery'
 
 services:
     # default configuration for services in *this* file
@@ -88,6 +91,25 @@ services:
 
     App\Administration\UI\:
         resource: '../src/Administration/UI/'
+
+    App\PlaceDiscovery\Application\:
+        resource: '../src/PlaceDiscovery/Application/'
+
+    App\PlaceDiscovery\Domain\:
+        resource: '../src/PlaceDiscovery/Domain/'
+
+    App\PlaceDiscovery\Infrastructure\:
+        resource: '../src/PlaceDiscovery/Infrastructure/'
+
+    App\PlaceDiscovery\UI\:
+        resource: '../src/PlaceDiscovery/UI/'
+
+    App\PlaceDiscovery\Infrastructure\Overture\OverturePlaceDiscoveryProvider:
+        arguments:
+            $helperPath: '%env(resolve:PLACE_DISCOVERY_HELPER)%'
+
+    App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider: '@App\PlaceDiscovery\Infrastructure\Overture\OverturePlaceDiscoveryProvider'
+    App\PlaceDiscovery\Application\Port\DuplicatePlaceLookup: '@App\PlaceDiscovery\Infrastructure\Doctrine\DbalDuplicatePlaceLookup'
 
     App\Shared\Application\Clock:
         alias: App\Shared\Infrastructure\Clock\SystemClock

@@ -10,7 +10,7 @@ services:
       GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:${API_PORT:-8080}:80"
     volumes:
       - ./apps/api:/app
       - media-data:/data/familyplaces-media
@@ -26,6 +26,26 @@ services:
     volumes:
       - ./apps/api:/app
       - media-data:/data/familyplaces-media
+  place-discovery-scheduler:
+    build:
+      target: development
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+      APP_SECRET: ${APP_SECRET:-local-development-only-secret}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+    volumes:
+      - ./apps/api:/app
+  place-discovery-worker:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+      APP_SECRET: ${APP_SECRET:-local-development-only-secret}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+    volumes:
+      - ./apps/api:/app
   web:
     build:
       target: development
@@ -41,7 +61,7 @@ services:
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
       APP_ENV: ${APP_ENV:-dev}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     volumes:
       - .:/workspace
       - pnpm-store:/pnpm/store
@@ -51,9 +71,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-family_places}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_places}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DATABASE_PORT:-5432}:5432"
   mailpit:
     image: axllent/mailpit:v1.27
     ports:
-      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
     networks: [edge, internal]

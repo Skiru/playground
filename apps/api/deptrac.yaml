@@ -18,6 +18,10 @@ deptrac:
         - { name: DiscoveryApplication, collectors: [{ type: classLike, value: App\\Discovery\\Application\\.* }] }
         - { name: DiscoveryInfrastructure, collectors: [{ type: classLike, value: App\\Discovery\\Infrastructure\\.* }] }
         - { name: DiscoveryUI, collectors: [{ type: classLike, value: App\\Discovery\\UI\\.* }] }
+        - { name: PlaceDiscoveryDomain, collectors: [{ type: classLike, value: App\\PlaceDiscovery\\Domain\\.* }] }
+        - { name: PlaceDiscoveryApplication, collectors: [{ type: classLike, value: App\\PlaceDiscovery\\Application\\.* }] }
+        - { name: PlaceDiscoveryInfrastructure, collectors: [{ type: classLike, value: App\\PlaceDiscovery\\Infrastructure\\.* }] }
+        - { name: PlaceDiscoveryUI, collectors: [{ type: classLike, value: App\\PlaceDiscovery\\UI\\.* }] }
         - { name: PersonalizationDomain, collectors: [{ type: classLike, value: App\\Personalization\\Domain\\.* }] }
         - { name: PersonalizationApplication, collectors: [{ type: classLike, value: App\\Personalization\\Application\\.* }] }
         - { name: PersonalizationInfrastructure, collectors: [{ type: classLike, value: App\\Personalization\\Infrastructure\\.* }] }
@@ -43,6 +47,10 @@ deptrac:
         DiscoveryApplication: [SharedDomain, SharedApplication, PlacesApplication]
         DiscoveryInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, DiscoveryApplication, PlacesApplication]
         DiscoveryUI: [SharedApplication, DiscoveryApplication]
+        PlaceDiscoveryDomain: []
+        PlaceDiscoveryApplication: [SharedDomain, SharedApplication, PlaceDiscoveryDomain, PlacesApplication]
+        PlaceDiscoveryInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, PlaceDiscoveryDomain, PlaceDiscoveryApplication, PlacesInfrastructure]
+        PlaceDiscoveryUI: [SharedApplication, PlaceDiscoveryDomain, PlaceDiscoveryApplication]
         PersonalizationDomain: [SharedDomain, IdentityDomain]
         PersonalizationApplication: [SharedDomain, SharedApplication, PersonalizationDomain, IdentityDomain]
         PersonalizationInfrastructure: [SharedDomain, SharedApplication, SharedInfrastructure, PersonalizationDomain, PersonalizationApplication, IdentityDomain, IdentityApplication]
