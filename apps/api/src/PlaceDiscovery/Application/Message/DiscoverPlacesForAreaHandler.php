@@ -18,6 +18,8 @@ final readonly class DiscoverPlacesForAreaHandler
     public function __invoke(DiscoverPlacesForArea $message): void
     {
         if (!$this->enabled) {
+            $this->runs->cancelQueuedWhileDisabled($message->runId);
+
             return;
         }
         $this->runs->execute($message->runId);

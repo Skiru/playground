@@ -10,6 +10,7 @@ use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[IsGranted('ROLE_ADMIN')]
 final class PlaceDiscoveryAdminController extends AbstractController
 {
-    public function __construct(private readonly Connection $connection, private readonly PlaceDiscoveryService $service, private readonly DiscoveryRunOrchestrator $runs, private readonly PlaceDiscoveryProvider $provider)
+    public function __construct(private readonly Connection $connection, private readonly PlaceDiscoveryService $service, private readonly DiscoveryRunOrchestrator $runs, private readonly PlaceDiscoveryProvider $provider, #[Autowire('%env(bool:PLACE_DISCOVERY_ENABLED)%')] private readonly bool $enabled)
     {
     }
 
@@ -48,11 +49,13 @@ final class PlaceDiscoveryAdminController extends AbstractController
         if (false === $candidate) {
             throw $this->createNotFoundException();
         }
+        $candidate['source_provenance'] = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
+        $candidate['source_snapshot'] = json_decode((string) $candidate['source_snapshot'], true, 32, \JSON_THROW_ON_ERROR);
 
         return $this->render('admin/place_discovery/candidate.html.twig', ['candidate' => $candidate, 'categories' => $this->connection->fetchAllAssociative('SELECT id, name FROM categories WHERE enabled = true ORDER BY name'), 'cities' => $this->connection->fetchAllAssociative('SELECT id, name, country_code FROM cities WHERE enabled = true ORDER BY country_code, name, id'), 'places' => $this->connection->fetchAllAssociative('SELECT p.id, p.name FROM places p ORDER BY p.updated_at DESC LIMIT 200'), 'history' => $this->connection->fetchAllAssociative('SELECT * FROM place_candidate_audit_events WHERE candidate_id = ? ORDER BY created_at, id', [$id])]);
     }
 
-    #[Route('/candidates/{id}/{action}', name: 'candidate_action', requirements: ['id' => '[0-9a-f-]{36}', 'action' => 'approve|edit|reject|duplicate|clear-duplicate|refresh'], methods: ['POST'])]
+    #[Route('/candidates/{id}/{action}', name: 'candidate_action', requirements: ['id' => '[0-9a-f-]{36}', 'action' => 'approve|edit|reject|duplicate|clear-duplicate|refresh|resolve-license'], methods: ['POST'])]
     public function candidateAction(string $id, string $action, Request $request): RedirectResponse
     {
         if (!$this->isCsrfTokenValid('candidate-'.$id, (string) $request->request->get('_token'))) {
@@ -68,6 +71,7 @@ final class PlaceDiscoveryAdminController extends AbstractController
                 'duplicate' => $this->service->markDuplicate($id, $version, $reviewer, (string) $request->request->get('place_id')),
                 'clear-duplicate' => $this->service->clearDuplicate($id, $version, $reviewer),
                 'refresh' => $this->service->refreshCandidateFromSource($id, $version, $reviewer),
+                'resolve-license' => $this->service->resolveUnlicensedProvenance($id, $version, (string) $request->request->get('license'), $reviewer),
                 default => throw new \DomainException('Unsupported candidate action.'),
             };
             $this->addFlash('success', 'Zaktualizowano kandydata. Zatwierdzenie tworzy wyłącznie szkic miejsca.');
@@ -114,7 +118,7 @@ final class PlaceDiscoveryAdminController extends AbstractController
     #[Route('/runs', name: 'runs', methods: ['GET'])]
     public function runs(): Response
     {
-        return $this->render('admin/place_discovery/runs.html.twig', ['runs' => $this->connection->fetchAllAssociative('SELECT r.*, a.name AS area_name FROM place_discovery_runs r JOIN place_discovery_areas a ON a.id = r.area_id ORDER BY r.created_at DESC LIMIT 200'), 'areas' => $this->connection->fetchAllAssociative('SELECT id, name FROM place_discovery_areas WHERE enabled = true ORDER BY name, id')]);
+        return $this->render('admin/place_discovery/runs.html.twig', ['runs' => $this->connection->fetchAllAssociative('SELECT r.*, a.name AS area_name FROM place_discovery_runs r JOIN place_discovery_areas a ON a.id = r.area_id ORDER BY r.created_at DESC LIMIT 200'), 'areas' => $this->connection->fetchAllAssociative('SELECT id, name FROM place_discovery_areas WHERE enabled = true ORDER BY name, id'), 'discovery_enabled' => $this->enabled]);
     }
 
     #[Route('/runs/action', name: 'run_action', methods: ['POST'])]
@@ -125,10 +129,14 @@ final class PlaceDiscoveryAdminController extends AbstractController
         }
         $actor = $this->getUser()?->getUserIdentifier() ?? 'admin';
         try {
+            if (!$this->enabled) {
+                throw new \DomainException('Place discovery is disabled. No run was created or dispatched.');
+            }
             match ((string) $request->request->get('action')) {
                 'run-now' => $this->runs->enqueueAndDispatch((string) $request->request->get('area_id'), $this->provider->getLatestRelease(), $actor),
                 'retry' => $this->runs->retry((string) $request->request->get('run_id'), $actor),
                 'recover-stale' => $this->runs->recoverStale((string) $request->request->get('run_id'), $actor),
+                'reconcile' => $this->runs->reconcilePendingDispatches(),
                 default => throw new \DomainException('Unsupported run action.'),
             };
             $this->addFlash('success', 'Zlecono ograniczony przebieg odkrywania.');

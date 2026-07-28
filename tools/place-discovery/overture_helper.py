@@ -114,17 +114,30 @@ def normalize_sources(raw_sources: object) -> list[dict]:
     for source in raw_sources[:32]:
         if not isinstance(source, dict):
             raise TypeError("source provenance is not an object")
-        dataset = source.get("dataset") or source.get("provider") or source.get("dataset_name")
-        license_id = source.get("license") or source.get("license_id")
-        property_path = source.get("property") or source.get("property_path") or "properties"
-        if not all(isinstance(value, str) and value.strip() for value in (dataset, license_id, property_path)):
-            raise ValueError("source provenance lacks dataset, license, or property path")
+        if "property" not in source or "dataset" not in source:
+            raise ValueError("source provenance lacks required property or dataset")
+        property_path = source["property"]
+        dataset = source["dataset"]
+        license_id = source.get("license")
+        if not isinstance(property_path, str) or not isinstance(dataset, str) or not dataset.strip():
+            raise TypeError("source provenance property or dataset has an incompatible type")
+        if license_id is not None and (not isinstance(license_id, str) or not license_id.strip()):
+            raise TypeError("source provenance license has an incompatible type")
+        optional_strings = {}
+        for key in ("record_id", "update_time", "provider", "resource", "version"):
+            value = source.get(key)
+            if value is not None and not isinstance(value, str):
+                raise TypeError(f"source provenance {key} has an incompatible type")
+            optional_strings[key] = value[:255] if value is not None else None
+        confidence = source.get("confidence")
+        if confidence is not None and (not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1):
+            raise TypeError("source provenance confidence has an incompatible type")
         result.append({
-            "property_path": property_path[:255],
+            "property": property_path[:255],
             "dataset": dataset[:255],
-            "license": license_id[:255],
-            "record_id": str(source.get("record_id") or source.get("id"))[:255] if source.get("record_id") or source.get("id") else None,
-            "updated_at": str(source.get("update_time") or source.get("updated_at"))[:255] if source.get("update_time") or source.get("updated_at") else None,
+            "license": license_id[:255] if license_id is not None else None,
+            **optional_strings,
+            "confidence": float(confidence) if confidence is not None else None,
         })
     return result
 

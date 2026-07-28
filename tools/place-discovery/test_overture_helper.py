@@ -42,13 +42,23 @@ class OvertureHelperSchemaTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "geometry"):
             HELPER.normalize_feature(feature, "2026-07-22.0")
 
-    def test_cdla_apache_and_mixed_property_provenance(self):
+    def test_root_pointer_optional_license_and_bounded_typed_provenance(self):
         sources = [
-            {"property": "names.primary", "dataset": "Overture", "license": "CDLA-Permissive-2.0"},
-            {"property": "websites", "dataset": "Foursquare", "license": "Apache-2.0", "record_id": "fsq-1"},
+            {"property": "", "dataset": "Overture", "provider": "Overture Maps Foundation", "resource": "places", "version": "1", "confidence": 0.8},
+            {"property": "/names/primary", "dataset": "Foursquare", "license": "Apache-2.0", "record_id": "fsq-1", "update_time": "2026-07-01T00:00:00Z"},
         ]
         record = HELPER.normalize_feature(self.feature(sources=sources), "2026-07-22.0")
-        self.assertEqual(["CDLA-Permissive-2.0", "Apache-2.0"], [source["license"] for source in record["sources"]])
+        self.assertEqual(["", "/names/primary"], [source["property"] for source in record["sources"]])
+        self.assertEqual([None, "Apache-2.0"], [source["license"] for source in record["sources"]])
+        self.assertEqual("Overture Maps Foundation", record["sources"][0]["provider"])
+        self.assertEqual("places", record["sources"][0]["resource"])
+        self.assertEqual("1", record["sources"][0]["version"])
+        self.assertEqual(0.8, record["sources"][0]["confidence"])
+
+    def test_missing_optional_license_is_valid_but_malformed_type_fails(self):
+        self.assertIsNone(HELPER.normalize_sources([{"property": "", "dataset": "Overture"}])[0]["license"])
+        with self.assertRaisesRegex(TypeError, "license"):
+            HELPER.normalize_sources([{"property": "", "dataset": "Overture", "license": ["invalid"]}])
 
     def test_unknown_release_and_host_are_rejected_from_fixture_catalog(self):
         original = HELPER.release_catalog

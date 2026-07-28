@@ -5,5 +5,8 @@ Overture `sources[]` provenance, including Apache-2.0/Foursquare and CDLA
 Permissive 2.0 identifiers when declared by the source release. See the
 repository NOTICE for attribution links and policy.
 
+An absent per-source license is preserved as unresolved; this notice does not
+infer or make a blanket license claim for those records.
+
 The complete Apache License 2.0 and Foursquare OS Places notice are shipped at
 `LICENSES/Apache-2.0.txt` and `NOTICE` in the repository/release artifact.

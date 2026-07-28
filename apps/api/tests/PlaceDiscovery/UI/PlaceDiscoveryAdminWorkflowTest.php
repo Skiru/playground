@@ -46,11 +46,13 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
 
     public function testAdminDetailShowsPrivateProvenanceAndInvalidCsrfIsRejected(): void
     {
+        $this->connection->executeStatement("UPDATE place_candidates SET source_provenance = '[{\"property\":\"\",\"dataset\":\"Overture\",\"license\":null}]'::jsonb WHERE id = ?", [self::CANDIDATE]);
         $this->login();
         $this->client->request('GET', $this->candidateUrl(self::CANDIDATE));
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('body', 'Proweniencja i licencje');
         self::assertSelectorTextContains('body', 'Prywatny snapshot źródłowy');
+        self::assertSelectorTextContains('body', 'Licencja nierozstrzygnięta');
 
         $this->client->request('POST', '/admin/place-discovery/candidates/'.self::CANDIDATE.'/reject', ['_token' => 'invalid', 'version' => 1, 'reason' => 'test']);
         self::assertResponseStatusCodeSame(403);

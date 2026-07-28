@@ -11,12 +11,13 @@
     <dt class="col-4">Adres</dt><dd class="col-8">{{ candidate.address_line1 }}, {{ candidate.postal_code }}</dd>
     <dt class="col-4">WWW / telefon</dt><dd class="col-8">{{ candidate.website }}<br>{{ candidate.phone }}</dd>
     <dt class="col-4">Współrzędne</dt><dd class="col-8">{{ candidate.latitude }}, {{ candidate.longitude }}</dd>
-    <dt class="col-4">Proweniencja i licencje</dt><dd class="col-8"><pre class="small text-wrap">{{ candidate.source_provenance|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></dd>
+    <dt class="col-4">Proweniencja i licencje</dt><dd class="col-8"><pre class="small text-wrap">{{ candidate.source_provenance|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>{% set unresolved = false %}{% for source in candidate.source_provenance %}{% if source.license is not defined or source.license is null or source.license is empty %}{% set unresolved = true %}{% endif %}{% endfor %}{% if unresolved %}<strong class="text-danger">Licencja nierozstrzygnięta. Zatwierdzenie jest zablokowane do jawnego przeglądu.</strong>{% endif %}</dd>
     {% if candidate.source_closed_review_required %}<dt class="col-4">Wymaga kontroli</dt><dd class="col-8 text-danger">Źródło zgłosiło trwałe zamknięcie. Publiczne Miejsce nie zostało zmienione.</dd>{% endif %}
   </dl></div>
   <div class="col-lg-5"><h3>Prywatny snapshot źródłowy</h3><p class="text-muted">Widoczny wyłącznie dla administratora; nigdy nie jest publikowany.</p><pre class="small text-wrap">{{ candidate.source_snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></div>
 </div>
 {% if candidate.status in ['PENDING','NEEDS_MAPPING','POSSIBLE_DUPLICATE'] %}
+<form method="post" action="{{ path('admin_place_discovery_candidate_action',{id:candidate.id,action:'resolve-license'}) }}" class="card card-body mb-3"><h3>Rozstrzygnięcie licencji źródła</h3><input type="hidden" name="_token" value="{{ csrf_token('candidate-'~candidate.id) }}"><input type="hidden" name="version" value="{{ candidate.version }}"><input required maxlength="255" name="license" class="form-control mb-2" placeholder="Zweryfikowany identyfikator licencji"><button class="btn btn-outline-danger">Zapisz jawne rozstrzygnięcie</button></form>
 <form method="post" action="{{ path('admin_place_discovery_candidate_action',{id:candidate.id,action:'edit'}) }}" class="card card-body mb-3">
   <h3>Dane do zatwierdzenia</h3>
   <input type="hidden" name="_token" value="{{ csrf_token('candidate-'~candidate.id) }}"><input type="hidden" name="version" value="{{ candidate.version }}">

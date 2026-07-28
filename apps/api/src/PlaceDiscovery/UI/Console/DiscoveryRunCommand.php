@@ -61,7 +61,13 @@ final class DiscoveryRunCommand extends Command
         $release = (string) ($input->getOption('release') ?: $this->provider->getLatestRelease());
         $area = new DiscoveryArea((string) $row['id'], (string) $row['name'], (bool) $row['enabled'], (string) $row['country_code'], (float) $row['center_latitude'], (float) $row['center_longitude'], (float) $row['radius_km'], (float) $row['minimum_confidence'], (int) $row['maximum_candidates_per_run'], (string) $row['discovery_profile'], (int) $row['version']);
         if (!$input->getOption('dry-run')) {
-            $runId = $this->runs->enqueue($areaId, $release, 'cli');
+            try {
+                $runId = $this->runs->enqueue($areaId, $release, 'cli');
+            } catch (\DomainException $exception) {
+                $output->writeln('<error>'.$exception->getMessage().'</error>');
+
+                return Command::FAILURE;
+            }
             if (null === $runId) {
                 $output->writeln('<error>An equivalent completed, queued, or active run already exists.</error>');
 
@@ -76,7 +82,13 @@ final class DiscoveryRunCommand extends Command
                     return Command::FAILURE;
                 }
             } else {
-                $this->runs->dispatch($runId);
+                try {
+                    $this->runs->dispatch($runId);
+                } catch (\Throwable $exception) {
+                    $output->writeln('<error>Run is persisted for reconciliation: '.mb_substr($exception->getMessage(), 0, 800).'</error>');
+
+                    return Command::FAILURE;
+                }
             }
             $payload = ['source' => $this->provider->getProviderName(), 'release' => $release, 'dry_run' => false, 'mode' => $input->getOption('sync') ? 'sync' : 'dispatch', 'run_id' => $runId];
             $output->writeln('json' === $input->getOption('output') ? json_encode($payload, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT) : \sprintf('%s run %s for %s.', $input->getOption('sync') ? 'Completed' : 'Queued', $runId, $release));

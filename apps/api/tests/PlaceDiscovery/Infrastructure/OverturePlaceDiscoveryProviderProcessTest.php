@@ -26,7 +26,7 @@ final class OverturePlaceDiscoveryProviderProcessTest extends TestCase
 
     public function testStreamsOptionalTaxonomyProvenanceAndFinalRecordWithoutNewlineWhileDrainingLargeStderr(): void
     {
-        $record = ['id' => 'one', 'name' => 'Family Park', 'latitude' => 50.0, 'longitude' => 20.0, 'basic_category' => 'park', 'sources' => [['property_path' => 'names.primary', 'dataset' => 'Foursquare', 'license' => 'Apache-2.0', 'record_id' => 'fsq-1']]];
+        $record = ['id' => 'one', 'name' => 'Family Park', 'latitude' => 50.0, 'longitude' => 20.0, 'basic_category' => 'park', 'sources' => [['property' => '', 'dataset' => 'Overture', 'license' => null, 'provider' => 'Overture Maps Foundation', 'resource' => 'places', 'version' => '1', 'confidence' => 0.8], ['property' => '/names/primary', 'dataset' => 'Foursquare', 'license' => 'Apache-2.0', 'record_id' => 'fsq-1', 'update_time' => '2026-07-01T00:00:00Z']]];
         $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); fwrite(STDERR, str_repeat("x", 100000)); fwrite(STDOUT, '.var_export(json_encode($record, \JSON_THROW_ON_ERROR), true).');');
 
         $places = iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
@@ -34,7 +34,18 @@ final class OverturePlaceDiscoveryProviderProcessTest extends TestCase
         self::assertCount(1, $places);
         self::assertSame([], $places[0]->categories);
         self::assertSame('park', $places[0]->basicCategory);
-        self::assertSame('Apache-2.0', $places[0]->provenance[0]->license);
+        self::assertSame('', $places[0]->provenance[0]->property);
+        self::assertNull($places[0]->provenance[0]->license);
+        self::assertSame('Overture Maps Foundation', $places[0]->provenance[0]->provider);
+        self::assertSame('/names/primary', $places[0]->provenance[1]->property);
+        self::assertSame('Apache-2.0', $places[0]->provenance[1]->license);
+    }
+
+    public function testRejectsMalformedOptionalLicenseType(): void
+    {
+        $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); echo json_encode(["id"=>"one","name"=>"Park","latitude"=>50,"longitude"=>20,"sources"=>[["property"=>"","dataset"=>"Overture","license"=>[]]]]), "\n";');
+        $this->expectException(ProviderSchemaViolation::class);
+        iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
     }
 
     public function testRejectsMalformedKnownTaxonomyType(): void

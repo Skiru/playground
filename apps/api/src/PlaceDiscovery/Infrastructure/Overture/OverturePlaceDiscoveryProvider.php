@@ -160,10 +160,18 @@ final readonly class OverturePlaceDiscoveryProvider implements PlaceDiscoveryPro
         }
         $provenance = [];
         foreach (\array_slice($data['sources'] ?? [], 0, 32) as $item) {
-            if (!\is_array($item) || !isset($item['property_path'], $item['dataset'], $item['license']) || !\is_string($item['property_path']) || !\is_string($item['dataset']) || !\is_string($item['license'])) {
+            if (!\is_array($item) || !\array_key_exists('property', $item) || !isset($item['dataset']) || !\is_string($item['property']) || !\is_string($item['dataset']) || (isset($item['license']) && !\is_string($item['license']))) {
                 throw new ProviderSchemaViolation('Overture source provenance has an incompatible type.');
             }
-            $provenance[] = new ProviderSourceRecord($item['property_path'], $item['dataset'], $item['license'], isset($item['record_id']) && \is_string($item['record_id']) ? $item['record_id'] : null, isset($item['updated_at']) && \is_string($item['updated_at']) ? $item['updated_at'] : null);
+            foreach (['record_id', 'update_time', 'provider', 'resource', 'version'] as $optional) {
+                if (isset($item[$optional]) && !\is_string($item[$optional])) {
+                    throw new ProviderSchemaViolation('Overture source provenance has an incompatible type: '.$optional);
+                }
+            }
+            if (isset($item['confidence']) && (!is_numeric($item['confidence']) || (float) $item['confidence'] < 0 || (float) $item['confidence'] > 1)) {
+                throw new ProviderSchemaViolation('Overture source provenance has an incompatible confidence.');
+            }
+            $provenance[] = new ProviderSourceRecord($item['property'], $item['dataset'], $item['license'] ?? null, $item['record_id'] ?? null, $item['update_time'] ?? null, $item['provider'] ?? null, $item['resource'] ?? null, $item['version'] ?? null, isset($item['confidence']) ? (float) $item['confidence'] : null);
         }
         $snapshot = array_intersect_key($data, array_flip(['id', 'version', 'name', 'address', 'website', 'phone', 'basic_category', 'taxonomy', 'confidence', 'operating_status', 'sources']));
 

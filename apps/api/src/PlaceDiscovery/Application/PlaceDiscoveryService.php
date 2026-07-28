@@ -52,9 +52,9 @@ final readonly class PlaceDiscoveryService
                 $closed = 'closed_permanently' === $source->operatingStatus;
                 $newlyClosed = $closed && !(bool) $existing['source_closed_review_required'];
                 $reopened = !$closed && (bool) $existing['source_closed_review_required'];
-                $this->connection->executeStatement("UPDATE place_candidates SET discovery_run_id = ?, source_release = ?, source_record_version = ?, source_payload_hash = ?, source_snapshot = ?::jsonb, source_provenance = ?::jsonb, last_seen_at = ?, updated_at = ?, approved_place_id = COALESCE(approved_place_id, ?), status = 'APPROVED', source_changed_after_edit = source_changed_after_edit OR ?, source_closed_review_required = ? WHERE id = ?", [$runId, $source->release, $source->recordVersion, $hash, $snapshot, $provenance, $now, $now, $link['place_id'], $changedAfterEdit ? 'true' : 'false', $closed ? 'true' : 'false', $candidateId]);
+                $this->connection->executeStatement("UPDATE place_candidates SET discovery_run_id = ?, source_release = ?, source_record_version = ?, source_payload_hash = ?, source_snapshot = ?::jsonb, source_provenance = ?::jsonb, operating_status = ?, last_seen_at = ?, updated_at = ?, approved_place_id = COALESCE(approved_place_id, ?), status = 'APPROVED', source_changed_after_edit = source_changed_after_edit OR ?, source_closed_review_required = ? WHERE id = ?", [$runId, $source->release, $source->recordVersion, $hash, $snapshot, $provenance, $source->operatingStatus, $now, $now, $link['place_id'], $changedAfterEdit ? 'true' : 'false', $closed ? 'true' : 'false', $candidateId]);
                 $action = $newlyClosed ? 'CLOSURE_REVIEW_FLAGGED' : ($reopened ? 'SOURCE_REOPENED' : 'SOURCE_REFRESHED');
-                $this->audit->append($candidateId, 'SYSTEM', $action, (string) $existing['status'], 'APPROVED', ['source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'last_seen_at', ...($newlyClosed || $reopened ? ['source_closed_review_required'] : [])], $newlyClosed ? 'Source reports permanently closed; public Place was not changed.' : null, $runId, null, $source->release);
+                $this->audit->append($candidateId, 'SYSTEM', $action, (string) $existing['status'], 'APPROVED', ['discovery_run_id', 'source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'operating_status', 'last_seen_at', 'updated_at', 'approved_place_id', 'status', 'source_changed_after_edit', 'source_closed_review_required'], $newlyClosed ? 'Source reports permanently closed; public Place was not changed.' : null, $runId, null, $source->release);
 
                 return 'linked';
             }
@@ -70,9 +70,10 @@ final readonly class PlaceDiscoveryService
             if (!$protected && null === $existing['manually_edited_at']) {
                 $this->connection->update('place_candidates', $values, ['id' => $existing['id']]);
             } else {
-                $this->connection->update('place_candidates', ['discovery_run_id' => $runId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'last_seen_at' => $now, 'updated_at' => $now, 'source_changed_after_edit' => null !== $existing['manually_edited_at'] ? 'true' : 'false', 'source_closed_review_required' => CandidateStatus::APPROVED->value === $existing['status'] && 'closed_permanently' === $source->operatingStatus ? 'true' : 'false'], ['id' => $existing['id']]);
+                $this->connection->update('place_candidates', ['discovery_run_id' => $runId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'source_provenance' => $this->provenance($source), 'operating_status' => $source->operatingStatus, 'last_seen_at' => $now, 'updated_at' => $now, 'source_changed_after_edit' => null !== $existing['manually_edited_at'] ? 'true' : 'false', 'source_closed_review_required' => CandidateStatus::APPROVED->value === $existing['status'] && 'closed_permanently' === $source->operatingStatus ? 'true' : 'false'], ['id' => $existing['id']]);
             }
-            $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_REFRESHED', (string) $existing['status'], $protected ? (string) $existing['status'] : (string) $values['status'], ['source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'last_seen_at'], null, $runId, null, $source->release);
+            $changedFields = !$protected && null === $existing['manually_edited_at'] ? array_keys($values) : ['discovery_run_id', 'source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'operating_status', 'last_seen_at', 'updated_at', 'source_changed_after_edit', 'source_closed_review_required'];
+            $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_REFRESHED', (string) $existing['status'], $protected || null !== $existing['manually_edited_at'] ? (string) $existing['status'] : (string) $values['status'], $changedFields, null, $runId, null, $source->release);
             if (!$protected && CandidateStatus::POSSIBLE_DUPLICATE->value === $values['status'] && CandidateStatus::POSSIBLE_DUPLICATE->value !== $existing['status']) {
                 $this->audit->append($candidateId, 'SYSTEM', 'DUPLICATE_WARNING', (string) $existing['status'], CandidateStatus::POSSIBLE_DUPLICATE->value, ['duplicate_score', 'duplicate_reasons', 'possible_duplicate_place_id', 'possible_duplicate_candidate_ids'], null, $runId, null, $source->release);
             }
@@ -116,8 +117,9 @@ SQL, [$candidateId]);
             if ($candidate['city_country_code'] !== $candidate['country_code']) {
                 throw new \DomainException('Selected City country does not match the candidate country.');
             }
-            if ('[]' === json_encode(json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR), \JSON_THROW_ON_ERROR)) {
-                throw new \DomainException('Candidate source provenance must be resolved before approval.');
+            $provenance = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
+            if (!\is_array($provenance) || [] === $provenance || array_filter($provenance, static fn (mixed $item): bool => !\is_array($item) || !isset($item['license']) || !\is_string($item['license']) || '' === trim($item['license']))) {
+                throw new \DomainException('Candidate source licensing must be reviewed and resolved before approval.');
             }
             if (!(bool) $candidate['indoor'] && !(bool) $candidate['outdoor']) {
                 throw new \DomainException('At least one of indoor or outdoor must be selected.');
@@ -216,6 +218,44 @@ SQL, [$candidateId]);
             throw new ConcurrentCandidateModification();
         }
         $this->audit->append($id, 'ADMIN', 'SOURCE_FIELDS_RESTORED', null, null, ['name', 'address_line1', 'postal_code', 'locality', 'country_code', 'website', 'phone', 'manually_edited_at', 'source_changed_after_edit'], null, null, $reviewer);
+    }
+
+    public function resolveUnlicensedProvenance(string $id, int $version, string $license, string $reviewer): void
+    {
+        $license = trim($license);
+        if ('' === $license || \strlen($license) > 255 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9.+:\/() _-]{0,254}$/', $license)) {
+            throw new \DomainException('A bounded reviewed license identifier is required.');
+        }
+        $this->connection->transactional(function () use ($id, $version, $license, $reviewer): void {
+            $candidate = $this->connection->fetchAssociative("SELECT status, source_release, source_provenance FROM place_candidates WHERE id = ? AND version = ? AND status IN ('PENDING','NEEDS_MAPPING','POSSIBLE_DUPLICATE') FOR UPDATE", [$id, $version]);
+            if (false === $candidate) {
+                throw new ConcurrentCandidateModification();
+            }
+            $provenance = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
+            if (!\is_array($provenance) || [] === $provenance) {
+                throw new \DomainException('Candidate has no source provenance to resolve.');
+            }
+            $resolved = false;
+            foreach ($provenance as &$item) {
+                if (\is_array($item) && (!isset($item['license']) || !\is_string($item['license']) || '' === trim($item['license']))) {
+                    $item['license'] = $license;
+                    $resolved = true;
+                }
+            }
+            unset($item);
+            if (!$resolved) {
+                throw new \DomainException('Candidate has no unresolved source license.');
+            }
+            $encoded = json_encode($provenance, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+            if (\strlen($encoded) > 16_384) {
+                throw new \DomainException('Bounded source provenance exceeds 16 KiB.');
+            }
+            $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
+            if (1 !== $this->connection->executeStatement('UPDATE place_candidates SET source_provenance = ?::jsonb, reviewed_by = ?, reviewed_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?', [$encoded, $reviewer, $now, $now, $id, $version])) {
+                throw new ConcurrentCandidateModification();
+            }
+            $this->audit->append($id, 'ADMIN', 'SOURCE_LICENSE_RESOLVED', (string) $candidate['status'], (string) $candidate['status'], ['source_provenance', 'reviewed_by', 'reviewed_at', 'updated_at', 'version'], 'Unresolved source license reviewed as '.$license.'.', null, $reviewer, (string) $candidate['source_release']);
+        });
     }
 
     public function clearDuplicate(string $id, int $version, string $reviewer): void

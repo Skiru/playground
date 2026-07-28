@@ -26,6 +26,7 @@ final readonly class CheckLatestPlaceSourceReleaseHandler
 
             return;
         }
+        $this->runs->reconcilePendingDispatches();
         $lock = $this->locks->releaseCheck($this->provider->getProviderName());
         if (!$lock->acquire()) {
             $this->logger->info('Place discovery release check already runs.');

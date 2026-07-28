@@ -28,10 +28,10 @@ final class RetryDiscoveryRunCommand extends Command
     {
         try {
             $runId = $this->runs->retry((string) $input->getArgument('run'), 'cli');
-        } catch (\DomainException $exception) {
+        } catch (\Throwable $exception) {
             $output->writeln('<error>'.$exception->getMessage().'</error>');
 
-            return Command::INVALID;
+            return Command::FAILURE;
         }
         $output->writeln('Retry dispatched as run '.$runId.'.');
 
