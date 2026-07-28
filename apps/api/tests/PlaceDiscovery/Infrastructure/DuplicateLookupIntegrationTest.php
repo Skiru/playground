@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\PlaceDiscovery\Infrastructure;
 
+use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\PlaceDiscovery\Domain\PlaceNormalizer;
 use App\PlaceDiscovery\Domain\ProviderPlace;
 use App\PlaceDiscovery\Infrastructure\Doctrine\DbalDuplicatePlaceLookup;
@@ -82,6 +83,6 @@ SQL);
 
     private function place(string $id, string $name, float $latitude, float $longitude, ?string $website = null): ProviderPlace
     {
-        return new ProviderPlace($id, '2099-05-01.0', '1', $name, $latitude, $longitude, null, null, null, 'PL', $website, null, ['playground'], 'playground', 0.9, 'open', ['id' => $id]);
+        return new ProviderPlace($id, '2099-05-01.0', '1', $name, $latitude, $longitude, null, null, null, 'PL', $website, null, ['playground'], 'playground', 0.9, OvertureOperatingStatus::OPEN->value, ['id' => $id]);
     }
 }

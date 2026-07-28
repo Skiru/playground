@@ -30,3 +30,7 @@ Scoring is deterministic: 20 points for valid identity/name/coordinates, up to 2
 Coverage, names, contact details, categories and GERS continuity vary by source and release. Addresses can be incomplete. Confidence is source quality evidence, not a FamilyPlaces endorsement. No geocoding occurs. Source refresh never mutates an approved public Place; closure sets an admin-review flag. No external photos are copied or hotlinked.
 
 Attribution: `Overture Maps Foundation` plus every retained per-property license/provider identifier. Foursquare-derived properties retain the Foursquare dataset and Apache-2.0 provenance. A record with absent or unknown required provenance remains private review data in `NEEDS_MAPPING`; an administrator must resolve licensing before approval. See repository `NOTICE` and `tools/place-discovery/NOTICE`.
+
+## Instrukcja administratora: brakujące licencje
+
+W szczegółach prywatnego kandydata każda pozycja proweniencji bez licencji ma osobny formularz. Przed wpisaniem identyfikatora licencji administrator sprawdza widoczny zbiór, pole lub korzeń rekordu, identyfikator rekordu, dostawcę i wydanie źródła. Zapis dotyczy wyłącznie tej pozycji; pozostałe nierozstrzygnięte źródła nadal blokują zatwierdzenie. Po odświeżeniu danych źródłowych stary formularz zostanie odrzucony przez kontrolę wersji lub odcisku źródła. Licencji dostarczonej przez dostawcę nie można nadpisać w tym przepływie.

@@ -1,6 +1,12 @@
+import contextlib
+import datetime
 import importlib.util
+import io
+import json
 import pathlib
 import unittest
+
+import pyarrow
 
 
 SPEC = importlib.util.spec_from_file_location("overture_helper", pathlib.Path(__file__).with_name("overture_helper.py"))
@@ -59,6 +65,75 @@ class OvertureHelperSchemaTest(unittest.TestCase):
         self.assertIsNone(HELPER.normalize_sources([{"property": "", "dataset": "Overture"}])[0]["license"])
         with self.assertRaisesRegex(TypeError, "license"):
             HELPER.normalize_sources([{"property": "", "dataset": "Overture", "license": ["invalid"]}])
+
+    def test_update_time_normalizes_strings_aware_and_naive_datetimes_and_null(self):
+        values = [
+            None,
+            "2026-07-01T02:30:00+02:00",
+            datetime.datetime(2026, 7, 1, 2, 30, tzinfo=datetime.timezone(datetime.timedelta(hours=2))),
+            datetime.datetime(2026, 7, 1, 0, 30),
+        ]
+        normalized = [HELPER.normalize_update_time(value) for value in values]
+        self.assertEqual([None, "2026-07-01T00:30:00Z", "2026-07-01T00:30:00Z", "2026-07-01T00:30:00Z"], normalized)
+
+    def test_update_time_rejects_unrelated_types_and_malformed_or_oversized_strings(self):
+        for value in (object(), 123, "not-a-timestamp", "2" * 256):
+            with self.subTest(value=type(value).__name__):
+                with self.assertRaises((TypeError, ValueError)):
+                    HELPER.normalize_update_time(value)
+
+    def test_real_pyarrow_nested_timestamp_to_pylist_normalizes_and_serializes(self):
+        source_type = pyarrow.struct([
+            ("property", pyarrow.string()),
+            ("dataset", pyarrow.string()),
+            ("license", pyarrow.string()),
+            ("record_id", pyarrow.string()),
+            ("update_time", pyarrow.timestamp("us", tz="Europe/Warsaw")),
+            ("provider", pyarrow.string()),
+            ("resource", pyarrow.string()),
+            ("version", pyarrow.string()),
+            ("confidence", pyarrow.float64()),
+        ])
+        sources = pyarrow.array([[{
+            "property": "/names/primary", "dataset": "Foursquare", "license": None, "record_id": "fsq-1",
+            "update_time": datetime.datetime(2026, 7, 1, 2, 30, tzinfo=datetime.timezone(datetime.timedelta(hours=2))),
+            "provider": "Foursquare", "resource": "places", "version": "1", "confidence": 0.9,
+        }]], type=pyarrow.list_(source_type))
+        batch = pyarrow.record_batch([
+            pyarrow.array(["gers-arrow"]),
+            pyarrow.array([b"point"]),
+            pyarrow.array([{"primary": "Arrow Family Park"}]),
+            sources,
+        ], names=["id", "geometry", "names", "sources"])
+
+        row = batch.to_pylist()[0]
+        self.assertIsInstance(row["sources"][0]["update_time"], datetime.datetime)
+        feature = {"id": row.pop("id"), "geometry": {"type": "Point", "coordinates": [21.0, 52.0]}, "properties": {key: value for key, value in row.items() if key != "geometry"}}
+        record = HELPER.normalize_feature(feature, "2026-06-17.0")
+
+        self.assertEqual("2026-07-01T00:30:00Z", record["sources"][0]["update_time"])
+        json.dumps(record)
+
+    def test_bounded_historical_scanner_streams_pyarrow_timestamp_without_s3(self):
+        source_type = pyarrow.struct([
+            ("property", pyarrow.string()), ("dataset", pyarrow.string()), ("update_time", pyarrow.timestamp("us")),
+        ])
+        batch = pyarrow.record_batch([
+            pyarrow.array(["gers-historical"]),
+            pyarrow.array([b"point"]),
+            pyarrow.array([{"primary": "Historical Family Park"}]),
+            pyarrow.array([[{"property": "", "dataset": "Overture", "update_time": datetime.datetime(2026, 6, 1, 12, 0)}]], type=pyarrow.list_(source_type)),
+        ], names=["id", "geometry", "names", "sources"])
+
+        class Scanner:
+            def to_batches(self):
+                return [batch]
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            HELPER.stream_historical_scanner(Scanner(), "2026-06-17.0", 1, lambda _: {"type": "Point", "coordinates": [21.0, 52.0]})
+        record = json.loads(output.getvalue())
+        self.assertEqual("2026-06-01T12:00:00Z", record["sources"][0]["update_time"])
 
     def test_unknown_release_and_host_are_rejected_from_fixture_catalog(self):
         original = HELPER.release_catalog

@@ -45,8 +45,8 @@ final class FamilyDiscoveryProfile
         }
         $basic = null === $place->basicCategory ? null : str_replace(['-', ' '], '_', mb_strtolower(trim($place->basicCategory)));
         $keywordEligible = null !== $keyword && null !== $basic && \in_array($basic, self::BROAD, true);
-        if ('closed_permanently' === $place->operatingStatus) {
-            return new DiscoveryClassification(CandidateStatus::STALE, min(100, $score), $category, [...$reasons, 'permanently_closed'], null !== $category || $keywordEligible);
+        if (OvertureOperatingStatus::PERMANENTLY_CLOSED === OvertureOperatingStatus::normalize($place->operatingStatus)) {
+            return new DiscoveryClassification(CandidateStatus::STALE, min(100, $score), $category, [...$reasons, OvertureOperatingStatus::PERMANENTLY_CLOSED->value], null !== $category || $keywordEligible);
         }
         if (null !== $basic && \in_array($basic, self::BROAD, true) && null === $keyword) {
             return new DiscoveryClassification(CandidateStatus::NEEDS_MAPPING, min(100, $score), null, [...$reasons, 'broad_category_without_family_signal'], false);

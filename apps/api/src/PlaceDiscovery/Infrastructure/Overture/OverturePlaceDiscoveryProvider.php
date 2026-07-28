@@ -158,6 +158,9 @@ final readonly class OverturePlaceDiscoveryProvider implements PlaceDiscoveryPro
         if (isset($data['basic_category']) && !\is_string($data['basic_category'])) {
             throw new ProviderSchemaViolation('Overture known field has an incompatible type: basic_category');
         }
+        if (isset($data['operating_status']) && !\is_string($data['operating_status'])) {
+            throw new ProviderSchemaViolation('Overture known field has an incompatible type: operating_status');
+        }
         $provenance = [];
         foreach (\array_slice($data['sources'] ?? [], 0, 32) as $item) {
             if (!\is_array($item) || !\array_key_exists('property', $item) || !isset($item['dataset']) || !\is_string($item['property']) || !\is_string($item['dataset']) || (isset($item['license']) && !\is_string($item['license']))) {

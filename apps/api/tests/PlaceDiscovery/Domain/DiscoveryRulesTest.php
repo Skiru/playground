@@ -8,6 +8,7 @@ use App\PlaceDiscovery\Domain\Aggregate\CandidateStatus;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use App\PlaceDiscovery\Domain\DuplicateDetector;
 use App\PlaceDiscovery\Domain\FamilyDiscoveryProfile;
+use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\PlaceDiscovery\Domain\PlaceNormalizer;
 use App\PlaceDiscovery\Domain\ProviderPlace;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -69,6 +70,23 @@ final class DiscoveryRulesTest extends TestCase
         self::assertContains('family_keyword:family', $classification->reasons);
     }
 
+    #[DataProvider('operatingStatuses')]
+    public function testCanonicalOperatingStatusClassification(?string $status, CandidateStatus $expected): void
+    {
+        $place = $this->place('Park zabaw dla dzieci', 'playground', $status);
+        $classification = (new FamilyDiscoveryProfile())->classify($place, (new PlaceNormalizer())->normalize($place));
+        self::assertSame($expected, $classification->status);
+    }
+
+    public static function operatingStatuses(): iterable
+    {
+        yield 'provider open state' => [OvertureOperatingStatus::OPEN->value, CandidateStatus::PENDING];
+        yield 'temporarily closed' => [OvertureOperatingStatus::TEMPORARILY_CLOSED->value, CandidateStatus::PENDING];
+        yield 'permanently closed' => [OvertureOperatingStatus::PERMANENTLY_CLOSED->value, CandidateStatus::STALE];
+        yield 'null is unknown, not open' => [null, CandidateStatus::PENDING];
+        yield 'future value is safe, not permanently closed' => ['future_provider_status', CandidateStatus::PENDING];
+    }
+
     public function testNearbyDistanceIsExactEnough(): void
     {
         $distance = (new DuplicateDetector())->haversineMetres(50.0413, 21.999, 50.0422, 21.999);
@@ -76,8 +94,8 @@ final class DiscoveryRulesTest extends TestCase
         self::assertLessThan(105, $distance);
     }
 
-    private function place(string $name, string $category): ProviderPlace
+    private function place(string $name, string $category, ?string $operatingStatus = OvertureOperatingStatus::OPEN->value): ProviderPlace
     {
-        return new ProviderPlace('gers', '2026-07-22.0', '1', $name, 50.0413, 21.999, 'Rynek 1', '35-001', 'Rzeszów', 'PL', 'https://www.example.pl/path', '+48 123 456 789', [$category], $category, 0.9, 'open', ['id' => 'gers', 'taxonomy' => ['hierarchy' => [$category]]]);
+        return new ProviderPlace('gers', '2026-07-22.0', '1', $name, 50.0413, 21.999, 'Rynek 1', '35-001', 'Rzeszów', 'PL', 'https://www.example.pl/path', '+48 123 456 789', [$category], $category, 0.9, $operatingStatus, ['id' => 'gers', 'taxonomy' => ['hierarchy' => [$category]]]);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Tests\PlaceDiscovery\UI;
 
 use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
+use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -46,16 +47,31 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
 
     public function testAdminDetailShowsPrivateProvenanceAndInvalidCsrfIsRejected(): void
     {
-        $this->connection->executeStatement("UPDATE place_candidates SET source_provenance = '[{\"property\":\"\",\"dataset\":\"Overture\",\"license\":null}]'::jsonb WHERE id = ?", [self::CANDIDATE]);
+        $sources = [
+            ['property' => '', 'dataset' => 'Overture', 'license' => null, 'record_id' => 'omf-1', 'provider' => 'Overture Maps Foundation', 'resource' => 'places', 'version' => '1'],
+            ['property' => '/names/primary', 'dataset' => 'Foursquare', 'license' => null, 'record_id' => 'fsq-1', 'provider' => 'Foursquare', 'resource' => 'places', 'version' => '1'],
+        ];
+        $this->connection->update('place_candidates', ['source_provenance' => json_encode($sources, \JSON_THROW_ON_ERROR)], ['id' => self::CANDIDATE]);
         $this->login();
-        $this->client->request('GET', $this->candidateUrl(self::CANDIDATE));
+        $page = $this->client->request('GET', $this->candidateUrl(self::CANDIDATE));
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('body', 'Proweniencja i licencje');
         self::assertSelectorTextContains('body', 'Prywatny snapshot źródłowy');
         self::assertSelectorTextContains('body', 'Licencja nierozstrzygnięta');
+        self::assertSelectorCount(2, '.license-resolution-form');
+        self::assertSelectorTextContains('body', 'Foursquare');
 
-        $this->client->request('POST', '/admin/place-discovery/candidates/'.self::CANDIDATE.'/reject', ['_token' => 'invalid', 'version' => 1, 'reason' => 'test']);
+        $this->client->request('POST', '/admin/place-discovery/candidates/'.self::CANDIDATE.'/resolve-license', ['_token' => 'invalid', 'version' => 1, 'fingerprint' => SourceProvenanceFingerprint::fromArray($sources[0]), 'license' => 'Reviewed-1.0']);
         self::assertResponseStatusCodeSame(403);
+
+        $token = (string) $page->filter('.license-resolution-form input[name="_token"]')->first()->attr('value');
+        $this->client->request('POST', '/admin/place-discovery/candidates/'.self::CANDIDATE.'/resolve-license', ['_token' => $token, 'version' => 1, 'fingerprint' => SourceProvenanceFingerprint::fromArray($sources[0]), 'license' => 'Reviewed-Overture-1.0']);
+        self::assertResponseRedirects();
+        $page = $this->client->followRedirect();
+        self::assertSelectorCount(1, '.license-resolution-form');
+        self::assertSelectorTextContains('body', 'Foursquare');
+        self::assertSame('Reviewed-Overture-1.0', $this->connection->fetchOne("SELECT source_provenance->0->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
+        self::assertNull($this->connection->fetchOne("SELECT source_provenance->1->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
     }
 
     public function testCandidateEditApprovalUsesReviewedCityAndBooleansAndNeverPublishes(): void

@@ -13,6 +13,7 @@ use App\PlaceDiscovery\Application\PlaceDiscoveryService;
 use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use App\PlaceDiscovery\Domain\FamilyDiscoveryProfile;
+use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\PlaceDiscovery\Domain\PlaceNormalizer;
 use App\PlaceDiscovery\Domain\ProviderPlace;
 use App\PlaceDiscovery\Domain\ProviderSourceRecord;
@@ -243,6 +244,6 @@ final class DeterministicProvider implements PlaceDiscoveryProvider
         if ($this->alwaysFail || ($this->failFirst && 0 === $this->deliveries++)) {
             throw new \RuntimeException('deterministic provider failure');
         }
-        yield new ProviderPlace($this->externalId, $release, '1', 'Family playground '.$this->externalId, 50.0413, 21.999, 'Rynek 1', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.95, 'open', ['id' => $this->externalId], [new ProviderSourceRecord('', 'Overture', 'CDLA-Permissive-2.0')]);
+        yield new ProviderPlace($this->externalId, $release, '1', 'Family playground '.$this->externalId, 50.0413, 21.999, 'Rynek 1', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.95, OvertureOperatingStatus::OPEN->value, ['id' => $this->externalId], [new ProviderSourceRecord('', 'Overture', 'CDLA-Permissive-2.0')]);
     }
 }

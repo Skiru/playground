@@ -8,6 +8,7 @@ use App\PlaceDiscovery\Application\DiscoveryRunOrchestrator;
 use App\PlaceDiscovery\Application\PlaceDiscoveryService;
 use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
+use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -50,6 +51,12 @@ final class PlaceDiscoveryAdminController extends AbstractController
             throw $this->createNotFoundException();
         }
         $candidate['source_provenance'] = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
+        foreach ($candidate['source_provenance'] as &$source) {
+            if (\is_array($source)) {
+                $source['fingerprint'] = SourceProvenanceFingerprint::fromArray($source);
+            }
+        }
+        unset($source);
         $candidate['source_snapshot'] = json_decode((string) $candidate['source_snapshot'], true, 32, \JSON_THROW_ON_ERROR);
 
         return $this->render('admin/place_discovery/candidate.html.twig', ['candidate' => $candidate, 'categories' => $this->connection->fetchAllAssociative('SELECT id, name FROM categories WHERE enabled = true ORDER BY name'), 'cities' => $this->connection->fetchAllAssociative('SELECT id, name, country_code FROM cities WHERE enabled = true ORDER BY country_code, name, id'), 'places' => $this->connection->fetchAllAssociative('SELECT p.id, p.name FROM places p ORDER BY p.updated_at DESC LIMIT 200'), 'history' => $this->connection->fetchAllAssociative('SELECT * FROM place_candidate_audit_events WHERE candidate_id = ? ORDER BY created_at, id', [$id])]);
@@ -71,7 +78,7 @@ final class PlaceDiscoveryAdminController extends AbstractController
                 'duplicate' => $this->service->markDuplicate($id, $version, $reviewer, (string) $request->request->get('place_id')),
                 'clear-duplicate' => $this->service->clearDuplicate($id, $version, $reviewer),
                 'refresh' => $this->service->refreshCandidateFromSource($id, $version, $reviewer),
-                'resolve-license' => $this->service->resolveUnlicensedProvenance($id, $version, (string) $request->request->get('license'), $reviewer),
+                'resolve-license' => $this->service->resolveUnlicensedProvenance($id, $version, (string) $request->request->get('fingerprint'), (string) $request->request->get('license'), $reviewer),
                 default => throw new \DomainException('Unsupported candidate action.'),
             };
             $this->addFlash('success', 'Zaktualizowano kandydata. Zatwierdzenie tworzy wyłącznie szkic miejsca.');

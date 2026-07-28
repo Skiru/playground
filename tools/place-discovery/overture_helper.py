@@ -2,6 +2,7 @@
 """Bounded Overture Places bridge. Emits normalized NDJSON only."""
 
 import argparse
+import datetime
 import json
 import resource
 import subprocess
@@ -124,11 +125,12 @@ def normalize_sources(raw_sources: object) -> list[dict]:
         if license_id is not None and (not isinstance(license_id, str) or not license_id.strip()):
             raise TypeError("source provenance license has an incompatible type")
         optional_strings = {}
-        for key in ("record_id", "update_time", "provider", "resource", "version"):
+        for key in ("record_id", "provider", "resource", "version"):
             value = source.get(key)
             if value is not None and not isinstance(value, str):
                 raise TypeError(f"source provenance {key} has an incompatible type")
             optional_strings[key] = value[:255] if value is not None else None
+        optional_strings["update_time"] = normalize_update_time(source.get("update_time"))
         confidence = source.get("confidence")
         if confidence is not None and (not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1):
             raise TypeError("source provenance confidence has an incompatible type")
@@ -140,6 +142,31 @@ def normalize_sources(raw_sources: object) -> list[dict]:
             "confidence": float(confidence) if confidence is not None else None,
         })
     return result
+
+
+def normalize_update_time(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if len(value) > 255:
+            raise ValueError("source provenance update_time exceeds 255 bytes")
+        if "T" not in value:
+            raise ValueError("source provenance update_time is not ISO/RFC-3339")
+        try:
+            parsed = datetime.datetime.fromisoformat(value[:-1] + "+00:00" if value.endswith("Z") else value)
+        except ValueError as exception:
+            raise ValueError("source provenance update_time is not ISO/RFC-3339") from exception
+    elif isinstance(value, datetime.datetime):
+        parsed = value
+    else:
+        raise TypeError("source provenance update_time has an incompatible type")
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+    normalized = parsed.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+    if len(normalized) > 255:
+        raise ValueError("source provenance update_time exceeds 255 bytes")
+    return normalized
 
 
 def stream(bbox: str, release: str, limit: int) -> None:
@@ -223,6 +250,10 @@ def stream_historical(bbox: str, release: str, limit: int) -> None:
         & (dataset.field(("bbox", "ymax")) >= south)
     )
     scanner = places.scanner(columns=allowed, filter=spatial_filter, batch_size=min(128, limit), batch_readahead=1, fragment_readahead=1, use_threads=False, cache_metadata=False)
+    stream_historical_scanner(scanner, release, limit, lambda value: mapping(from_wkb(value)))
+
+
+def stream_historical_scanner(scanner: object, release: str, limit: int, geometry_decoder) -> None:
     emitted = 0
     malformed = 0
     output_bytes = 0
@@ -232,7 +263,7 @@ def stream_historical(bbox: str, release: str, limit: int) -> None:
             raise TimeoutError("historical Overture scan exceeded total timeout")
         for row in batch.to_pylist():
             try:
-                geometry = mapping(from_wkb(row.pop("geometry")))
+                geometry = geometry_decoder(row.pop("geometry"))
                 feature = {"id": row.pop("id"), "geometry": geometry, "properties": row}
                 record = normalize_feature(feature, release)
             except (KeyError, TypeError, ValueError) as exception:
