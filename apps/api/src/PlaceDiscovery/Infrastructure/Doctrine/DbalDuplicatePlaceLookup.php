@@ -21,16 +21,25 @@ final readonly class DbalDuplicatePlaceLookup implements DuplicatePlaceLookup
     public function assess(ProviderPlace $source, NormalizedPlace $normalized): DuplicateAssessment
     {
         $rows = $this->connection->fetchAllAssociative(<<<'SQL'
-SELECT p.id, p.name, p.website_url, p.phone, p.address_line1, p.latitude, p.longitude, city.name AS locality
+SELECT p.id, 'place' AS kind, p.name, p.website_url, p.phone, p.address_line1, p.latitude, p.longitude, city.name AS locality
 FROM places p JOIN cities city ON city.id = p.city_id
 WHERE ((p.latitude BETWEEN ? AND ?) AND (p.longitude BETWEEN ? AND ?))
-   OR (? IS NOT NULL AND regexp_replace(COALESCE(p.phone, ''), '[^0-9+]', '', 'g') = ?)
+   OR (CAST(? AS VARCHAR) IS NOT NULL AND regexp_replace(COALESCE(p.phone, ''), '[^0-9+]', '', 'g') = ?)
    OR lower(p.normalized_name) = ?
-LIMIT 100
-SQL, [$source->latitude - 0.03, $source->latitude + 0.03, $source->longitude - 0.05, $source->longitude + 0.05, $normalized->phone, $normalized->phone, $normalized->normalizedName]);
-        $bestScore = 0;
-        $bestReasons = [];
-        $ids = [];
+ORDER BY ((p.latitude - ?) * (p.latitude - ?) + (p.longitude - ?) * (p.longitude - ?)), p.id
+LIMIT 500
+SQL, [$source->latitude - 0.03, $source->latitude + 0.03, $source->longitude - 0.05, $source->longitude + 0.05, $normalized->phone, $normalized->phone, $normalized->normalizedName, $source->latitude, $source->latitude, $source->longitude, $source->longitude]);
+        $rows = [...$rows, ...$this->connection->fetchAllAssociative(<<<'SQL'
+SELECT c.id, 'candidate' AS kind, c.name, c.website AS website_url, c.phone, c.address_line1, c.latitude, c.longitude, c.locality
+FROM place_candidates c
+WHERE c.source = ? AND c.external_id <> ? AND c.status IN ('PENDING','NEEDS_MAPPING','POSSIBLE_DUPLICATE')
+  AND (((c.latitude BETWEEN ? AND ?) AND (c.longitude BETWEEN ? AND ?))
+    OR (CAST(? AS VARCHAR) IS NOT NULL AND c.normalized_phone = ?)
+    OR c.normalized_name = ?)
+ORDER BY ((c.latitude - ?) * (c.latitude - ?) + (c.longitude - ?) * (c.longitude - ?)), c.id
+LIMIT 500
+SQL, ['overture', $source->externalId, $source->latitude - 0.03, $source->latitude + 0.03, $source->longitude - 0.05, $source->longitude + 0.05, $normalized->phone, $normalized->phone, $normalized->normalizedName, $source->latitude, $source->latitude, $source->longitude, $source->longitude])];
+        $matches = [];
         foreach ($rows as $row) {
             $score = 0;
             $reasons = [];
@@ -46,7 +55,9 @@ SQL, [$source->latitude - 0.03, $source->latitude + 0.03, $source->longitude - 0
                 $score += 70;
                 $reasons[] = 'normalized_phone';
             }
-            if (null !== $normalized->websiteHost && str_contains(mb_strtolower((string) $row['website_url']), $normalized->websiteHost)) {
+            $existingHost = parse_url(str_contains((string) $row['website_url'], '://') ? (string) $row['website_url'] : 'https://'.$row['website_url'], \PHP_URL_HOST);
+            $existingHost = \is_string($existingHost) ? preg_replace('/^www\./i', '', mb_strtolower($existingHost)) : null;
+            if (null !== $normalized->websiteHost && $existingHost === $normalized->websiteHost) {
                 $score += 70;
                 $reasons[] = 'website_host';
             }
@@ -63,15 +74,25 @@ SQL, [$source->latitude - 0.03, $source->latitude + 0.03, $source->longitude - 0
                 $reasons[] = 'within_500m';
             }
             $score = min(100, $score);
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $bestReasons = $reasons;
-                $ids = [(string) $row['id']];
-            } elseif ($score === $bestScore && $score > 0) {
-                $ids[] = (string) $row['id'];
+            if ($score > 0) {
+                $matches[] = ['id' => (string) $row['id'], 'kind' => (string) $row['kind'], 'score' => $score, 'reasons' => $reasons, 'metres' => $metres];
+            }
+        }
+        usort($matches, static function (array $left, array $right): int {
+            return ($right['score'] <=> $left['score']) ?: ($left['metres'] <=> $right['metres']) ?: ($left['kind'] <=> $right['kind']) ?: ($left['id'] <=> $right['id']);
+        });
+        $matches = \array_slice($matches, 0, 10);
+        $best = $matches[0] ?? null;
+        $places = [];
+        $candidates = [];
+        foreach ($matches as $match) {
+            if ('place' === $match['kind']) {
+                $places[] = $match['id'];
+            } else {
+                $candidates[] = $match['id'];
             }
         }
 
-        return new DuplicateAssessment($bestScore, $bestReasons, $ids);
+        return new DuplicateAssessment($best['score'] ?? 0, $best['reasons'] ?? [], $places, $candidates);
     }
 }

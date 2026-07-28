@@ -1,0 +1,9 @@
+The bounded Overture bridge invokes overturemaps 1.0.1 (MIT).
+
+Data emitted by the bridge is not uniformly licensed. It preserves bounded
+Overture `sources[]` provenance, including Apache-2.0/Foursquare and CDLA
+Permissive 2.0 identifiers when declared by the source release. See the
+repository NOTICE for attribution links and policy.
+
+The complete Apache License 2.0 and Foursquare OS Places notice are shipped at
+`LICENSES/Apache-2.0.txt` and `NOTICE` in the repository/release artifact.

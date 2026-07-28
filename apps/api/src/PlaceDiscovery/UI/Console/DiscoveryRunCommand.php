@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\PlaceDiscovery\UI\Console;
 
-use App\PlaceDiscovery\Application\PlaceDiscoveryService;
+use App\PlaceDiscovery\Application\DiscoveryOperationLock;
+use App\PlaceDiscovery\Application\DiscoveryRunOrchestrator;
 use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use App\PlaceDiscovery\Domain\FamilyDiscoveryProfile;
@@ -15,17 +16,19 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Uid\Uuid;
 
 #[AsCommand(name: 'app:place-discovery:run', description: 'Run bounded Overture place discovery for one configured area.')]
 final class DiscoveryRunCommand extends Command
 {
+    private const RAW_FETCH_MULTIPLIER = 25;
+
     public function __construct(
         private readonly PlaceDiscoveryProvider $provider,
         private readonly Connection $connection,
         private readonly PlaceNormalizer $normalizer,
         private readonly FamilyDiscoveryProfile $profile,
-        private readonly PlaceDiscoveryService $service,
+        private readonly DiscoveryRunOrchestrator $runs,
+        private readonly DiscoveryOperationLock $locks,
     ) {
         parent::__construct();
     }
@@ -37,7 +40,7 @@ final class DiscoveryRunCommand extends Command
             ->addOption('limit', null, InputOption::VALUE_REQUIRED, 'Maximum records', '20')
             ->addOption('release', null, InputOption::VALUE_REQUIRED, 'Overture release; defaults to latest')
             ->addOption('output', null, InputOption::VALUE_REQUIRED, 'text or json', 'text')
-            ->addOption('sync', null, InputOption::VALUE_NONE, 'Run synchronously');
+            ->addOption('sync', null, InputOption::VALUE_NONE, 'Execute now in this process; default dispatches a QUEUED run');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -55,23 +58,40 @@ final class DiscoveryRunCommand extends Command
 
             return Command::INVALID;
         }
-        $lockKey = 'place-discovery:'.$areaId.':'.($input->getOption('release') ?: 'latest');
-        if (!$this->connection->fetchOne('SELECT pg_try_advisory_lock(hashtext(?))', [$lockKey])) {
+        $release = (string) ($input->getOption('release') ?: $this->provider->getLatestRelease());
+        $area = new DiscoveryArea((string) $row['id'], (string) $row['name'], (bool) $row['enabled'], (string) $row['country_code'], (float) $row['center_latitude'], (float) $row['center_longitude'], (float) $row['radius_km'], (float) $row['minimum_confidence'], (int) $row['maximum_candidates_per_run'], (string) $row['discovery_profile'], (int) $row['version']);
+        if (!$input->getOption('dry-run')) {
+            $runId = $this->runs->enqueue($areaId, $release, 'cli');
+            if (null === $runId) {
+                $output->writeln('<error>An equivalent completed, queued, or active run already exists.</error>');
+
+                return Command::FAILURE;
+            }
+            if ($input->getOption('sync')) {
+                try {
+                    $this->runs->execute($runId, $limit);
+                } catch (\Throwable $exception) {
+                    $output->writeln('<error>'.mb_substr($exception->getMessage(), 0, 1000).'</error>');
+
+                    return Command::FAILURE;
+                }
+            } else {
+                $this->runs->dispatch($runId);
+            }
+            $payload = ['source' => $this->provider->getProviderName(), 'release' => $release, 'dry_run' => false, 'mode' => $input->getOption('sync') ? 'sync' : 'dispatch', 'run_id' => $runId];
+            $output->writeln('json' === $input->getOption('output') ? json_encode($payload, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT) : \sprintf('%s run %s for %s.', $input->getOption('sync') ? 'Completed' : 'Queued', $runId, $release));
+
+            return Command::SUCCESS;
+        }
+        $lock = $this->locks->operation($this->provider->getProviderName(), $release, $areaId);
+        if (!$lock->acquire()) {
             $output->writeln('<error>An equivalent run is active.</error>');
 
             return Command::FAILURE;
         }
         try {
-            $release = (string) ($input->getOption('release') ?: $this->provider->getLatestRelease());
-            $area = new DiscoveryArea((string) $row['id'], (string) $row['name'], (bool) $row['enabled'], (string) $row['country_code'], (float) $row['center_latitude'], (float) $row['center_longitude'], (float) $row['radius_km'], (float) $row['minimum_confidence'], (int) $row['maximum_candidates_per_run'], (string) $row['discovery_profile'], (int) $row['version']);
-            $runId = Uuid::v7()->toRfc4122();
-            if (!$input->getOption('dry-run')) {
-                $attempt = 1 + (int) $this->connection->fetchOne('SELECT COALESCE(MAX(attempt), 0) FROM place_discovery_runs WHERE source = ? AND source_release = ? AND area_id = ?', [$this->provider->getProviderName(), $release, $areaId]);
-                $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
-                $this->connection->insert('place_discovery_runs', ['id' => $runId, 'source' => $this->provider->getProviderName(), 'source_release' => $release, 'area_id' => $areaId, 'attempt' => $attempt, 'status' => 'RUNNING', 'requested_by' => 'cli', 'started_at' => $now, 'created_at' => $now]);
-            }
             $results = [];
-            $rawLimit = min(1000, max($limit, $limit * 25));
+            $rawLimit = min(1000, max($limit, $limit * self::RAW_FETCH_MULTIPLIER));
             foreach ($this->provider->streamPlaces($area, $area->profile, $release, $rawLimit) as $place) {
                 if (null !== $place->confidence && $place->confidence < $area->minimumConfidence) {
                     continue;
@@ -82,20 +102,14 @@ final class DiscoveryRunCommand extends Command
                     continue;
                 }
                 $result = ['external_id' => $place->externalId, 'name' => $normalized->name, 'status' => $classification->status->value, 'score' => $classification->score, 'category' => $classification->category, 'reasons' => $classification->reasons];
-                if (!$input->getOption('dry-run')) {
-                    $result['result'] = $this->service->import($runId, $place, $normalized, $classification);
-                }
                 $results[] = $result;
                 if (\count($results) >= $limit) {
                     break;
                 }
             }
-            if (!$input->getOption('dry-run')) {
-                $this->connection->executeStatement("UPDATE place_discovery_runs SET status = 'COMPLETED', completed_at = ?, discovered_count = ? WHERE id = ?", [(new \DateTimeImmutable())->format(\DateTimeInterface::ATOM), \count($results), $runId]);
-            }
-            $output->writeln('json' === $input->getOption('output') ? json_encode(['source' => 'overture', 'release' => $release, 'dry_run' => (bool) $input->getOption('dry-run'), 'count' => \count($results), 'candidates' => $results], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE | \JSON_PRETTY_PRINT) : \sprintf('Processed %d bounded candidates from %s.', \count($results), $release));
+            $output->writeln('json' === $input->getOption('output') ? json_encode(['source' => 'overture', 'release' => $release, 'dry_run' => true, 'count' => \count($results), 'candidates' => $results], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE | \JSON_PRETTY_PRINT) : \sprintf('Dry-run processed %d bounded candidates from %s.', \count($results), $release));
         } finally {
-            $this->connection->executeStatement('SELECT pg_advisory_unlock(hashtext(?))', [$lockKey]);
+            $lock->release();
         }
 
         return Command::SUCCESS;

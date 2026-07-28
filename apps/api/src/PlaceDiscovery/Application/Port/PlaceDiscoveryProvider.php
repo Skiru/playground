@@ -13,6 +13,8 @@ interface PlaceDiscoveryProvider
 
     public function getLatestRelease(): string;
 
+    public function assertReleaseAvailable(string $release): void;
+
     /** @return iterable<ProviderPlace> */
     public function streamPlaces(DiscoveryArea $area, string $profile, string $release, int $limit): iterable;
 }

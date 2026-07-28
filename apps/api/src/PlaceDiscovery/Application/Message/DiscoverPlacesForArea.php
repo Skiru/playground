@@ -6,10 +6,10 @@ namespace App\PlaceDiscovery\Application\Message;
 
 final readonly class DiscoverPlacesForArea
 {
-    public function __construct(public string $areaId, public string $release, public int $attempt = 1)
+    public function __construct(public string $runId)
     {
-        if ($attempt < 1) {
-            throw new \InvalidArgumentException('Discovery attempt must be positive.');
+        if (!\Symfony\Component\Uid\Uuid::isValid($runId)) {
+            throw new \InvalidArgumentException('Discovery run id must be a UUID.');
         }
     }
 }
