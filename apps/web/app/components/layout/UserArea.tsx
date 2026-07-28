@@ -23,7 +23,7 @@ export function UserArea() {
   const handleLogout = async () => {
     await logout()
     toast.info("Wylogowano pomyślnie.")
-    navigate("/")
+    navigate("/", { replace: true })
   }
 
   if (session.authenticated && session.user) {

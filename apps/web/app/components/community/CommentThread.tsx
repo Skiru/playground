@@ -62,7 +62,7 @@ export function CommentThread({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-bold">
+              <AvatarFallback className="bg-secondary text-primary text-[10px] font-bold">
                 {isParentDeleted ? "?" : (parent.author?.initials || "U")}
               </AvatarFallback>
             </Avatar>
@@ -178,7 +178,7 @@ export function CommentThread({
                   <div className="flex items-center gap-1.5">
                     <CornerDownRight className="h-3 w-3 text-muted-foreground shrink-0" />
                     <Avatar className="h-5 w-5">
-                      <AvatarFallback className="bg-muted text-muted-foreground text-[8px] font-bold">
+                      <AvatarFallback className="bg-secondary text-primary text-[8px] font-bold">
                         {isReplyDeleted ? "?" : (reply.author?.initials || "U")}
                       </AvatarFallback>
                     </Avatar>

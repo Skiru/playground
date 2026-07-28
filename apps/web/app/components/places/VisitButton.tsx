@@ -127,7 +127,7 @@ export function VisitButton({ placeId }: { placeId: string }) {
             </Button>
             <Button
               size="sm"
-              className="font-bold bg-primary hover:bg-primary/95 text-white"
+              className="font-bold"
               onClick={handleSaveVisit}
               disabled={isLoading}
             >
