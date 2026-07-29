@@ -1,0 +1,88 @@
+name: C8A certification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feat/family-places-c8a-free-arm64-production-release-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c8a-certification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-x64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0}
+      - name: Check and test repository contracts
+        run: ./scripts/check && ./scripts/test && docker compose config --quiet && docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config --quiet && ./scripts/api-check
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: quality-x64-evidence, path: reports, if-no-files-found: ignore}
+
+  browser-x64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: {node-version: 24, package-manager-cache: false}
+      - run: corepack enable && corepack prepare pnpm@11.13.1 --activate && pnpm install --frozen-lockfile && pnpm --filter @family-places/web exec playwright install --with-deps chromium
+      - run: docker compose -f compose.yaml -f compose.e2e.yaml build api web && docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d database api web && docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
+      - env: {WEB_BASE_URL: http://127.0.0.1:3000, API_BASE_URL_BROWSER: http://127.0.0.1:8080}
+        run: pnpm --filter @family-places/web e2e:desktop && pnpm --filter @family-places/web e2e:mobile
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: browser-x64-evidence, path: 'apps/web/playwright-report\napps/web/test-results', if-no-files-found: ignore}
+      - if: always()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml logs > e2e-services.log || true; docker compose -f compose.yaml -f compose.e2e.yaml down --volumes
+
+  security-x64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0}
+      - run: mkdir -p evidence/security
+      - run: docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 git --config=.gitleaks.toml --redact --report-path=evidence/security/gitleaks.json /repo
+      - run: docker run --rm -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 fs --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-filesystem.json /repo
+      - run: docker build -f infra/docker/api.Dockerfile -t family-places-api:certification . && docker build -f infra/docker/web.Dockerfile -t family-places-web:certification . && docker build -f infra/docker/postgis.Dockerfile -t family-places-postgis:certification .
+      - run: for image in api web postgis; do docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 1 --format json --output "evidence/security/trivy-$image.json" "family-places-$image:certification"; done
+      - run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/api.Dockerfile && docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/web.Dockerfile && docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/postgis.Dockerfile
+      - run: docker run --rm -v "$PWD:/mnt" koalaman/shellcheck-alpine:v0.10.0 /mnt/scripts/check /mnt/scripts/test /mnt/scripts/production/test-native-arm64
+      - run: docker run --rm -v "$PWD/apps/api:/app" -w /app composer:2 composer audit --locked && docker run --rm -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm@11.13.1 audit --audit-level high'
+      - run: |
+          docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config > evidence/security/compose.yaml
+          if grep -Eq '"?(5432|6379):' evidence/security/compose.yaml; then exit 1; fi
+          if grep -Eq 'cloudflare.*token.*(=|:).+[^_]' evidence/security/compose.yaml; then exit 1; fi
+          if grep -Eq 'image: .*:(latest|main)( |$)' evidence/security/compose.yaml; then exit 1; fi
+          if grep -Eq 'cap_add:.*(SYS_ADMIN|NET_ADMIN)' evidence/security/compose.yaml; then exit 1; fi
+      - run: docker run --rm -v "$PWD:/repo" -w /repo anchore/syft:v1.42.1 dir:. -o cyclonedx-json=evidence/security/sbom.json && jq -e '.components | length > 0' evidence/security/sbom.json
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: security-x64-evidence, path: evidence/security, if-no-files-found: ignore}
+
+  native-arm64-full-stack:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - run: sudo apt-get update && sudo apt-get install -y age awscli jq
+      - run: ./scripts/production/test-native-arm64
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: native-arm64-evidence, path: '.production\nevidence', if-no-files-found: ignore}
+
+  provenance:
+    needs: [quality-x64, browser-x64, security-x64, native-arm64-full-stack]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0}
+      - run: git rev-parse HEAD > certification-sha.txt && git rev-parse 'HEAD^{tree}' > certification-tree.txt && git fsck --no-reflogs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: provenance-evidence, path: 'certification-sha.txt\ncertification-tree.txt'}

@@ -1,39 +1,132 @@
 #!/usr/bin/env zsh
 set -Eeuo pipefail
-[[ $(uname -m) == aarch64 ]] || { print -u2 'native ARM certification requires an aarch64 runner'; exit 1; }
-root=${0:A:h:h:h}; work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
-print test-token > "$work/tunnel-token"; chmod 0400 "$work/tunnel-token"
-cat > "$work/production.env" <<EOF
+
+[[ $(uname -m) == aarch64 || $(uname -m) == arm64 ]] || { print -u2 'native ARM certification requires an aarch64/arm64 runner'; exit 1; }
+root=${0:A:h:h:h}
+work=$(mktemp -d)
+project="familyplaces-c8a-${RANDOM}${RANDOM}"
+env_file="$work/production.env"
+override="$work/certification.override.yaml"
+evidence="$root/evidence/native-arm64"
+mkdir -p "$evidence"
+export COMPOSE_PROJECT_NAME=$project
+export ENV_FILE=$env_file
+
+cleanup() {
+  local exit_code=$?
+  docker compose --project-name "$project" --env-file "$env_file" -f "$root/compose.yaml" -f "$root/compose.prod.yaml" -f "$root/compose.prod.arm64.yaml" -f "$override" logs > "$work/runtime.log" 2>&1 || true
+  cp "$work/runtime.log" "$evidence/runtime.log" 2>/dev/null || true
+  print -- "exit_code=$exit_code" > "$evidence/result.txt"
+  docker compose --project-name "$project" --env-file "$env_file" -f "$root/compose.yaml" -f "$root/compose.prod.yaml" -f "$root/compose.prod.arm64.yaml" -f "$override" down --volumes --remove-orphans || true
+  rm -rf "$work"
+  exit $exit_code
+}
+trap cleanup EXIT
+
+for command in docker aws age jq curl; do command -v "$command" >/dev/null || { print -u2 "missing required command: $command"; exit 1; }; done
+docker info --format '{{.Architecture}}' | grep -Eq 'aarch64|arm64'
+
+age-keygen -o "$work/age.key" > "$work/age.recipient"
+age_recipient=$(awk '/^# public key:/{print $4}' "$work/age.key")
+db_password=$(openssl rand -hex 24)
+cat > "$env_file" <<EOF
 APP_ENV=prod
 APP_DEBUG=0
-APP_SECRET=abcdefghijklmnopqrstuvwxyz123456
+APP_SECRET=$(openssl rand -hex 32)
 POSTGRES_DB=family_places
 POSTGRES_USER=family_places
-POSTGRES_PASSWORD=zyxwvutsrqponmlkjihgfedcba123456
-DATABASE_URL=postgresql://family_places:password@database:5432/family_places?serverVersion=18
+POSTGRES_PASSWORD=$db_password
+DATABASE_URL=postgresql://family_places:$db_password@database:5432/family_places?serverVersion=18&charset=utf8
+LOCK_DSN=postgresql://family_places:$db_password@database:5432/family_places?serverVersion=18&charset=utf8
 RELEASE_SHA=$(git -C "$root" rev-parse HEAD)
-RELEASE_VERSION=0.0.0-ci
+RELEASE_VERSION=0.0.0-c8a-certification
 API_IMAGE=family-places-api:native
 WEB_IMAGE=family-places-web:native
 POSTGIS_IMAGE=family-places-postgis:native
-STORAGE_S3_ENDPOINT=https://test.r2.cloudflarestorage.com
-STORAGE_S3_KEY=media-key
-STORAGE_S3_SECRET=media-secret
-STORAGE_S3_BUCKET=media-bucket
-STORAGE_S3_PUBLIC_URL=https://media.example.org
-MEDIA_PUBLIC_BASE_URL=https://media.example.org
-BACKUP_S3_ENDPOINT=https://test.r2.cloudflarestorage.com
-BACKUP_S3_KEY=backup-key
-BACKUP_S3_SECRET=backup-secret
-BACKUP_S3_BUCKET=backup-bucket
-AGE_RECIPIENT=age1test
-MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
-MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
-MAP_PROVIDER_NAME=OpenFreeMap
+STORAGE_DRIVER=s3
+STORAGE_S3_ENDPOINT=http://minio:9000
+STORAGE_S3_KEY=minioadmin
+STORAGE_S3_SECRET=minioadmin
+STORAGE_S3_BUCKET=familyplaces-media
+STORAGE_S3_REGION=us-east-1
+STORAGE_S3_PUBLIC_URL=http://127.0.0.1:19000/familyplaces-media
+MEDIA_PUBLIC_BASE_URL=http://127.0.0.1:18080/media
+BACKUP_S3_ENDPOINT=http://127.0.0.1:19000
+BACKUP_S3_KEY=minioadmin
+BACKUP_S3_SECRET=minioadmin
+BACKUP_S3_BUCKET=familyplaces-backups
+AGE_RECIPIENT=$age_recipient
+AGE_IDENTITY_FILE=$work/age.key
+MAP_ATTRIBUTION=FamilyPlaces certification map
+MAP_STYLE_URL=http://127.0.0.1:18080/fixtures/map-style.json
+MAP_PROVIDER_NAME=FamilyPlaces
 DEV_AUTH_ENABLED=false
 PLACE_DISCOVERY_ENABLED=false
-CLOUDFLARE_TUNNEL_TOKEN_FILE=$work/tunnel-token
+CLOUDFLARE_TUNNEL_TOKEN_FILE=$work/cloudflared-token
 EOF
-docker compose --env-file "$work/production.env" -f "$root/compose.yaml" -f "$root/compose.prod.yaml" -f "$root/compose.prod.arm64.yaml" config --quiet
-grep -q 'handle /api/\*' "$root/infra/deployment/Caddyfile" && ! grep -q 'handle_path /api/' "$root/infra/deployment/Caddyfile"
-print 'native ARM production render and gateway path policy passed; full runtime certification is performed by the integration runner'
+print -- certification-tunnel-stub > "$work/cloudflared-token"
+# Keep the production ARM topology intact while substituting only the external tunnel.
+cat > "$override" <<'EOF'
+services:
+  gateway:
+    ports: ["127.0.0.1:18080:8080"]
+  cloudflared:
+    profiles: [external-tunnel]
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    platform: linux/arm64
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["127.0.0.1:19000:9000"]
+    networks: [internal]
+EOF
+
+docker build --platform linux/arm64 --target production -f "$root/infra/docker/api.Dockerfile" -t family-places-api:native --build-arg OCI_REVISION="$(git -C "$root" rev-parse HEAD)" "$root"
+docker build --platform linux/arm64 --target production -f "$root/infra/docker/web.Dockerfile" -t family-places-web:native --build-arg OCI_REVISION="$(git -C "$root" rev-parse HEAD)" "$root"
+docker build --platform linux/arm64 -f "$root/infra/docker/postgis.Dockerfile" -t family-places-postgis:native "$root"
+
+compose=(docker compose --project-name "$project" --env-file "$env_file" -f "$root/compose.yaml" -f "$root/compose.prod.yaml" -f "$root/compose.prod.arm64.yaml" -f "$override")
+"${compose[@]}" config --quiet
+"${compose[@]}" up --wait -d database minio
+"${compose[@]}" exec -T database psql -U family_places -d family_places -tAc "SHOW server_version" | grep -q '^18\.'
+"${compose[@]}" exec -T database psql -U family_places -d family_places -tAc "SELECT PostGIS_Lib_Version()" | grep -q '^3\.6'
+"${compose[@]}" exec -T database psql -U family_places -d family_places -c 'CREATE TABLE IF NOT EXISTS certification_persistence (id integer primary key); INSERT INTO certification_persistence VALUES (1) ON CONFLICT DO NOTHING'
+"${compose[@]}" restart database
+"${compose[@]}" exec -T database psql -U family_places -d family_places -tAc 'SELECT id FROM certification_persistence' | grep -qx 1
+
+AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin aws --endpoint-url http://127.0.0.1:19000 s3 mb s3://familyplaces-media
+AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin aws --endpoint-url http://127.0.0.1:19000 s3 mb s3://familyplaces-backups
+"${compose[@]}" run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+"${compose[@]}" up --wait -d api web gateway
+"${compose[@]}" up -d worker
+
+for _ in {1..30}; do curl --fail --silent http://127.0.0.1:18080/api/v1/health/live >/dev/null && break; sleep 2; done
+curl --fail --silent 'http://127.0.0.1:18080/api/v1/health/live?probe=preserved' >/dev/null
+curl --silent --show-error --fail-with-body http://127.0.0.1:18080/api/v1/does-not-exist | grep -q '404'
+curl --fail --silent http://127.0.0.1:18080/ | grep -qi '<html'
+
+print 'native-arm-media-contract' > "$work/media.txt"
+AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin aws --endpoint-url http://127.0.0.1:19000 s3 cp "$work/media.txt" s3://familyplaces-media/certification/media.txt >/dev/null
+AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin aws --endpoint-url http://127.0.0.1:19000 s3 cp s3://familyplaces-media/certification/media.txt "$work/media.download.txt" >/dev/null
+cmp "$work/media.txt" "$work/media.download.txt"
+AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin aws --endpoint-url http://127.0.0.1:19000 s3 rm s3://familyplaces-media/certification/media.txt >/dev/null
+
+"${compose[@]}" exec -T database psql -U family_places -d family_places -c "CREATE TABLE IF NOT EXISTS certification_spatial (id integer primary key, point geography(Point,4326)); INSERT INTO certification_spatial VALUES (1, ST_SetSRID(ST_MakePoint(21.0122,52.2297),4326)::geography) ON CONFLICT (id) DO UPDATE SET point=EXCLUDED.point"
+"$root/scripts/production/backup" pre-deploy > "$work/backup-object"
+backup_object=$(<"$work/backup-object")
+"$root/scripts/production/backup-retention" --dry-run
+"$root/scripts/production/restore" "$backup_object" family_places_restore
+"${compose[@]}" exec -T database psql -U family_places -d family_places_restore -tAc 'SELECT ST_X(point::geometry) FROM certification_spatial WHERE id=1' | grep -qx '21.0122'
+if "$root/scripts/production/restore" "$backup_object" family_places_restore; then print -u2 'restore unexpectedly accepted a non-empty target'; exit 1; fi
+
+mkdir -p "$root/.production/releases"
+cat > "$work/allowed.json" <<EOF
+{"rollbackCompatibility":"image-only","releaseSha":"$(git -C "$root" rev-parse HEAD)","releaseTree":"$(git -C "$root" rev-parse HEAD^{tree})","releaseVersion":"0.0.0-c8a-certification","apiImageDigest":"family-places-api:native","webImageDigest":"family-places-web:native","postgisImageDigest":"family-places-postgis:native"}
+EOF
+cat > "$work/refused.json" <<EOF
+{"rollbackCompatibility":"migration-unsafe","releaseSha":"x","releaseTree":"x","releaseVersion":"x","apiImageDigest":"x","webImageDigest":"x","postgisImageDigest":"x"}
+EOF
+if "$root/scripts/production/rollback" "$work/refused.json"; then print -u2 'migration-unsafe rollback was accepted'; exit 1; fi
+print 'PASS native ARM full-stack certification'

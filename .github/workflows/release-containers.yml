@@ -1,17 +1,13 @@
 name: Release containers
 
+# This workflow is deliberately dispatch-only. GitHub exposes dispatch only after
+# this file has landed on main, and releases may only use commits already on main.
 on:
   workflow_dispatch:
     inputs:
-      release_version:
-        required: true
-        type: string
-      source_sha:
-        required: true
-        type: string
-      publish_confirmation:
-        required: true
-        type: string
+      release_version: {required: true, type: string}
+      source_sha: {required: true, type: string}
+      publish_confirmation: {required: true, type: string}
 
 permissions:
   contents: read
@@ -23,51 +19,54 @@ jobs:
   quality-x64:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-        with: { fetch-depth: 0 }
-      - run: ./scripts/check && ./scripts/test
-      - run: pnpm --dir apps/web e2e:desktop && pnpm --dir apps/web e2e:mobile
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - run: ./scripts/check && ./scripts/test && ./scripts/api-check
 
   security-x64:
+    needs: quality-x64
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-        with: { fetch-depth: 0 }
-      - run: ./scripts/verify-gitleaks && ./scripts/check
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - run: ./scripts/verify-gitleaks && docker run --rm -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 fs --severity HIGH,CRITICAL --exit-code 1 /repo
 
   native-arm64-runtime:
+    needs: security-x64
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-        with: { fetch-depth: 0 }
-      - name: Assert native ARM host
-        run: test "$(uname -m)" = aarch64 && test "$(docker info --format '{{.Architecture}}')" = aarch64
-      - name: Build native runtime images
-        run: docker build -f infra/docker/api.Dockerfile -t family-places-api:native . && docker build -f infra/docker/web.Dockerfile -t family-places-web:native . && docker build -f infra/docker/postgis.Dockerfile -t family-places-postgis:native .
-      - name: Render and certify production topology
-        run: ./scripts/production/test-native-arm64
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - run: sudo apt-get update && sudo apt-get install -y age awscli jq && ./scripts/production/test-native-arm64
 
   release-build-and-push:
     needs: [quality-x64, security-x64, native-arm64-runtime]
     runs-on: ubuntu-24.04
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_confirmation == 'PUBLISH'
+    if: inputs.publish_confirmation == 'PUBLISH'
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-        with: { fetch-depth: 0 }
-      - name: Validate immutable release request
-        env: { VERSION: '${{ inputs.release_version }}', SOURCE: '${{ inputs.source_sha }}' }
-        run: test "$SOURCE" = "$GITHUB_SHA" && printf '%s' "$SOURCE" | grep -Eq '^[0-9a-f]{40}$' && printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$'
-      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3
-        with: { registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}' }
-      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - name: Validate immutable main release request
+        env: {VERSION: '${{ inputs.release_version }}', SOURCE: '${{ inputs.source_sha }}'}
+        run: test "$SOURCE" = "$(git rev-parse HEAD)" && printf '%s' "$SOURCE" | grep -Eq '^[0-9a-f]{40}$' && git merge-base --is-ancestor "$SOURCE" origin/main && printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$'
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        with: {registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}'}
       - run: ./scripts/release/build-and-push "${{ inputs.release_version }}" "${{ inputs.source_sha }}"
+      - run: ./scripts/release/verify-published "${{ inputs.release_version }}" "${{ inputs.source_sha }}" && test ! -e release-manifest/main && test ! -e release-manifest/latest
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: release-manifest, path: release-manifest}
 
   release-manifest-and-attestation:
-    needs: [release-build-and-push]
+    needs: release-build-and-push
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - run: ./scripts/release/verify-published "${{ inputs.release_version }}" "${{ inputs.source_sha }}"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with: { name: release-manifest, path: release-manifest }
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with: {ref: '${{ inputs.source_sha }}'}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {name: release-manifest, path: release-manifest}
+      - run: ./scripts/release/verify-published "${{ inputs.release_version }}" "${{ inputs.source_sha }}" && jq -e '.images[] | .manifestDigest | test("^sha256:[0-9a-f]{64}$")' release-manifest/*.json
+      - uses: actions/attest-build-provenance@v2
+        with: {subject-path: release-manifest}
