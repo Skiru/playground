@@ -20,9 +20,14 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
 
     private KernelBrowser $client;
     private Connection $connection;
+    private ?string $originalEnvDiscoveryEnabled = null;
+    private ?string $originalServerDiscoveryEnabled = null;
 
     protected function setUp(): void
     {
+        $this->originalEnvDiscoveryEnabled = $_ENV['PLACE_DISCOVERY_ENABLED'] ?? null;
+        $this->originalServerDiscoveryEnabled = $_SERVER['PLACE_DISCOVERY_ENABLED'] ?? null;
+        $_ENV['PLACE_DISCOVERY_ENABLED'] = $_SERVER['PLACE_DISCOVERY_ENABLED'] = '1';
         $this->client = self::createClient();
         $this->client->disableReboot();
         $connection = self::getContainer()->get(Connection::class);
@@ -37,6 +42,16 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
             $this->connection->rollBack();
         }
         self::ensureKernelShutdown();
+        if (null === $this->originalEnvDiscoveryEnabled) {
+            unset($_ENV['PLACE_DISCOVERY_ENABLED']);
+        } else {
+            $_ENV['PLACE_DISCOVERY_ENABLED'] = $this->originalEnvDiscoveryEnabled;
+        }
+        if (null === $this->originalServerDiscoveryEnabled) {
+            unset($_SERVER['PLACE_DISCOVERY_ENABLED']);
+        } else {
+            $_SERVER['PLACE_DISCOVERY_ENABLED'] = $this->originalServerDiscoveryEnabled;
+        }
     }
 
     public function testUnauthorizedUserIsDeniedAndSnapshotsHaveNoPublicRoute(): void
