@@ -14,7 +14,7 @@ services:
       GOOGLE_CLIENT_ID:
       DEV_AUTH_ENABLED:
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
-      LOCK_DSN: ${LOCK_DSN:-postgresql+advisory://family_places:family_places@database:5432/family_places}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
       PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
       PLACE_DISCOVERY_HELPER: /opt/familyplaces/overture_helper.py
       SERVER_NAME: :80
@@ -43,7 +43,7 @@ services:
       APP_SECRET:
       DATABASE_URL:
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
-      LOCK_DSN: ${LOCK_DSN:-postgresql+advisory://family_places:family_places@database:5432/family_places}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
     depends_on:
       database:
         condition: service_healthy
@@ -65,7 +65,7 @@ services:
       APP_SECRET:
       DATABASE_URL:
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
-      LOCK_DSN: ${LOCK_DSN:-postgresql+advisory://family_places:family_places@database:5432/family_places}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
       PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
     depends_on:
       database:
@@ -86,7 +86,7 @@ services:
       APP_SECRET:
       DATABASE_URL:
       MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
-      LOCK_DSN: ${LOCK_DSN:-postgresql+advisory://family_places:family_places@database:5432/family_places}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
       PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
       PLACE_DISCOVERY_HELPER: /opt/familyplaces/overture_helper.py
     depends_on:
