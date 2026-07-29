@@ -1,11 +1,14 @@
 {
   "checkpoint": "C8A_FREE_ARM64_PRODUCTION_RELEASE_HARDENING",
-  "status": "PARTIAL",
-  "decision": "READY_FOR_NATIVE_ARM_CERTIFICATION",
-  "startSha": "bec176bedcdea0e6c662b1992b488554150b06cf",
-  "startTree": "ff00b539feb0766e61742b022d8779c3dfa22dd5",
+  "status": "PASS",
+  "decision": "READY_FOR_EXTERNAL_CONFIGURATION",
+  "startSha": "686d72e49e10af845e056963d6962cb419c39a02",
+  "startTree": "d29aae4e4a66280ce4aa2d56fe9d9fa410202674",
+  "greenImplementationSha": "680be22f857b57533a00ea062235fd04628b88bf",
+  "greenImplementationRunId": 30469494129,
+  "greenImplementationConclusion": "success",
   "branch": "feat/family-places-c8a-free-arm64-production-release-hardening",
-  "arm64Postgis": "PASS: PostgreSQL 18.4, PostGIS 3.6.4, GiST, spatial query, restart persistence",
-  "externalActions": "Oracle, Cloudflare, R2, Google, GHCR publication and native ARM full-stack certification",
+  "arm64Postgis": "PASS: GitHub native ARM64 PostgreSQL 18/PostGIS 3.6, GiST, spatial query, and restart persistence",
+  "externalActions": "Oracle, Cloudflare, production R2, Google, GHCR publication, and first-deploy validation",
   "secretsRedacted": true
 }
