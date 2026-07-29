@@ -1,13 +1,21 @@
 name: Release containers
 
-# This workflow is deliberately dispatch-only. GitHub exposes dispatch only after
-# this file has landed on main, and releases may only use commits already on main.
+# workflow_dispatch is exposed only after this file exists on the default branch.
 on:
   workflow_dispatch:
     inputs:
-      release_version: {required: true, type: string}
-      source_sha: {required: true, type: string}
-      publish_confirmation: {required: true, type: string}
+      release_version:
+        description: SemVer without the v prefix
+        required: true
+        type: string
+      source_sha:
+        description: Exact 40-character commit on origin/main
+        required: true
+        type: string
+      publish_confirmation:
+        description: Type PUBLISH to publish immutable images
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -16,57 +24,152 @@ permissions:
   attestations: write
 
 jobs:
-  quality-x64:
+  validate-release-source:
     runs-on: ubuntu-24.04
+    outputs:
+      source_tree: ${{ steps.validate.outputs.source_tree }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
-      - run: ./scripts/check && ./scripts/test && ./scripts/api-check
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with: {fetch-depth: 0}
+      - name: accept-exact-publish-confirmation
+        if: inputs.publish_confirmation == 'PUBLISH'
+        run: true
+      - name: reject-invalid-publish-confirmation
+        if: inputs.publish_confirmation != 'PUBLISH'
+        run: |
+          printf 'publish_confirmation must equal PUBLISH\n' >&2
+          exit 1
+      - name: validate-immutable-main-release-request
+        id: validate
+        env:
+          VERSION: ${{ inputs.release_version }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          printf '%s\n' "$SOURCE_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          git fetch --no-tags origin main
+          git checkout --detach "$SOURCE_SHA"
+          source_tree=$(./scripts/release/validate-request "$VERSION" "$SOURCE_SHA" origin/main)
+          printf 'source_tree=%s\n' "$source_tree" >> "$GITHUB_OUTPUT"
 
-  security-x64:
-    needs: quality-x64
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
-      - run: ./scripts/verify-gitleaks && docker run --rm -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 fs --severity HIGH,CRITICAL --exit-code 1 /repo
-
-  native-arm64-runtime:
-    needs: security-x64
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
-      - run: sudo apt-get update && sudo apt-get install -y age awscli jq && ./scripts/production/test-native-arm64
+  certified-gates:
+    needs: validate-release-source
+    uses: ./.github/workflows/certified-release-gates.yml
+    with:
+      source_sha: ${{ inputs.source_sha }}
 
   release-build-and-push:
-    needs: [quality-x64, security-x64, native-arm64-runtime]
+    needs: [validate-release-source, certified-gates]
     runs-on: ubuntu-24.04
-    if: inputs.publish_confirmation == 'PUBLISH'
+    outputs:
+      api_digest: ${{ steps.manifest.outputs.api_digest }}
+      web_digest: ${{ steps.manifest.outputs.web_digest }}
+      postgis_digest: ${{ steps.manifest.outputs.postgis_digest }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
-      - name: Validate immutable main release request
-        env: {VERSION: '${{ inputs.release_version }}', SOURCE: '${{ inputs.source_sha }}'}
-        run: test "$SOURCE" = "$(git rev-parse HEAD)" && printf '%s' "$SOURCE" | grep -Eq '^[0-9a-f]{40}$' && git merge-base --is-ancestor "$SOURCE" origin/main && printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$'
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
-      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
-        with: {registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}'}
-      - run: ./scripts/release/build-and-push "${{ inputs.release_version }}" "${{ inputs.source_sha }}"
-      - run: ./scripts/release/verify-published "${{ inputs.release_version }}" "${{ inputs.source_sha }}" && test ! -e release-manifest/main && test ! -e release-manifest/latest
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: release-manifest, path: release-manifest}
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: build-and-push-immutable-images
+        run: ./scripts/release/build-and-push "${{ inputs.release_version }}" "${{ inputs.source_sha }}"
+      - name: verify-published-images-and-build-manifest
+        id: manifest
+        run: |
+          ./scripts/release/verify-published "${{ inputs.release_version }}" "${{ inputs.source_sha }}" "${{ needs.validate-release-source.outputs.source_tree }}"
+          {
+            printf 'api_digest=%s\n' "$(jq -r '.images[] | select(.component == "api") | .manifestDigest' release-manifest/release.json)"
+            printf 'web_digest=%s\n' "$(jq -r '.images[] | select(.component == "web") | .manifestDigest' release-manifest/release.json)"
+            printf 'postgis_digest=%s\n' "$(jq -r '.images[] | select(.component == "postgis") | .manifestDigest' release-manifest/release.json)"
+          } >> "$GITHUB_OUTPUT"
+          jq -r '.images[] | "\(.component | ascii_upcase)_IMAGE=\(.name)@\(.manifestDigest)"' release-manifest/release.json > release-manifest/.env.production.images
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-manifest-data
+          path: release-manifest
+          if-no-files-found: error
+          include-hidden-files: true
 
-  release-manifest-and-attestation:
-    needs: release-build-and-push
+  attest-and-verify-images:
+    needs: [validate-release-source, release-build-and-push]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with: {ref: '${{ inputs.source_sha }}'}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: {name: release-manifest, path: release-manifest}
-      - run: ./scripts/release/verify-published "${{ inputs.release_version }}" "${{ inputs.source_sha }}" && jq -e '.images[] | .manifestDigest | test("^sha256:[0-9a-f]{64}$")' release-manifest/*.json
-      - uses: actions/attest-build-provenance@v2
-        with: {subject-path: release-manifest}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: {name: release-manifest-data, path: release-manifest}
+      - name: validate-release-manifest
+        run: python3 scripts/release/release_manifest.py validate release-manifest/release.json "${{ inputs.release_version }}" "${{ inputs.source_sha }}" "${{ needs.validate-release-source.outputs.source_tree }}"
+      - uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: attest-api-image
+        id: attest_api
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skiru/family-places-api
+          subject-digest: ${{ needs.release-build-and-push.outputs.api_digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: attest-web-image
+        id: attest_web
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skiru/family-places-web
+          subject-digest: ${{ needs.release-build-and-push.outputs.web_digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: attest-postgis-image
+        id: attest_postgis
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skiru/family-places-postgis
+          subject-digest: ${{ needs.release-build-and-push.outputs.postgis_digest }}
+          push-to-registry: true
+          create-storage-record: false
+      - name: verify-image-attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API_DIGEST: ${{ needs.release-build-and-push.outputs.api_digest }}
+          WEB_DIGEST: ${{ needs.release-build-and-push.outputs.web_digest }}
+          POSTGIS_DIGEST: ${{ needs.release-build-and-push.outputs.postgis_digest }}
+        run: |
+          while IFS='|' read -r image digest; do
+            gh attestation verify "${image}@${digest}" --repo "$GITHUB_REPOSITORY"
+          done <<EOF
+          ghcr.io/skiru/family-places-api|$API_DIGEST
+          ghcr.io/skiru/family-places-web|$WEB_DIGEST
+          ghcr.io/skiru/family-places-postgis|$POSTGIS_DIGEST
+          EOF
+      - name: capture-attestation-evidence
+        env:
+          API_ATTESTATION_ID: ${{ steps.attest_api.outputs.attestation-id }}
+          API_ATTESTATION_URL: ${{ steps.attest_api.outputs.attestation-url }}
+          API_BUNDLE: ${{ steps.attest_api.outputs.bundle-path }}
+          WEB_ATTESTATION_ID: ${{ steps.attest_web.outputs.attestation-id }}
+          WEB_ATTESTATION_URL: ${{ steps.attest_web.outputs.attestation-url }}
+          WEB_BUNDLE: ${{ steps.attest_web.outputs.bundle-path }}
+          POSTGIS_ATTESTATION_ID: ${{ steps.attest_postgis.outputs.attestation-id }}
+          POSTGIS_ATTESTATION_URL: ${{ steps.attest_postgis.outputs.attestation-url }}
+          POSTGIS_BUNDLE: ${{ steps.attest_postgis.outputs.bundle-path }}
+        run: |
+          cp "$API_BUNDLE" release-manifest/api-attestation.json
+          cp "$WEB_BUNDLE" release-manifest/web-attestation.json
+          cp "$POSTGIS_BUNDLE" release-manifest/postgis-attestation.json
+          jq -n \
+            --arg apiId "$API_ATTESTATION_ID" --arg apiUrl "$API_ATTESTATION_URL" \
+            --arg webId "$WEB_ATTESTATION_ID" --arg webUrl "$WEB_ATTESTATION_URL" \
+            --arg postgisId "$POSTGIS_ATTESTATION_ID" --arg postgisUrl "$POSTGIS_ATTESTATION_URL" \
+            '{api:{id:$apiId,url:$apiUrl},web:{id:$webId,url:$webUrl},postgis:{id:$postgisId,url:$postgisUrl}}' \
+            > release-manifest/attestations.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-manifest
+          path: release-manifest
+          if-no-files-found: error
+          include-hidden-files: true

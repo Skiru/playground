@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+AWS_CLI_VERSION=2.27.41
+AWS_CLI_SHA256=2c6ed21cf7cff0a7d77118c69bee867128bf4c588db7b5c044ffba5faeb6ccde
+
+test "$(uname -m)" = aarch64
+sudo apt-get update
+sudo apt-get install --yes --no-install-recommends age ca-certificates curl jq unzip zsh
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+archive="$tmp_dir/awscliv2.zip"
+curl --fail --silent --show-error --location \
+  "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-${AWS_CLI_VERSION}.zip" \
+  --output "$archive"
+printf '%s  %s\n' "$AWS_CLI_SHA256" "$archive" | sha256sum --check --strict
+unzip -q "$archive" -d "$tmp_dir/installer"
+sudo "$tmp_dir/installer/aws/install" \
+  --install-dir /opt/c8a-aws-cli \
+  --bin-dir /opt/c8a-bin
+if [ -n "${GITHUB_PATH:-}" ]; then
+  printf '%s\n' /opt/c8a-bin >> "$GITHUB_PATH"
+fi
+
+test "$(uname -m)" = aarch64
+age --version
+jq --version
+zsh --version
+/opt/c8a-bin/aws --version
+docker version
+docker compose version

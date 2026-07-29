@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+version=${1:?usage: validate-request <semver> <full-sha> <main-ref>}
+source_sha=${2:?usage: validate-request <semver> <full-sha> <main-ref>}
+main_ref=${3:?usage: validate-request <semver> <full-sha> <main-ref>}
+
+printf '%s\n' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+printf '%s\n' "$source_sha" | grep -Eq '^[0-9a-f]{40}$'
+test "$(git rev-parse HEAD)" = "$source_sha"
+git rev-parse --verify "${main_ref}^{commit}" >/dev/null
+git merge-base --is-ancestor "$source_sha" "$main_ref"
+test -z "$(git status --porcelain)"
+git rev-parse 'HEAD^{tree}'

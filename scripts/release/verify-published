@@ -1,8 +1,12 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-version=${1:?usage: verify-published <semver> <full-sha>}; sha=${2:?usage: verify-published <semver> <full-sha>}; root=${0:A:h:h:h}
-mkdir -p "$root/release-manifest"
-for name in family-places-api family-places-web family-places-postgis; do
-  image="ghcr.io/skiru/$name:sha-$sha"; docker buildx imagetools inspect "$image" | tee "$root/release-manifest/$name.txt" | grep -q 'linux/arm64'; docker buildx imagetools inspect "$image" | grep -q 'linux/amd64'
-done
-jq -n --arg version "$version" --arg sha "$sha" --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{releaseVersion:$version,sourceSha:$sha,generatedAt:$generatedAt}' > "$root/release-manifest/release.json"
+#!/bin/sh
+set -eu
+
+version=${1:?usage: verify-published <semver> <full-sha> [source-tree]}
+source_sha=${2:?usage: verify-published <semver> <full-sha> [source-tree]}
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+source_tree=${3:-$(git -C "$repo_dir" rev-parse "${source_sha}^{tree}")}
+output_dir="$repo_dir/release-manifest"
+
+mkdir -p "$output_dir"
+python3 "$repo_dir/scripts/release/release_manifest.py" from-registry \
+  "$output_dir/release.json" "$version" "$source_sha" "$source_tree"

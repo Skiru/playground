@@ -1,0 +1,202 @@
+name: Certified release gates
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APP_SECRET: c8a-certification-only-secret
+  DATABASE_URL: postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8
+  LOCK_DSN: postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8
+  POSTGRES_DB: family_places
+  POSTGRES_USER: family_places
+  POSTGRES_PASSWORD: family_places
+  API_IMAGE: family-places-api:certification
+  WEB_IMAGE: family-places-web:certification
+  POSTGIS_IMAGE: family-places-postgis:certification
+  MEDIA_PUBLIC_BASE_URL: http://gateway:8080/media
+  MAP_STYLE_URL: http://gateway:8080/fixtures/map-style.json
+  MAP_ATTRIBUTION: FamilyPlaces certification map
+  MAP_PROVIDER_NAME: FamilyPlaces
+  CLOUDFLARE_TUNNEL_TOKEN_FILE: /tmp/c8a-cloudflared-token
+
+jobs:
+  quality-x64:
+    runs-on: ubuntu-24.04
+    env:
+      COMPOSE_PROJECT_NAME: certified-quality-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with: {node-version: 24, package-manager-cache: false}
+      - name: quality-clean-start
+        run: docker compose -f compose.yaml -f compose.dev.yaml down --volumes --remove-orphans
+      - name: compose-base-render
+        run: docker compose config --quiet
+      - name: compose-production-arm-render
+        run: docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config --quiet
+      - name: backend-dependencies
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api composer install --no-interaction --prefer-dist
+      - name: backend-format
+        run: |
+          docker compose -f compose.yaml -f compose.dev.yaml run --rm api composer validate --strict
+          docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/php-cs-fixer check --diff
+      - name: backend-container-lint
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console lint:container
+      - name: backend-yaml-lint
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console lint:yaml config
+      - name: backend-cache-warmup
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console cache:warmup --env=test
+      - name: backend-static-analysis
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+      - name: backend-architecture
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/deptrac analyse
+      - name: frontend-dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.13.1 --activate
+          pnpm install --frozen-lockfile
+      - name: api-client-build
+        run: pnpm --filter @family-places/api-client build
+      - name: frontend-lint
+        run: pnpm --filter @family-places/web lint
+      - name: frontend-typecheck
+        run: pnpm --filter @family-places/web typecheck
+      - name: frontend-build
+        run: pnpm --filter @family-places/web build
+      - name: api-client-runtime-image
+        run: |
+          docker compose -f compose.yaml -f compose.dev.yaml build api
+          docker image tag "${COMPOSE_PROJECT_NAME}-api" family-places-api:development
+      - name: api-client-consistency
+        run: ./scripts/api-check
+      - name: backend-test-migrations
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+      - name: backend-test-fixtures
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
+      - name: backend-tests
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
+      - name: frontend-tests
+        run: pnpm --filter @family-places/web test
+      - name: quality-compose-diagnostics
+        if: failure()
+        continue-on-error: true
+        run: |
+          mkdir -p evidence/quality
+          docker compose -f compose.yaml -f compose.dev.yaml ps --all > evidence/quality/compose-ps.txt
+          docker compose -f compose.yaml -f compose.dev.yaml logs > evidence/quality/compose.log
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quality-x64-evidence
+          path: |
+            reports
+            evidence/quality
+          if-no-files-found: ignore
+      - name: quality-cleanup
+        if: always()
+        run: docker compose -f compose.yaml -f compose.dev.yaml down --volumes --remove-orphans
+
+  security-x64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - name: security-evidence-directory
+        run: mkdir -p evidence/security
+      - name: action-pin-policy
+        run: ./scripts/ci/check-action-pins
+      - name: release-manifest-tests
+        run: ./scripts/release/test-manifest
+      - name: release-workflow-contract
+        run: ./scripts/ci/check-release-workflow
+      - name: gitleaks
+        env:
+          GITLEAKS_REPORT_PATH: evidence/security/gitleaks.json
+        run: ./scripts/verify-gitleaks 2>&1 | tee evidence/security/gitleaks.log
+      - name: trivy-filesystem
+        run: docker run --rm -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-filesystem.json /repo
+      - name: build-security-images
+        run: |
+          docker build -f infra/docker/api.Dockerfile -t family-places-api:certification .
+          docker build -f infra/docker/web.Dockerfile -t family-places-web:certification .
+          docker build -f infra/docker/postgis.Dockerfile -t family-places-postgis:certification .
+      - name: trivy-api-image
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-api.json family-places-api:certification
+      - name: trivy-api-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-api.json
+      - name: trivy-web-image
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-web.json family-places-web:certification
+      - name: trivy-web-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-web.json
+      - name: trivy-postgis-image
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-postgis.json family-places-postgis:certification
+      - name: trivy-postgis-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-postgis.json
+      - name: hadolint-api
+        run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/api.Dockerfile
+      - name: hadolint-web
+        run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/web.Dockerfile
+      - name: hadolint-postgis
+        run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/postgis.Dockerfile
+      - name: shellcheck
+        run: docker run --rm -v "$PWD:/mnt" koalaman/shellcheck-alpine:v0.10.0 shellcheck --exclude=SC1007 /mnt/scripts/check /mnt/scripts/test /mnt/scripts/ci/start-fresh-e2e-database /mnt/scripts/ci/check-action-pins /mnt/scripts/ci/check-release-workflow /mnt/scripts/ci/install-arm-certification-tools /mnt/scripts/release/build-and-push /mnt/scripts/release/dry-run /mnt/scripts/release/test-manifest /mnt/scripts/release/validate-request /mnt/scripts/release/verify-published /mnt/scripts/verify-gitleaks /mnt/scripts/verify-gitleaks-allowlist
+      - name: composer-audit
+        run: docker run --rm -v "$PWD/apps/api:/app" -w /app composer:2 composer audit --locked
+      - name: pnpm-audit
+        run: docker run --rm -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm@11.13.1 audit --audit-level high'
+      - name: compose-policy
+        run: |
+          docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config > evidence/security/compose.yaml
+          if grep -Eq '"?(5432|6379):' evidence/security/compose.yaml; then exit 1; fi
+          if grep -Eq 'cloudflare.*token.*(=|:).+[^_]' evidence/security/compose.yaml; then exit 1; fi
+          if grep -Eq 'image: .*:(latest|main)( |$)' evidence/security/compose.yaml; then exit 1; fi
+          if grep -Eq 'cap_add:.*(SYS_ADMIN|NET_ADMIN)' evidence/security/compose.yaml; then exit 1; fi
+      - name: sbom
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo anchore/syft:v1.42.1 dir:. -o cyclonedx-json=evidence/security/sbom.json
+          jq -e '.components | length > 0' evidence/security/sbom.json
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with: {name: security-x64-evidence, path: evidence/security, if-no-files-found: ignore}
+
+  native-arm64-full-stack:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
+      - name: install-arm-certification-tools
+        run: ./scripts/ci/install-arm-certification-tools
+      - name: native-arm-rehearsal
+        run: ./scripts/production/test-native-arm64
+      - name: native-arm-failure-summary
+        if: failure()
+        run: |
+          for evidence_file in evidence/native-arm64/*.txt evidence/native-arm64/*.log; do
+            if [ -f "$evidence_file" ]; then
+              printf '\n===== %s =====\n' "$evidence_file"
+              tail -n 100 "$evidence_file"
+            fi
+          done
+          failed_files=$(mktemp)
+          grep -l '^status=FAIL' evidence/native-arm64/*.txt > "$failed_files" 2>/dev/null || true
+          while IFS= read -r failed_file; do
+            failure_message=$(tail -n 20 "$failed_file" | tr '\n' '|')
+            echo "::error file=${failed_file},title=Native ARM stage failure::${failure_message}"
+          done < "$failed_files"
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-arm64-evidence
+          path: |
+            .production
+            evidence/native-arm64
+          if-no-files-found: ignore

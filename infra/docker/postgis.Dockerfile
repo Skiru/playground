@@ -3,6 +3,17 @@ RUN CGO_ENABLED=0 go install -trimpath -ldflags '-s -w' github.com/tianon/gosu@6
 
 FROM postgres:18-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
 
+ARG OCI_SOURCE=https://github.com/Skiru/playground
+ARG OCI_REVISION
+ARG OCI_CREATED
+ARG OCI_VERSION
+LABEL org.opencontainers.image.source=$OCI_SOURCE \
+    org.opencontainers.image.revision=$OCI_REVISION \
+    org.opencontainers.image.created=$OCI_CREATED \
+    org.opencontainers.image.version=$OCI_VERSION \
+    org.opencontainers.image.title="family-places-postgis" \
+    org.opencontainers.image.description="FamilyPlaces PostgreSQL/PostGIS persistence service"
+
 COPY --from=gosu-builder /go/bin/gosu /usr/local/bin/gosu
 
 # PGDG provides signed arm64 packages for PostgreSQL 18/PostGIS 3.6; builds never occur on the VM.
