@@ -81,6 +81,10 @@ jobs:
           docker image tag "${COMPOSE_PROJECT_NAME}-api" family-places-api:development
       - name: api-client-consistency
         run: ./scripts/api-check
+      - name: backend-test-migrations
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+      - name: backend-test-fixtures
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
       - name: backend-tests
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
       - name: frontend-tests

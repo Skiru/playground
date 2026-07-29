@@ -37,15 +37,12 @@ test.describe("EasyAdmin Panel Tests", () => {
     await page.getByLabel("Hasło").fill("test-password");
 
     // 5. CSS and JS returns 200
-    const assetResponses: Promise<void>[] = [];
+    const failedAssets: Array<{ url: string; status: number }> = [];
     page.on("response", (res) => {
       const url = res.url();
-      if (url.includes("/build/") || url.includes("/bundles/") || url.endsWith(".css") || url.endsWith(".js")) {
-        assetResponses.push(
-          res.finished().then(() => {
-            expect(res.status()).toBe(200);
-          })
-        );
+      const isAsset = url.includes("/build/") || url.includes("/bundles/") || url.endsWith(".css") || url.endsWith(".js");
+      if (isAsset && res.status() !== 200) {
+        failedAssets.push({ url, status: res.status() });
       }
     });
 
@@ -55,6 +52,7 @@ test.describe("EasyAdmin Panel Tests", () => {
 
     // Wait for assets to load and check if any failed
     await page.waitForLoadState("networkidle");
+    expect(failedAssets).toEqual([]);
 
     // 3. Dashboard has sidebar and menu
     await expect(page.locator("aside, [class*='sidebar'], #sidebar").first()).toBeVisible();
@@ -133,9 +131,11 @@ test.describe("EasyAdmin Panel Tests", () => {
     await expect(page.locator("form").first()).toBeVisible();
 
     // 8. Styled layout (not raw)
-    const isStyled = await page.evaluate(() => {
-      const styles = window.getComputedStyle(document.body);
-      return styles.backgroundColor !== "rgba(0, 0, 0, 0)" && styles.fontFamily !== "";
+    const fieldset = page.locator(".place-admin-form fieldset").first();
+    await expect(fieldset).toBeVisible();
+    const isStyled = await fieldset.evaluate((element) => {
+      const styles = window.getComputedStyle(element);
+      return styles.borderStyle === "solid" && styles.borderWidth !== "0px" && styles.padding !== "0px";
     });
     expect(isStyled).toBeTruthy();
   });
