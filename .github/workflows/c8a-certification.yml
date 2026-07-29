@@ -75,6 +75,8 @@ jobs:
         run: pnpm --filter @family-places/web typecheck
       - name: frontend-build
         run: pnpm --filter @family-places/web build
+      - name: api-client-runtime-image
+        run: docker image tag "$(docker compose -f compose.yaml -f compose.dev.yaml images -q api)" family-places-api:development
       - name: api-client-consistency
         run: ./scripts/api-check
       - name: backend-tests
@@ -117,11 +119,13 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm --filter @family-places/web exec playwright install --with-deps chromium
       - name: e2e-build
-        run: docker compose -f compose.yaml -f compose.e2e.yaml build api web
+        run: docker compose -f compose.yaml -f compose.e2e.yaml build api web fixtures
       - name: e2e-database-start
         run: ./scripts/ci/start-fresh-e2e-database
       - name: e2e-migrations
         run: docker compose -f compose.yaml -f compose.e2e.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+      - name: e2e-fixtures
+        run: docker compose -f compose.yaml -f compose.e2e.yaml run --rm fixtures php bin/console doctrine:fixtures:load --no-interaction
       - name: e2e-api-start
         run: docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d api
       - name: e2e-web-start
@@ -136,9 +140,9 @@ jobs:
           curl --noproxy '*' --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/api/v1/health/ready
           curl --noproxy '*' --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/ > /dev/null
       - name: playwright-desktop
-        run: pnpm --filter @family-places/web e2e:desktop
+        run: pnpm --filter @family-places/web exec playwright test --project=chromium-desktop --workers=1 --global-timeout=2700000 --reporter=line
       - name: playwright-mobile
-        run: pnpm --filter @family-places/web e2e:mobile
+        run: pnpm --filter @family-places/web exec playwright test --project=chromium-mobile --workers=1 --global-timeout=2700000 --reporter=line
       - name: accessibility
         run: pnpm --filter @family-places/web exec playwright test --project=chromium-desktop e2e/accessibility.spec.ts e2e/community-accessibility.spec.ts e2e/admin-easyadmin.spec.ts --reporter=line
       - name: e2e-failure-diagnostics

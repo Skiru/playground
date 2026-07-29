@@ -26,6 +26,25 @@ services:
       MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:8080/media
     volumes:
       - media-data:/data/familyplaces-media
+  fixtures:
+    profiles: [fixtures]
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: development
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 0
+      APP_SECRET: deterministic-e2e-secret
+      DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
+      LOCK_DSN: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
+      DEV_AUTH_ENABLED: "true"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks: [internal]
+    volumes:
+      - media-data:/data/familyplaces-media
   web:
     environment:
       NODE_ENV: production

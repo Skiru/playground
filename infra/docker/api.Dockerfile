@@ -69,6 +69,7 @@ USER www-data
 
 FROM production AS discovery
 USER root
+# hadolint ignore=DL3008
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*

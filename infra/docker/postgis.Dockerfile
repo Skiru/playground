@@ -7,6 +7,8 @@ COPY --from=gosu-builder /go/bin/gosu /usr/local/bin/gosu
 
 # PGDG provides signed arm64 packages for PostgreSQL 18/PostGIS 3.6; builds never occur on the VM.
 ARG POSTGIS_VERSION=3.6
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# hadolint ignore=DL3008
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
     && install -d -m 0755 /usr/share/keyrings \
