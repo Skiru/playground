@@ -50,3 +50,9 @@ scripts/verify-gitleaks:private-key:25
 # Justification: False positive triggered by 40-character Git commit hash references in the final certification report.
 reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:24
 reports/implementation/c2-release-evidence-fix-v2-certification.json:generic-api-key:32
+
+# Source commit: b2b7e7dbd67eb046b78834c856d8d3177ba0c1ed
+# Source file: scripts/production/test-native-arm64
+# Rule ID: generic-api-key
+# Justification: Deterministic PostgreSQL fixture used only by the isolated native certification rehearsal.
+b2b7e7dbd67eb046b78834c856d8d3177ba0c1ed:scripts/production/test-native-arm64:generic-api-key:12

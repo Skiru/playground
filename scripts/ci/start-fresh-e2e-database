@@ -1,0 +1,51 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+evidence="$repo_dir/evidence/browser/database"
+mkdir -p "$evidence"
+
+compose() {
+  docker compose -f "$repo_dir/compose.yaml" -f "$repo_dir/compose.e2e.yaml" "$@"
+}
+
+capture_failure() {
+  compose ps --all > "$evidence/compose-ps.txt" 2>&1 || true
+  compose logs database > "$evidence/database.log" 2>&1 || true
+  container=$(compose ps -aq database 2>/dev/null || true)
+  if [ -n "$container" ]; then
+    docker inspect "$container" > "$evidence/database-inspect.json" 2>&1 || true
+    volume=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql"}}{{.Name}}{{end}}{{end}}' "$container" 2>/dev/null || true)
+    if [ -n "$volume" ]; then
+      docker volume inspect "$volume" > "$evidence/database-volume-inspect.json" 2>&1 || true
+    fi
+  fi
+}
+
+cleanup() {
+  exit_code=$?
+  if [ "$exit_code" -ne 0 ]; then capture_failure; fi
+  exit "$exit_code"
+}
+trap cleanup EXIT
+
+: "${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME must isolate the E2E database}"
+compose down --volumes --remove-orphans
+compose up --wait -d database
+
+container=$(compose ps -q database)
+test -n "$container"
+docker inspect "$container" > "$evidence/database-inspect.json"
+docker inspect --format '{{.Config.Image}}' "$container" | grep -Fq 'postgis/postgis:18-3.6'
+docker inspect --format '{{.Platform}}' "$container" | grep -Fq 'linux'
+for variable in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD; do
+  docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container" | grep -Eq "^${variable}=.+"
+done
+volume=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql"}}{{.Name}}{{end}}{{end}}' "$container")
+test -n "$volume"
+docker volume inspect "$volume" > "$evidence/database-volume-inspect.json"
+compose exec -T database psql -U family_places_test -d family_places_test -tAc 'SHOW server_version' | grep -Eq '^18\.'
+compose exec -T database psql -U family_places_test -d family_places_test -tAc 'SELECT PostGIS_Lib_Version()' | grep -Eq '^3\.6'
+compose ps --all > "$evidence/compose-ps.txt"
+compose logs database > "$evidence/database.log" 2>&1
+printf '%s\n' 'PASS: fresh x64 PostgreSQL 18/PostGIS 3.6 E2E volume initialized' > "$evidence/result.txt"
