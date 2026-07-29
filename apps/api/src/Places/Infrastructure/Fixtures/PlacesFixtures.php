@@ -16,7 +16,7 @@ final class PlacesFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        $this->connection->executeStatement('TRUNCATE moderation_idempotency_keys, content_reports, moderation_actions, forum_posts, forum_threads, forum_categories, external_place_references, special_opening_intervals, special_opening_days, weekly_opening_intervals, place_age_zones, place_amenities, place_categories, reviews, place_comments, places, amenities, categories, cities, users CASCADE');
+        $this->connection->executeStatement('TRUNCATE place_source_links, place_candidates, place_discovery_runs, place_discovery_areas, moderation_idempotency_keys, content_reports, moderation_actions, forum_posts, forum_threads, forum_categories, external_place_references, special_opening_intervals, special_opening_days, weekly_opening_intervals, place_age_zones, place_amenities, place_categories, reviews, place_comments, places, amenities, categories, cities, users CASCADE');
         $now = '2026-07-16 08:00:00';
         $this->connection->insert('users', ['id' => self::id(1), 'email' => 'admin@example.test', 'display_name' => 'E2E Administrator', 'password_hash' => '$2y$04$1gdB2/YIo.5sVRE7JpMdR.AL2c9cef8DPnEm/4fDHp/syvn/zOTBK', 'google_subject' => null, 'roles' => json_encode(['ROLE_ADMIN'], \JSON_THROW_ON_ERROR), 'status' => 'ACTIVE', 'created_at' => $now, 'updated_at' => $now, 'last_login_at' => null]);
         $cities = [
@@ -25,6 +25,7 @@ final class PlacesFixtures extends Fixture
             ['Wrocław', 'wroclaw', 51.1079, 17.0385],
             ['Gdańsk', 'gdansk', 54.3520, 18.6466],
             ['Poznań', 'poznan', 52.4064, 16.9252],
+            ['Rzeszów', 'rzeszow', 50.0413, 21.9990],
         ];
         foreach ($cities as $index => [$name, $slug, $lat, $lon]) {
             $this->connection->executeStatement(

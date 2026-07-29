@@ -100,6 +100,11 @@ final class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToRoute('Miejsca', 'fa fa-map-marker-alt', 'admin_places');
         yield MenuItem::linkToRoute('Dodaj miejsce', 'fa fa-plus', 'admin_places_new');
 
+        yield MenuItem::section('Odkrywanie miejsc');
+        yield MenuItem::linkToRoute('Kandydaci', 'fa fa-magnifying-glass-location', 'admin_place_discovery_candidates');
+        yield MenuItem::linkToRoute('Przebiegi', 'fa fa-clock-rotate-left', 'admin_place_discovery_runs');
+        yield MenuItem::linkToRoute('Obszary', 'fa fa-map', 'admin_place_discovery_areas');
+
         yield MenuItem::section('Słowniki');
         yield MenuItem::linkToRoute('Miasta', 'fa fa-city', 'admin_dictionary_list', ['type' => 'cities']);
         yield MenuItem::linkToRoute('Kategorie', 'fa fa-tags', 'admin_dictionary_list', ['type' => 'categories']);

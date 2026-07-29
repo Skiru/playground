@@ -10,6 +10,13 @@ framework:
                     delay: 1000
                     multiplier: 2
                     max_delay: 10000
+            place_discovery:
+                dsn: '%env(PLACE_DISCOVERY_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 4
+                    delay: 5000
+                    multiplier: 2
+                    max_delay: 60000
             failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
 
@@ -17,6 +24,7 @@ framework:
             # Route your messages to the transports
             'App\Places\Application\Command\ProcessPhoto': async
             'App\Places\Application\Command\CleanupPlacePhotoFiles': async
+            'App\PlaceDiscovery\Application\Message\DiscoverPlacesForArea': place_discovery
 
 # when@test:
 #    framework:

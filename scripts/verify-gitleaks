@@ -49,12 +49,14 @@ echo "--- GITLEAKS SENTINEL TEST PASSED ---"
 
 # Run full-history scan and require zero unexplained findings
 echo "Running Gitleaks full-history scan on repository..."
+git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
 set +e
 docker run --rm \
-  -v "$repo_dir:/repo" \
-  -w /repo \
+  -v "$repo_dir:$repo_dir" \
+  -v "$git_common_dir:$git_common_dir" \
+  -w "$repo_dir" \
   zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
-  git --config=/repo/.gitleaks.toml --redact --verbose
+  git --config="$repo_dir/.gitleaks.toml" --redact --verbose
 history_status=$?
 set -e
 

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const placePath = "/miejsca/demo-1-demo-bawialnia-mokotow";
+
 async function loginAs(page: Page, email: string, displayName: string, roles: string[] = ["ROLE_USER"]) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle");
@@ -33,13 +35,11 @@ test.describe("Community Reviews E2E Real Journey", () => {
     await loginAs(alicePage, aliceEmail, "Alice");
     await loginAs(bobPage, bobEmail, "Bob");
 
-    // 2. Go to first place details page under Alice Page
-    await alicePage.goto("/miejsca?city=warszawa");
-    await expect(alicePage.locator(".place-card").first()).toBeVisible();
+    // 2. Use the stable seeded place so earlier admin journeys cannot affect this workflow.
     const initialReviewsResponsePromise = alicePage.waitForResponse((response) =>
       response.url().includes("/api/v1/places/") && response.url().includes("/reviews") && response.request().method() === "GET"
     );
-    await alicePage.locator(".place-card").first().getByRole("link", { name: /Zobacz miejsce:/ }).click();
+    await alicePage.goto(placePath);
     const initialReviewsResponse = await initialReviewsResponsePromise;
     const initialReviewsPayload = await initialReviewsResponse.json() as { summary: { totalReviews: number } };
     await expect(alicePage.getByRole("heading", { name: "Opinie i oceny rodziców" }).first()).toBeVisible();

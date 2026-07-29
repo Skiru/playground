@@ -3,3 +3,6 @@ services:
     App\Shared\Application\Storage\StorageInterface:
         alias: App\Shared\Infrastructure\Storage\StorageService
         public: true
+    App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider:
+        alias: App\PlaceDiscovery\Infrastructure\Overture\OverturePlaceDiscoveryProvider
+        public: true

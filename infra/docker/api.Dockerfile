@@ -1,6 +1,6 @@
 FROM dunglas/frankenphp:php8.5-bookworm@sha256:cd7a5db256e74255bb50edf57b19e1bc6f57f91557d7bb864cd76e89543b6727 AS vendor
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-RUN install-php-extensions pdo_pgsql pgsql intl opcache zip gd exif
+RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
 COPY --from=composer:2@sha256:5946476338742b200bb9ff88f8be56275ddae4b3949c72305cb0dbf10cfcb760 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY apps/api/composer.json apps/api/composer.lock ./
@@ -8,7 +8,7 @@ RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --pr
 
 FROM dunglas/frankenphp:php8.5-bookworm@sha256:cd7a5db256e74255bb50edf57b19e1bc6f57f91557d7bb864cd76e89543b6727 AS base
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-RUN install-php-extensions pdo_pgsql pgsql intl opcache zip gd exif
+RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
 WORKDIR /app
 COPY infra/caddy/Caddyfile /etc/frankenphp/Caddyfile
 
@@ -43,4 +43,19 @@ COPY --from=production-build --chown=www-data:www-data /app /app
 RUN chown -R www-data:www-data /app \
     && chmod -R u=rwX,g=rX,o= /app \
     && chmod -R u=rwX,g=rwX /app/var
+USER www-data
+
+FROM production AS discovery
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+COPY tools/place-discovery/requirements.txt /opt/familyplaces/requirements.txt
+RUN pip3 install --break-system-packages --no-cache-dir -r /opt/familyplaces/requirements.txt \
+    && pip3 check
+COPY tools/place-discovery/overture_helper.py /opt/familyplaces/overture_helper.py
+COPY tools/place-discovery/NOTICE /opt/familyplaces/NOTICE
+COPY NOTICE /opt/familyplaces/PROJECT-NOTICE
+COPY LICENSES/Apache-2.0.txt /opt/familyplaces/Apache-2.0.txt
+RUN chmod 0555 /opt/familyplaces/overture_helper.py
 USER www-data

@@ -12,6 +12,9 @@ export function SiteFooter() {
           <Link to="/miejsca" className="text-sm text-muted-foreground hover:text-primary">
             {content.navigation.placesCatalog}
           </Link>
+          <a href="https://overturemaps.org/" rel="license noreferrer" className="text-sm text-muted-foreground hover:text-primary">
+            Część danych o miejscach: Overture Maps
+          </a>
         </div>
         <div className="mt-8 md:order-1 md:mt-0">
           <p className="text-center text-sm text-muted-foreground">

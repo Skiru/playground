@@ -1,0 +1,32 @@
+FamilyPlaces place discovery data notices
+
+Place suggestions may contain data made available by Overture Maps Foundation.
+See https://overturemaps.org/ and the per-record, per-property provenance retained
+by this application. Overture Places can combine multiple source licenses.
+
+Foursquare OS Places Notice
+
+Copyright 2026 Foursquare Labs, Inc. All rights reserved.
+
+The Foursquare OS Places dataset (the "Data") is licensed under the Apache
+License, Version 2.0 (the "License"). You may not use, modify, or distribute the
+Data except in compliance with the License.
+
+As set forth more fully in the License, if you use, modify, or distribute the
+Data, you must provide recipients with a copy of the License; if applicable,
+include prominent notices to the extent you changed the Data; and preserve
+attribution to Foursquare, including this full notice. FamilyPlaces retains
+source provenance, normalizes selected bounded fields into private candidates,
+and permits an administrator to create a separate draft Place.
+
+You may obtain a copy of the License in `LICENSES/Apache-2.0.txt` and at
+https://www.apache.org/licenses/LICENSE-2.0. Unless required by applicable law
+or agreed to in writing, the Data is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations.
+
+Other Overture-provided properties may identify CDLA Permissive 2.0 or another
+source license. The retained provenance, not a blanket license claim, controls.
+See https://cdla.dev/permissive-2-0/.
+
+The official overturemaps client is distributed under the MIT License.
