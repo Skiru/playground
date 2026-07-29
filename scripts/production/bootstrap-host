@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+[[ $EUID -eq 0 ]] || { print -u2 'run as root during initial host provisioning'; exit 1; }
+apt-get update
+apt-get install -y ca-certificates curl unattended-upgrades chrony awscli age zsh
+systemctl enable --now chrony unattended-upgrades docker
+install -d -m 0750 -o "${SUDO_USER:?run via sudo}" -g "${SUDO_USER}" /srv/familyplaces
+if ! swapon --show | grep -q .; then fallocate -l 2G /swapfile; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; echo '/swapfile none swap sw 0 0' >> /etc/fstab; fi
+cat > /etc/docker/daemon.json <<'JSON'
+{"log-driver":"local","log-opts":{"max-size":"10m","max-file":"3"}}
+JSON
+systemctl restart docker
+print 'host baseline configured; configure firewall and Cloudflare/R2/Google manually per runbook'

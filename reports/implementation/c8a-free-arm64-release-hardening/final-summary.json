@@ -1,0 +1,11 @@
+{
+  "checkpoint": "C8A_FREE_ARM64_PRODUCTION_RELEASE_HARDENING",
+  "status": "PARTIAL",
+  "decision": "READY_FOR_NATIVE_ARM_CERTIFICATION",
+  "startSha": "bec176bedcdea0e6c662b1992b488554150b06cf",
+  "startTree": "ff00b539feb0766e61742b022d8779c3dfa22dd5",
+  "branch": "feat/family-places-c8a-free-arm64-production-release-hardening",
+  "arm64Postgis": "PASS: PostgreSQL 18.4, PostGIS 3.6.4, GiST, spatial query, restart persistence",
+  "externalActions": "Oracle, Cloudflare, R2, Google, GHCR publication and native ARM full-stack certification",
+  "secretsRedacted": true
+}

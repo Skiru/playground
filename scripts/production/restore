@@ -1,0 +1,15 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+object=${1:-}
+[[ -n $object ]] || die 'usage: restore <R2 object path> (only into a fresh empty database)'
+require_env; source "$ENV_FILE"
+command -v aws >/dev/null || die 'AWS CLI is required'; command -v age >/dev/null || die 'age is required'
+[[ -n ${AGE_IDENTITY_FILE:-} && -r $AGE_IDENTITY_FILE ]] || die 'AGE_IDENTITY_FILE must reference offline recovery material'
+[[ $(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'") == 0 ]] || die 'restore only supports a fresh empty database'
+tmp=$(mktemp); trap 'rm -f "$tmp" "$tmp.dump"' EXIT
+AWS_ACCESS_KEY_ID="$BACKUP_S3_KEY" AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET" aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3 cp "s3://$BACKUP_S3_BUCKET/$object" "$tmp" >/dev/null
+age -d -i "$AGE_IDENTITY_FILE" -o "$tmp.dump" "$tmp"
+pg_restore --list "$tmp.dump" >/dev/null
+compose exec -T database pg_restore -U "$POSTGRES_USER" --no-owner --role="$POSTGRES_USER" -d "$POSTGRES_DB" < "$tmp.dump"
+print 'restore completed into an empty database'

@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+target=${1:-}
+[[ -n $target && -f $target ]] || die 'usage: rollback <recorded-release-env>'
+grep -q '@sha256:' "$target" || die 'recorded release has no immutable image digests'
+grep -q '^MIGRATIONS_ROLLBACK_SAFE=true$' "$target" || die 'refusing image rollback: schema compatibility is not explicitly certified; see operations runbook'
+cp "$target" "$ENV_FILE"
+"${0:A:h}/preflight"
+compose pull
+compose up --wait -d worker api web gateway cloudflared
+"${0:A:h}/smoke"
+print 'image rollback completed; no database downgrade was attempted'

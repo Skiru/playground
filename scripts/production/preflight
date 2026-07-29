@@ -1,0 +1,18 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+require_env
+[[ $(uname -m) == aarch64 ]] || die 'Oracle production host must be aarch64'
+command -v docker >/dev/null || die 'Docker is required'
+docker compose version >/dev/null || die 'Docker Compose v2 is required'
+[[ $(docker info --format '{{.Server.Architecture}}') == aarch64 ]] || die 'Docker daemon is not arm64'
+[[ $(sysctl -n hw.memsize 2>/dev/null || free -b | awk '/Mem:/ {print $2}') -ge 8589934592 ]] || die 'at least 8 GB RAM is required'
+"$ROOT/scripts/validate-production-env" "$ENV_FILE"
+source "$ENV_FILE"
+for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do docker buildx imagetools inspect "$image" | grep -q 'linux/arm64' || die "missing arm64 manifest: ${image%%@*}"; docker pull "$image" >/dev/null; done
+[[ -n ${CLOUDFLARE_TUNNEL_TOKEN:-} ]] || die 'missing Cloudflare Tunnel token'
+command -v aws >/dev/null || die 'AWS CLI is required for R2 verification and backup'
+AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3api head-bucket --bucket "$STORAGE_S3_BUCKET" >/dev/null
+AWS_ACCESS_KEY_ID="$BACKUP_S3_KEY" AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET" aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-bucket --bucket "$BACKUP_S3_BUCKET" >/dev/null
+compose config --quiet
+print 'preflight passed (credentials and values redacted)'

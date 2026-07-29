@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+source "$ENV_FILE"
+compose exec -T api curl --fail --silent http://localhost/api/v1/health/live >/dev/null
+compose exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
+compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT PostGIS_Version()' | grep -q '^3\.6'
+key="release-smoke/$(date -u +%s)-$$"
+printf release-smoke | AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp - "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
+AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 rm "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
+print 'internal health, PostGIS, and disposable R2 object smoke passed'

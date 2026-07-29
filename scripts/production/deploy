@@ -1,0 +1,22 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+require_env
+mkdir -p "$(release_dir)" "$ROOT/.production"
+exec 9>"$ROOT/.production/deploy.lock"
+flock -n 9 || die 'another deployment is active'
+"${0:A:h}/preflight"
+source "$ENV_FILE"
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+previous="$(release_dir)/$timestamp.previous.env"
+[[ -f "$ROOT/.production/current.env" ]] && cp "$ROOT/.production/current.env" "$previous"
+compose pull
+"${0:A:h}/backup" pre-deploy
+compose up --wait -d database
+compose run --rm --no-deps api php bin/console doctrine:migrations:migrate --no-interaction
+compose up --wait -d worker api web gateway cloudflared
+"${0:A:h}/smoke"
+umask 077
+cp "$ENV_FILE" "$ROOT/.production/current.env"
+print "release=${RELEASE_VERSION:-unknown} sha=${RELEASE_SHA:-unknown} deployed_at=$timestamp" > "$ROOT/.production/current-release.txt"
+print 'deployment completed; discovery profile remains disabled'

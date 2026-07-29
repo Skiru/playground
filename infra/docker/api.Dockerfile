@@ -32,12 +32,16 @@ RUN APP_SECRET=build-time-placeholder DATABASE_URL='postgresql://build:build@dat
 FROM base AS production
 ENV APP_ENV=prod APP_DEBUG=0
 
-LABEL org.opencontainers.image.source="https://github.com/Skiru/playground"
-LABEL org.opencontainers.image.revision="2338908d630973138a6d9fd27d2ae8d758ba6d50"
-LABEL org.opencontainers.image.created="2026-07-17T09:00:00Z"
-LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.title="family-places-api"
-LABEL org.opencontainers.image.description="FamilyPlaces backend platform service"
+ARG OCI_SOURCE=https://github.com/Skiru/playground
+ARG OCI_REVISION
+ARG OCI_CREATED
+ARG OCI_VERSION
+LABEL org.opencontainers.image.source=$OCI_SOURCE \
+    org.opencontainers.image.revision=$OCI_REVISION \
+    org.opencontainers.image.created=$OCI_CREATED \
+    org.opencontainers.image.version=$OCI_VERSION \
+    org.opencontainers.image.title="family-places-api" \
+    org.opencontainers.image.description="FamilyPlaces backend platform service"
 
 COPY --from=production-build --chown=www-data:www-data /app /app
 RUN chown -R www-data:www-data /app \

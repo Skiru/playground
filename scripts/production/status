@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+compose ps
+[[ -f "$ROOT/.production/current-release.txt" ]] && cat "$ROOT/.production/current-release.txt"
