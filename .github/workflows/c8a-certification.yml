@@ -56,6 +56,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console lint:container
       - name: backend-yaml-lint
         run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console lint:yaml config
+      - name: backend-cache-warmup
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console cache:warmup --env=test
       - name: backend-static-analysis
         run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api vendor/bin/phpstan analyse --no-progress --memory-limit=512M
       - name: backend-architecture
@@ -126,9 +128,11 @@ jobs:
         run: docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
       - name: e2e-readiness
         run: |
-          curl --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/api/v1/health/ready
-          curl --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/ > /dev/null
           docker compose -f compose.yaml -f compose.e2e.yaml ps
+          docker compose -f compose.yaml -f compose.e2e.yaml exec -T api curl --fail --silent http://localhost/api/v1/health/ready
+          docker compose -f compose.yaml -f compose.e2e.yaml exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+          curl --noproxy '*' --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/api/v1/health/ready
+          curl --noproxy '*' --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/ > /dev/null
       - name: playwright-desktop
         run: pnpm --filter @family-places/web e2e:desktop
       - name: playwright-mobile
@@ -167,7 +171,7 @@ jobs:
           ./scripts/verify-gitleaks-allowlist
           docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 detect --source=/repo --config=.gitleaks.toml --gitleaks-ignore-path=.gitleaksignore --redact --report-format=json --report-path=evidence/security/gitleaks.json 2>&1 | tee evidence/security/gitleaks.log
       - name: trivy-filesystem
-        run: docker run --rm -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 fs --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-filesystem.json /repo
+        run: docker run --rm -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-filesystem.json /repo
       - name: build-security-images
         run: |
           docker build -f infra/docker/api.Dockerfile -t family-places-api:certification .
@@ -246,6 +250,12 @@ jobs:
               tail -n 100 "$evidence_file"
             fi
           done
+          failed_files=$(mktemp)
+          grep -l '^status=FAIL' evidence/native-arm64/*.txt > "$failed_files" 2>/dev/null || true
+          while IFS= read -r failed_file; do
+            failure_message=$(tail -n 20 "$failed_file" | tr '\n' '|')
+            echo "::error file=${failed_file},title=Native ARM stage failure::${failure_message}"
+          done < "$failed_files"
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
