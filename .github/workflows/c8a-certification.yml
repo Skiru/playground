@@ -46,6 +46,8 @@ jobs:
         run: docker compose config --quiet
       - name: compose-production-arm-render
         run: docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config --quiet
+      - name: backend-dependencies
+        run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api composer install --no-interaction --prefer-dist
       - name: backend-format
         run: |
           docker compose -f compose.yaml -f compose.dev.yaml run --rm api composer validate --strict
@@ -124,8 +126,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
       - name: e2e-readiness
         run: |
-          curl --fail --silent http://127.0.0.1:8080/api/v1/health/ready
-          curl --fail --silent http://127.0.0.1:3000/ > /dev/null
+          curl --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/api/v1/health/ready
+          curl --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/ > /dev/null
           docker compose -f compose.yaml -f compose.e2e.yaml ps
       - name: playwright-desktop
         run: pnpm --filter @family-places/web e2e:desktop
@@ -235,6 +237,15 @@ jobs:
           uname -m
       - name: native-arm-rehearsal
         run: ./scripts/production/test-native-arm64
+      - name: native-arm-failure-summary
+        if: failure()
+        run: |
+          for evidence_file in evidence/native-arm64/*.txt evidence/native-arm64/*.log; do
+            if [ -f "$evidence_file" ]; then
+              printf '\n===== %s =====\n' "$evidence_file"
+              tail -n 100 "$evidence_file"
+            fi
+          done
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

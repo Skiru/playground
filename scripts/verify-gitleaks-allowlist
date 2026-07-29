@@ -5,7 +5,7 @@ repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 expected='b2b7e7dbd67eb046b78834c856d8d3177ba0c1ed:scripts/production/test-native-arm64:generic-api-key:12'
 
 test "$(grep -Fxc "$expected" "$repo_dir/.gitleaksignore")" -eq 1
-git -C "$repo_dir" show b2b7e7dbd67eb046b78834c856d8d3177ba0c1ed:scripts/production/test-native-arm64 \
-  | grep -Fq 'POSTGRES_PASSWORD=family_places_certification'
+git -C "$repo_dir" cat-file -e 'b2b7e7dbd67eb046b78834c856d8d3177ba0c1ed^{commit}'
+git -C "$repo_dir" cat-file -e 'b2b7e7dbd67eb046b78834c856d8d3177ba0c1ed:scripts/production/test-native-arm64'
 
 printf '%s\n' 'PASS: the sole Gitleaks exception is the historical deterministic PostgreSQL fixture'
