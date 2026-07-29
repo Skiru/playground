@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+version=${1:?usage: build-and-push <semver> <full-sha>}; sha=${2:?usage: build-and-push <semver> <full-sha>}
+[[ $version =~ '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$' && $sha =~ '^[0-9a-f]{40}$' ]] || { print -u2 'invalid immutable release request'; exit 1; }
+root=${0:A:h:h:h}; mkdir -p "$root/release-manifest"
+for item in 'api infra/docker/api.Dockerfile family-places-api' 'web infra/docker/web.Dockerfile family-places-web' 'postgis infra/docker/postgis.Dockerfile family-places-postgis'; do
+  parts=(${=item}); image="ghcr.io/skiru/${parts[3]}"; docker buildx build --platform linux/amd64,linux/arm64 --push --provenance=true --sbom=true --file "$root/${parts[2]}" --tag "$image:sha-$sha" --tag "$image:v$version" --build-arg OCI_REVISION="$sha" --build-arg OCI_VERSION="$version" "$root"
+  docker buildx imagetools inspect "$image:sha-$sha" > "$root/release-manifest/${parts[1]}.manifest.txt"
+done
+git -C "$root" rev-parse "$sha^{tree}" > "$root/release-manifest/source-tree.txt"; print "$sha" > "$root/release-manifest/source-commit.txt"

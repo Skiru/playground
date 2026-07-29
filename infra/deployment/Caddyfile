@@ -10,7 +10,8 @@
         Referrer-Policy strict-origin-when-cross-origin
         -Server
     }
-    handle_path /api/* {
+    # `handle`, unlike `handle_path`, keeps the original /api prefix for Symfony.
+    handle /api/* {
         reverse_proxy api:80
     }
     handle {

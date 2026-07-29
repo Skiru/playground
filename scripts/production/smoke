@@ -1,11 +1,19 @@
 #!/usr/bin/env zsh
 set -Eeuo pipefail
 source "${0:A:h}/lib.zsh"
-source "$ENV_FILE"
+require_env; source "$ENV_FILE"
+retry() { local n=0; until "$@"; do (( ++n >= 12 )) && return 1; sleep 2; done; }
+gateway() { compose exec -T gateway wget -qO- "http://localhost:8080$1"; }
+retry gateway / >/dev/null || { compose logs --no-color gateway api web >&2; die 'gateway root failed'; }
+retry gateway /api/v1/health/live | grep -q . || { compose logs --no-color gateway api >&2; die 'gateway API liveness failed'; }
+# An API miss must be produced by the backend, never by the frontend SSR fallback.
+compose exec -T gateway wget -S -O /dev/null 'http://localhost:8080/api/v1/does-not-exist?probe=path-preservation' 2>&1 | grep -q ' 404 ' || die 'unknown API route was not a backend 404'
 compose exec -T api curl --fail --silent http://localhost/api/v1/health/live >/dev/null
 compose exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
 compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT PostGIS_Version()' | grep -q '^3\.6'
-key="release-smoke/$(date -u +%s)-$$"
-printf release-smoke | AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp - "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
+key="release-smoke/$(date -u +%s)-$$"; payload=$(mktemp); recovered=$(mktemp); trap 'rm -f "$payload" "$recovered"' EXIT; print -n "familyplaces-r2-smoke-$key" > "$payload"
+AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp "$payload" "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
+AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp "s3://$STORAGE_S3_BUCKET/$key" "$recovered" >/dev/null
+cmp -s "$payload" "$recovered" || die 'R2 read-back differs from uploaded bytes'
 AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 rm "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
-print 'internal health, PostGIS, and disposable R2 object smoke passed'
+print 'gateway, health, PostGIS, and byte-for-byte R2 smoke passed'

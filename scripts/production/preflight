@@ -10,7 +10,7 @@ docker compose version >/dev/null || die 'Docker Compose v2 is required'
 "$ROOT/scripts/validate-production-env" "$ENV_FILE"
 source "$ENV_FILE"
 for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do docker buildx imagetools inspect "$image" | grep -q 'linux/arm64' || die "missing arm64 manifest: ${image%%@*}"; docker pull "$image" >/dev/null; done
-[[ -n ${CLOUDFLARE_TUNNEL_TOKEN:-} ]] || die 'missing Cloudflare Tunnel token'
+[[ -r ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-} ]] || die 'missing readable Cloudflare Tunnel token file'
 command -v aws >/dev/null || die 'AWS CLI is required for R2 verification and backup'
 AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3api head-bucket --bucket "$STORAGE_S3_BUCKET" >/dev/null
 AWS_ACCESS_KEY_ID="$BACKUP_S3_KEY" AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET" aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-bucket --bucket "$BACKUP_S3_BUCKET" >/dev/null

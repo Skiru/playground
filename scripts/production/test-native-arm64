@@ -1,0 +1,39 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+[[ $(uname -m) == aarch64 ]] || { print -u2 'native ARM certification requires an aarch64 runner'; exit 1; }
+root=${0:A:h:h:h}; work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+print test-token > "$work/tunnel-token"; chmod 0400 "$work/tunnel-token"
+cat > "$work/production.env" <<EOF
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=abcdefghijklmnopqrstuvwxyz123456
+POSTGRES_DB=family_places
+POSTGRES_USER=family_places
+POSTGRES_PASSWORD=zyxwvutsrqponmlkjihgfedcba123456
+DATABASE_URL=postgresql://family_places:password@database:5432/family_places?serverVersion=18
+RELEASE_SHA=$(git -C "$root" rev-parse HEAD)
+RELEASE_VERSION=0.0.0-ci
+API_IMAGE=family-places-api:native
+WEB_IMAGE=family-places-web:native
+POSTGIS_IMAGE=family-places-postgis:native
+STORAGE_S3_ENDPOINT=https://test.r2.cloudflarestorage.com
+STORAGE_S3_KEY=media-key
+STORAGE_S3_SECRET=media-secret
+STORAGE_S3_BUCKET=media-bucket
+STORAGE_S3_PUBLIC_URL=https://media.example.org
+MEDIA_PUBLIC_BASE_URL=https://media.example.org
+BACKUP_S3_ENDPOINT=https://test.r2.cloudflarestorage.com
+BACKUP_S3_KEY=backup-key
+BACKUP_S3_SECRET=backup-secret
+BACKUP_S3_BUCKET=backup-bucket
+AGE_RECIPIENT=age1test
+MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+MAP_PROVIDER_NAME=OpenFreeMap
+DEV_AUTH_ENABLED=false
+PLACE_DISCOVERY_ENABLED=false
+CLOUDFLARE_TUNNEL_TOKEN_FILE=$work/tunnel-token
+EOF
+docker compose --env-file "$work/production.env" -f "$root/compose.yaml" -f "$root/compose.prod.yaml" -f "$root/compose.prod.arm64.yaml" config --quiet
+grep -q 'handle /api/\*' "$root/infra/deployment/Caddyfile" && ! grep -q 'handle_path /api/' "$root/infra/deployment/Caddyfile"
+print 'native ARM production render and gateway path policy passed; full runtime certification is performed by the integration runner'

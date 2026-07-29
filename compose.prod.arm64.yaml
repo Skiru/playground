@@ -52,7 +52,10 @@ services:
     cpus: 0.75
     command: [postgres, -c, shared_buffers=768MB, -c, effective_cache_size=2GB, -c, max_connections=60, -c, work_mem=8MB, -c, maintenance_work_mem=256MB]
     security_opt: [no-new-privileges:true]
+    # PostgreSQL's official entrypoint must initialize and own a fresh volume.
+    # These are the only capabilities retained for that initialization path.
     cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     logging: {driver: local, options: {max-size: 20m, max-file: "5"}}
   gateway:
     image: caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c
@@ -66,12 +69,15 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     volumes: [./infra/deployment/Caddyfile:/etc/caddy/Caddyfile:ro]
-    networks: [edge]
+    networks: [edge, internal]
     logging: {driver: local, options: {max-size: 5m, max-file: "3"}}
   cloudflared:
     image: cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df
     platform: linux/arm64
-    command: [tunnel, --no-autoupdate, run, --token, "${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}"]
+    command: [tunnel, --no-autoupdate, run]
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/cloudflare_tunnel_token
+    secrets: [cloudflare_tunnel_token]
     restart: unless-stopped
     stop_grace_period: 15s
     mem_limit: 128m
@@ -81,3 +87,7 @@ services:
     cap_drop: [ALL]
     networks: [edge]
     logging: {driver: local, options: {max-size: 5m, max-file: "3"}}
+
+secrets:
+  cloudflare_tunnel_token:
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?CLOUDFLARE_TUNNEL_TOKEN_FILE is required}
