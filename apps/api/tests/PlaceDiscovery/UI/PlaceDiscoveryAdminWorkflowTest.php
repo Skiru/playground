@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\PlaceDiscovery\UI;
 
+use App\PlaceDiscovery\Application\CandidateAuditTrail;
 use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
@@ -15,6 +16,7 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
 {
     private const CANDIDATE = '00000000-0000-7000-8000-000000000902';
     private const AREA = '00000000-0000-7000-8000-000000000900';
+    private const RUN = '00000000-0000-7000-8000-000000000901';
 
     private KernelBrowser $client;
     private Connection $connection;
@@ -51,7 +53,10 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
             ['property' => '', 'dataset' => 'Overture', 'license' => null, 'record_id' => 'omf-1', 'provider' => 'Overture Maps Foundation', 'resource' => 'places', 'version' => '1'],
             ['property' => '/names/primary', 'dataset' => 'Foursquare', 'license' => null, 'record_id' => 'fsq-1', 'provider' => 'Foursquare', 'resource' => 'places', 'version' => '1'],
         ];
-        $this->connection->update('place_candidates', ['source_provenance' => json_encode($sources, \JSON_THROW_ON_ERROR), 'source_license_review_required' => 'true'], ['id' => self::CANDIDATE]);
+        $this->connection->update('place_candidates', ['status' => 'APPROVED', 'source_provenance' => json_encode($sources, \JSON_THROW_ON_ERROR), 'source_license_review_required' => 'true'], ['id' => self::CANDIDATE]);
+        $audit = self::getContainer()->get(CandidateAuditTrail::class);
+        self::assertInstanceOf(CandidateAuditTrail::class, $audit);
+        $audit->append(self::CANDIDATE, 'SYSTEM', 'SOURCE_LICENSE_RESOLUTION_STALE', 'APPROVED', 'APPROVED', ['source_license_resolutions'], 'Reviewed source identity no longer matches the latest provenance.', self::RUN, null, '2026-08-01.0', null, ['fingerprint' => str_repeat('a', 64), 'license' => 'Reviewed-Legacy-1.0', 'reviewer' => 'prior-admin@example.test', 'reviewed_at' => '2026-07-01T12:00:00+00:00', 'reviewed_source_release' => '2026-07-01.0', 'source_identity' => $sources[0], 'superseding_source_release' => '2026-08-01.0', 'discovery_run_id' => self::RUN]);
         $this->login();
         $page = $this->client->request('GET', $this->candidateUrl(self::CANDIDATE));
         self::assertResponseIsSuccessful();
@@ -60,6 +65,8 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
         self::assertSelectorTextContains('body', 'Licencja nierozstrzygnięta');
         self::assertSelectorCount(2, '.license-resolution-form');
         self::assertSelectorTextContains('body', 'Foursquare');
+        self::assertSelectorTextContains('.stale-license-summary', 'Reviewed-Legacy-1.0');
+        self::assertSelectorTextContains('.stale-license-summary', 'prior-admin@example.test');
 
         $this->client->request('POST', '/admin/place-discovery/candidates/'.self::CANDIDATE.'/resolve-license', ['_token' => 'invalid', 'version' => 1, 'fingerprint' => SourceProvenanceFingerprint::fromArray($sources[0]), 'license' => 'Reviewed-1.0']);
         self::assertResponseStatusCodeSame(403);
@@ -73,6 +80,43 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
         self::assertNull($this->connection->fetchOne("SELECT source_provenance->1->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
         self::assertSelectorCount(1, '.license-resolution-form');
         self::assertSelectorTextContains('body', 'Foursquare');
+    }
+
+    public function testActionableCandidateQueueIsOrderedFilteredAndPaginatedWithoutHidingOrdinaryRows(): void
+    {
+        $oldActionable = '00000000-0000-7000-9000-000000000001';
+        for ($index = 1; $index <= 31; ++$index) {
+            $id = \sprintf('00000000-0000-7000-9000-%012d', $index);
+            $this->insertQueueCandidate($id, 'queue-actionable-'.$index, 'APPROVED', true, false, (new \DateTimeImmutable('2026-01-01'))->modify('+'.$index.' minutes'));
+        }
+        for ($index = 32; $index <= 61; ++$index) {
+            $id = \sprintf('00000000-0000-7000-9000-%012d', $index);
+            $this->insertQueueCandidate($id, 'queue-ordinary-'.$index, 'PENDING', false, false, (new \DateTimeImmutable('2026-12-01'))->modify('+'.$index.' minutes'));
+        }
+        $this->connection->update('place_candidates', ['updated_at' => '2000-01-01T00:00:00+00:00'], ['id' => $oldActionable]);
+        $this->login();
+
+        $pageOne = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&perPage=25');
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('body', 'Wyniki 1-25');
+        self::assertSelectorTextContains('body', 'Wymagające przeglądu');
+        self::assertSelectorTextNotContains('tbody', 'queue-ordinary-');
+        $pageTwo = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&perPage=25&page=2');
+        self::assertSelectorTextContains('tbody', 'queue-actionable-1');
+        self::assertSelectorTextContains('tbody', 'queue-ordinary-');
+        $pageThree = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&perPage=25&page=3');
+        self::assertSelectorTextContains('tbody', 'queue-ordinary-');
+
+        $filtered = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&status=APPROVED&license_review_required=1&perPage=25&page=2');
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('tbody', 'queue-actionable-1');
+        self::assertSelectorTextNotContains('tbody', 'queue-ordinary-');
+        self::assertStringContainsString('license_review_required=1', (string) $filtered->filter('nav .page-link')->first()->attr('href'));
+
+        $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&license_review_required=maybe');
+        self::assertResponseStatusCodeSame(400);
+        $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&page=-1');
+        self::assertResponseStatusCodeSame(400);
     }
 
     public function testCandidateEditApprovalUsesReviewedCityAndBooleansAndNeverPublishes(): void
@@ -151,6 +195,15 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
     private function candidateUrl(string $id): string
     {
         return '/admin?routeName=admin_place_discovery_candidate&routeParams%5Bid%5D='.$id;
+    }
+
+    private function insertQueueCandidate(string $id, string $externalId, string $status, bool $licenseReview, bool $closureReview, \DateTimeImmutable $updatedAt): void
+    {
+        $timestamp = $updatedAt->format(\DateTimeInterface::ATOM);
+        $this->connection->executeStatement(<<<'SQL'
+INSERT INTO place_candidates (id, source, external_id, source_release, source_payload_hash, source_snapshot, source_license_review_required, name, normalized_name, latitude, longitude, source_categories, discovery_score, discovery_reasons, status, source_closed_review_required, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES (?, 'overture', ?, 'queue-release', repeat('a', 64), '{}'::jsonb, ?, ?, ?, 50, 20, '[]'::jsonb, 50, '[]'::jsonb, ?, ?, ?, ?, ?, ?)
+SQL, [$id, $externalId, $licenseReview ? 'true' : 'false', $externalId, $externalId, $status, $closureReview ? 'true' : 'false', $timestamp, $timestamp, $timestamp, $timestamp]);
     }
 }
 

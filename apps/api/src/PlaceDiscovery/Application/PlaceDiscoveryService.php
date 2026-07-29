@@ -21,6 +21,9 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class PlaceDiscoveryService
 {
+    // 16 KiB raw provenance plus metadata for all 32 bounded reviewed sources fits below 128 KiB.
+    public const SOURCE_LICENSE_RESOLUTIONS_MAX_BYTES = 131_072;
+
     public function __construct(private Connection $connection, private PlaceCommandHandler $places, private DuplicatePlaceLookup $duplicates, private PlaceNormalizer $normalizer, private CandidateAuditTrail $audit)
     {
     }
@@ -291,7 +294,7 @@ SQL, [$candidateId]);
                 $this->audit->append($id, 'ADMIN', 'SOURCE_LINK_PROVENANCE_UPDATED', (string) $candidate['status'], (string) $candidate['status'], ['place_source_links.source_release', 'place_source_links.last_payload_hash', 'place_source_links.source_provenance', 'source_license_review_required'], 'Final reviewed source resolution advanced the last compliant source state.', null, $reviewer, (string) $candidate['source_release']);
             }
             $auditIdentity = ['dataset' => $selected['dataset'], 'property' => $selected['property'], 'fingerprint' => $fingerprint, 'license' => $license];
-            $this->audit->append($id, 'ADMIN', 'SOURCE_LICENSE_RESOLVED', (string) $candidate['status'], (string) $candidate['status'], ['source_license_resolutions', 'source_license_review_required', 'reviewed_by', 'reviewed_at', 'updated_at', 'version'], json_encode($auditIdentity, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE), null, $reviewer, (string) $candidate['source_release']);
+            $this->audit->append($id, 'ADMIN', 'SOURCE_LICENSE_RESOLVED', (string) $candidate['status'], (string) $candidate['status'], ['source_license_resolutions', 'source_license_review_required', 'reviewed_by', 'reviewed_at', 'updated_at', 'version'], null, null, $reviewer, (string) $candidate['source_release'], null, $auditIdentity);
         });
     }
 
@@ -393,7 +396,7 @@ SQL, [$candidateId]);
      * @param list<array<string, mixed>>             $provenance
      * @param array<string, SourceLicenseResolution> $resolutions
      *
-     * @return array{effective: list<array<string, mixed>>, resolutions: array<string, SourceLicenseResolution>, unresolved: bool, removed: list<string>}
+     * @return array{effective: list<array<string, mixed>>, resolutions: array<string, SourceLicenseResolution>, unresolved: bool, removed: array<string, SourceLicenseResolution>}
      */
     private function licenseState(array $provenance, array $resolutions): array
     {
@@ -414,7 +417,7 @@ SQL, [$candidateId]);
                     continue;
                 }
             }
-            $removed[] = $fingerprint;
+            $removed[$fingerprint] = $resolution;
         }
         $effective = [];
         $unresolved = [] === $provenance;
@@ -436,8 +439,8 @@ SQL, [$candidateId]);
     private function encodeResolutions(array $resolutions): string
     {
         $json = json_encode((object) $resolutions, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
-        if (\strlen($json) > 16_384) {
-            throw new \DomainException('Bounded reviewed source license resolutions exceed 16 KiB.');
+        if ((int) $this->connection->fetchOne('SELECT octet_length(?::jsonb::text)', [$json]) > self::SOURCE_LICENSE_RESOLUTIONS_MAX_BYTES) {
+            throw new \DomainException('Bounded reviewed source license resolutions exceed 128 KiB.');
         }
 
         return $json;
@@ -460,14 +463,24 @@ SQL, [$candidateId]);
         return [] === $provenance || [] !== array_filter($provenance, static fn (array $source): bool => !isset($source['license']) || !\is_string($source['license']) || '' === trim($source['license']));
     }
 
-    /** @param list<string> $fingerprints */
-    private function auditRemovedResolutions(string $candidateId, array $fingerprints, string $runId, string $sourceRelease): void
+    /** @param array<string, SourceLicenseResolution> $resolutions */
+    private function auditRemovedResolutions(string $candidateId, array $resolutions, string $runId, string $sourceRelease): void
     {
-        if ([] === $fingerprints) {
+        if ([] === $resolutions) {
             return;
         }
-        foreach ($fingerprints as $fingerprint) {
-            $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_LICENSE_RESOLUTION_STALE', null, null, ['source_license_resolutions', 'source_license_review_required'], json_encode(['fingerprint' => $fingerprint], \JSON_THROW_ON_ERROR), $runId, null, $sourceRelease);
+        foreach ($resolutions as $fingerprint => $resolution) {
+            $details = [
+                'fingerprint' => $fingerprint,
+                'license' => $resolution->license,
+                'reviewer' => $resolution->reviewer,
+                'reviewed_at' => $resolution->reviewedAt,
+                'reviewed_source_release' => $resolution->sourceRelease,
+                'source_identity' => $resolution->sourceIdentity,
+                'superseding_source_release' => $sourceRelease,
+                'discovery_run_id' => $runId,
+            ];
+            $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_LICENSE_RESOLUTION_STALE', null, null, ['source_license_resolutions', 'source_license_review_required'], 'Reviewed source identity no longer matches the latest provenance.', $runId, null, $sourceRelease, null, $details);
         }
     }
 

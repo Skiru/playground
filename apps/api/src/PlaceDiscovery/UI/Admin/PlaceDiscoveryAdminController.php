@@ -7,6 +7,7 @@ namespace App\PlaceDiscovery\UI\Admin;
 use App\PlaceDiscovery\Application\DiscoveryRunOrchestrator;
 use App\PlaceDiscovery\Application\PlaceDiscoveryService;
 use App\PlaceDiscovery\Application\Port\PlaceDiscoveryProvider;
+use App\PlaceDiscovery\Domain\Aggregate\CandidateStatus;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
 use Doctrine\DBAL\Connection;
@@ -15,6 +16,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
@@ -32,15 +34,58 @@ final class PlaceDiscoveryAdminController extends AbstractController
     {
         $where = [];
         $params = [];
-        foreach (['status', 'source', 'source_release', 'locality'] as $filter) {
+        $limits = ['source' => 40, 'source_release' => 40, 'locality' => 160];
+        $status = trim((string) $request->query->get('status'));
+        if ('' !== $status) {
+            if (!\in_array($status, array_column(CandidateStatus::cases(), 'value'), true)) {
+                throw new BadRequestHttpException('Invalid candidate status filter.');
+            }
+            $where[] = 'c.status = ?';
+            $params[] = $status;
+        }
+        foreach ($limits as $filter => $maxBytes) {
             if ('' !== ($value = trim((string) $request->query->get($filter)))) {
+                if (\strlen($value) > $maxBytes) {
+                    throw new BadRequestHttpException('Candidate filter exceeds its bound.');
+                }
                 $where[] = 'c.'.$filter.' = ?';
                 $params[] = $value;
             }
         }
-        $sql = 'SELECT c.*, category.name AS category_name FROM place_candidates c LEFT JOIN categories category ON category.id = c.suggested_place_category_id'.($where ? ' WHERE '.implode(' AND ', $where) : '').' ORDER BY c.created_at DESC LIMIT 200';
+        foreach (['license_review_required' => 'source_license_review_required', 'closure_review_required' => 'source_closed_review_required'] as $filter => $column) {
+            $value = trim((string) $request->query->get($filter));
+            if ('' !== $value) {
+                if (!\in_array($value, ['0', '1'], true)) {
+                    throw new BadRequestHttpException('Invalid candidate review filter.');
+                }
+                $where[] = 'c.'.$column.' = ?';
+                $params[] = '1' === $value ? 'true' : 'false';
+            }
+        }
+        $actionable = trim((string) $request->query->get('actionable'));
+        if ('' !== $actionable) {
+            if ('1' !== $actionable) {
+                throw new BadRequestHttpException('Invalid actionable filter.');
+            }
+            $where[] = '(c.source_license_review_required OR c.source_closed_review_required)';
+        }
+        $pageValue = (string) $request->query->get('page', '1');
+        $perPageValue = (string) $request->query->get('perPage', '25');
+        if (!preg_match('/^[1-9][0-9]*$/', $pageValue) || !\in_array($perPageValue, ['25', '50', '100'], true)) {
+            throw new BadRequestHttpException('Invalid candidate pagination.');
+        }
+        $page = (int) $pageValue;
+        $perPage = (int) $perPageValue;
+        $whereSql = $where ? ' WHERE '.implode(' AND ', $where) : '';
+        $total = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM place_candidates c'.$whereSql, $params);
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min($page, $lastPage);
+        $offset = ($page - 1) * $perPage;
+        $sql = 'SELECT c.*, category.name AS category_name FROM place_candidates c LEFT JOIN categories category ON category.id = c.suggested_place_category_id'.$whereSql.' ORDER BY (c.source_license_review_required OR c.source_closed_review_required) DESC, c.updated_at DESC, c.id ASC LIMIT ? OFFSET ?';
+        $queryParams = [...$params, $perPage, $offset];
+        $filters = array_filter($request->query->all(), static fn (mixed $value): bool => \is_scalar($value) && '' !== (string) $value);
 
-        return $this->render('admin/place_discovery/candidates.html.twig', ['candidates' => $this->connection->fetchAllAssociative($sql, $params), 'filters' => $request->query->all()]);
+        return $this->render('admin/place_discovery/candidates.html.twig', ['candidates' => $this->connection->fetchAllAssociative($sql, $queryParams), 'filters' => $filters, 'page' => $page, 'perPage' => $perPage, 'lastPage' => $lastPage, 'total' => $total, 'rangeStart' => 0 === $total ? 0 : $offset + 1, 'rangeEnd' => min($offset + $perPage, $total)]);
     }
 
     #[Route('/candidates/{id}', name: 'candidate', requirements: ['id' => '[0-9a-f-]{36}'], methods: ['GET'])]
@@ -64,7 +109,14 @@ final class PlaceDiscoveryAdminController extends AbstractController
         unset($source);
         $candidate['source_snapshot'] = json_decode((string) $candidate['source_snapshot'], true, 32, \JSON_THROW_ON_ERROR);
 
-        return $this->render('admin/place_discovery/candidate.html.twig', ['candidate' => $candidate, 'categories' => $this->connection->fetchAllAssociative('SELECT id, name FROM categories WHERE enabled = true ORDER BY name'), 'cities' => $this->connection->fetchAllAssociative('SELECT id, name, country_code FROM cities WHERE enabled = true ORDER BY country_code, name, id'), 'places' => $this->connection->fetchAllAssociative('SELECT p.id, p.name FROM places p ORDER BY p.updated_at DESC LIMIT 200'), 'history' => $this->connection->fetchAllAssociative('SELECT * FROM place_candidate_audit_events WHERE candidate_id = ? ORDER BY created_at, id', [$id])]);
+        $history = $this->connection->fetchAllAssociative('SELECT * FROM place_candidate_audit_events WHERE candidate_id = ? ORDER BY created_at, id', [$id]);
+        foreach ($history as &$event) {
+            $event['changed_fields'] = json_decode((string) $event['changed_fields'], true, 16, \JSON_THROW_ON_ERROR);
+            $event['details'] = json_decode((string) $event['details'], true, 16, \JSON_THROW_ON_ERROR);
+        }
+        unset($event);
+
+        return $this->render('admin/place_discovery/candidate.html.twig', ['candidate' => $candidate, 'categories' => $this->connection->fetchAllAssociative('SELECT id, name FROM categories WHERE enabled = true ORDER BY name'), 'cities' => $this->connection->fetchAllAssociative('SELECT id, name, country_code FROM cities WHERE enabled = true ORDER BY country_code, name, id'), 'places' => $this->connection->fetchAllAssociative('SELECT p.id, p.name FROM places p ORDER BY p.updated_at DESC LIMIT 200'), 'history' => $history]);
     }
 
     #[Route('/candidates/{id}/{action}', name: 'candidate_action', requirements: ['id' => '[0-9a-f-]{36}', 'action' => 'approve|edit|reject|duplicate|clear-duplicate|refresh|resolve-license'], methods: ['POST'])]
