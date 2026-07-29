@@ -11,6 +11,7 @@ use App\PlaceDiscovery\Domain\NormalizedPlace;
 use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\PlaceDiscovery\Domain\PlaceNormalizer;
 use App\PlaceDiscovery\Domain\ProviderPlace;
+use App\PlaceDiscovery\Domain\SourceLicenseResolution;
 use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
 use App\Places\Application\Command\CreatePlaceDraft;
 use App\Places\Application\Command\ExternalReferenceInput;
@@ -41,24 +42,34 @@ final readonly class PlaceDiscoveryService
             $columns = array_keys($insert);
             $insertedId = $this->connection->fetchOne(\sprintf('INSERT INTO place_candidates (%s) VALUES (%s) ON CONFLICT (source, external_id) DO NOTHING RETURNING id', implode(', ', $columns), implode(', ', array_fill(0, \count($columns), '?'))), array_values($insert));
             $inserted = false !== $insertedId;
-            $existing = $this->connection->fetchAssociative('SELECT id, status, manually_edited_at, source_payload_hash, source_closed_review_required FROM place_candidates WHERE source = ? AND external_id = ? FOR UPDATE', ['overture', $source->externalId]);
+            $existing = $this->connection->fetchAssociative('SELECT id, status, version, manually_edited_at, source_payload_hash, source_closed_review_required, source_license_resolutions FROM place_candidates WHERE source = ? AND external_id = ? FOR UPDATE', ['overture', $source->externalId]);
             if (false === $existing) {
                 throw new \RuntimeException('Candidate upsert did not produce a lockable row.');
             }
             $candidateId = (string) $existing['id'];
+            $licenseState = $this->licenseState($this->decodeProvenance((string) $values['source_provenance']), $this->decodeResolutions((string) $existing['source_license_resolutions']));
+            $values['source_license_resolutions'] = $this->encodeResolutions($licenseState['resolutions']);
+            $values['source_license_review_required'] = $licenseState['unresolved'] ? 'true' : 'false';
+            $values['version'] = (int) $existing['version'] + 1;
             $link = $this->connection->fetchAssociative('SELECT id, place_id FROM place_source_links WHERE source = ? AND external_id = ? FOR UPDATE', ['overture', $source->externalId]);
             if (false !== $link) {
-                $provenance = $this->provenance($source);
-                $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_seen_at = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$source->release, $now, $hash, $provenance, $link['id']]);
+                $this->connection->update('place_source_links', ['last_seen_at' => $now], ['id' => $link['id']]);
+                if (!$licenseState['unresolved']) {
+                    $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$source->release, $hash, $this->encodeProvenance($licenseState['effective']), $link['id']]);
+                }
                 $changedAfterEdit = null !== $existing['manually_edited_at'] && $existing['source_payload_hash'] !== $hash;
                 $operatingStatus = OvertureOperatingStatus::normalize($source->operatingStatus);
                 $closed = OvertureOperatingStatus::PERMANENTLY_CLOSED === $operatingStatus;
                 $newlyClosed = $closed && !(bool) $existing['source_closed_review_required'];
                 $reopened = true === $operatingStatus?->clearsPermanentClosureReview() && (bool) $existing['source_closed_review_required'];
                 $closureReviewRequired = $closed || (!$reopened && (bool) $existing['source_closed_review_required']);
-                $this->connection->executeStatement("UPDATE place_candidates SET discovery_run_id = ?, source_release = ?, source_record_version = ?, source_payload_hash = ?, source_snapshot = ?::jsonb, source_provenance = ?::jsonb, operating_status = ?, last_seen_at = ?, updated_at = ?, approved_place_id = COALESCE(approved_place_id, ?), status = 'APPROVED', source_changed_after_edit = source_changed_after_edit OR ?, source_closed_review_required = ? WHERE id = ?", [$runId, $source->release, $source->recordVersion, $hash, $snapshot, $provenance, $source->operatingStatus, $now, $now, $link['place_id'], $changedAfterEdit ? 'true' : 'false', $closureReviewRequired ? 'true' : 'false', $candidateId]);
+                $this->connection->executeStatement("UPDATE place_candidates SET discovery_run_id = ?, source_release = ?, source_record_version = ?, source_payload_hash = ?, source_snapshot = ?::jsonb, source_provenance = ?::jsonb, source_license_resolutions = ?::jsonb, source_license_review_required = ?, operating_status = ?, last_seen_at = ?, updated_at = ?, approved_place_id = COALESCE(approved_place_id, ?), status = 'APPROVED', source_changed_after_edit = source_changed_after_edit OR ?, source_closed_review_required = ?, version = version + 1 WHERE id = ?", [$runId, $source->release, $source->recordVersion, $hash, $snapshot, $values['source_provenance'], $values['source_license_resolutions'], $values['source_license_review_required'], $source->operatingStatus, $now, $now, $link['place_id'], $changedAfterEdit ? 'true' : 'false', $closureReviewRequired ? 'true' : 'false', $candidateId]);
                 $action = $newlyClosed ? 'CLOSURE_REVIEW_FLAGGED' : ($reopened ? 'SOURCE_REOPENED' : 'SOURCE_REFRESHED');
-                $this->audit->append($candidateId, 'SYSTEM', $action, (string) $existing['status'], 'APPROVED', ['discovery_run_id', 'source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'operating_status', 'last_seen_at', 'updated_at', 'approved_place_id', 'status', 'source_changed_after_edit', 'source_closed_review_required'], $newlyClosed ? 'Source reports permanently closed; public Place was not changed.' : null, $runId, null, $source->release);
+                $this->audit->append($candidateId, 'SYSTEM', $action, (string) $existing['status'], 'APPROVED', ['discovery_run_id', 'source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'source_license_resolutions', 'source_license_review_required', 'operating_status', 'last_seen_at', 'updated_at', 'approved_place_id', 'status', 'source_changed_after_edit', 'source_closed_review_required', 'version'], $newlyClosed ? 'Source reports permanently closed; public Place was not changed.' : null, $runId, null, $source->release);
+                $this->auditRemovedResolutions($candidateId, $licenseState['removed'], $runId, $source->release);
+                if (!$licenseState['unresolved']) {
+                    $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_LINK_PROVENANCE_UPDATED', 'APPROVED', 'APPROVED', ['place_source_links.source_release', 'place_source_links.last_payload_hash', 'place_source_links.source_provenance'], 'Last compliant reviewed source state advanced to the latest observed provider state.', $runId, null, $source->release);
+                }
 
                 return 'linked';
             }
@@ -76,10 +87,11 @@ final readonly class PlaceDiscoveryService
             } else {
                 $operatingStatus = OvertureOperatingStatus::normalize($source->operatingStatus);
                 $closureReviewRequired = CandidateStatus::APPROVED->value === $existing['status'] && (OvertureOperatingStatus::PERMANENTLY_CLOSED === $operatingStatus || (true !== $operatingStatus?->clearsPermanentClosureReview() && (bool) $existing['source_closed_review_required']));
-                $this->connection->update('place_candidates', ['discovery_run_id' => $runId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'source_provenance' => $this->provenance($source), 'operating_status' => $source->operatingStatus, 'last_seen_at' => $now, 'updated_at' => $now, 'source_changed_after_edit' => null !== $existing['manually_edited_at'] ? 'true' : 'false', 'source_closed_review_required' => $closureReviewRequired ? 'true' : 'false'], ['id' => $existing['id']]);
+                $this->connection->update('place_candidates', ['discovery_run_id' => $runId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'source_provenance' => $values['source_provenance'], 'source_license_resolutions' => $values['source_license_resolutions'], 'source_license_review_required' => $values['source_license_review_required'], 'operating_status' => $source->operatingStatus, 'last_seen_at' => $now, 'updated_at' => $now, 'source_changed_after_edit' => null !== $existing['manually_edited_at'] ? 'true' : 'false', 'source_closed_review_required' => $closureReviewRequired ? 'true' : 'false', 'version' => $values['version']], ['id' => $existing['id']]);
             }
-            $changedFields = !$protected && null === $existing['manually_edited_at'] ? array_keys($values) : ['discovery_run_id', 'source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'operating_status', 'last_seen_at', 'updated_at', 'source_changed_after_edit', 'source_closed_review_required'];
+            $changedFields = !$protected && null === $existing['manually_edited_at'] ? array_keys($values) : ['discovery_run_id', 'source_release', 'source_record_version', 'source_payload_hash', 'source_snapshot', 'source_provenance', 'source_license_resolutions', 'source_license_review_required', 'operating_status', 'last_seen_at', 'updated_at', 'source_changed_after_edit', 'source_closed_review_required', 'version'];
             $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_REFRESHED', (string) $existing['status'], $protected || null !== $existing['manually_edited_at'] ? (string) $existing['status'] : (string) $values['status'], $changedFields, null, $runId, null, $source->release);
+            $this->auditRemovedResolutions($candidateId, $licenseState['removed'], $runId, $source->release);
             if (!$protected && CandidateStatus::POSSIBLE_DUPLICATE->value === $values['status'] && CandidateStatus::POSSIBLE_DUPLICATE->value !== $existing['status']) {
                 $this->audit->append($candidateId, 'SYSTEM', 'DUPLICATE_WARNING', (string) $existing['status'], CandidateStatus::POSSIBLE_DUPLICATE->value, ['duplicate_score', 'duplicate_reasons', 'possible_duplicate_place_id', 'possible_duplicate_candidate_ids'], null, $runId, null, $source->release);
             }
@@ -123,8 +135,8 @@ SQL, [$candidateId]);
             if ($candidate['city_country_code'] !== $candidate['country_code']) {
                 throw new \DomainException('Selected City country does not match the candidate country.');
             }
-            $provenance = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
-            if (!\is_array($provenance) || [] === $provenance || array_filter($provenance, static fn (mixed $item): bool => !\is_array($item) || !isset($item['license']) || !\is_string($item['license']) || '' === trim($item['license']))) {
+            $licenseState = $this->licenseState($this->decodeProvenance((string) $candidate['source_provenance']), $this->decodeResolutions((string) $candidate['source_license_resolutions']));
+            if ([] === $licenseState['effective'] || $licenseState['unresolved']) {
                 throw new \DomainException('Candidate source licensing must be reviewed and resolved before approval.');
             }
             if (!(bool) $candidate['indoor'] && !(bool) $candidate['outdoor']) {
@@ -137,8 +149,8 @@ SQL, [$candidateId]);
             $slug = mb_substr(trim($slugBase, '-'), 0, 70).'-'.substr(str_replace('-', '', $candidateId), 0, 8);
             $placeId = $this->places->create(new CreatePlaceDraft((string) $candidate['name'], $slug, 'Kandydat zatwierdzony przez administratora.', 'Miejsce utworzone jako szkic z danych Overture Maps. Wymaga uzupełnienia i publikacji w osobnym kroku.', (string) $candidate['address_line1'], (string) $candidate['postal_code'], (string) $candidate['city_slug'], (string) $candidate['country_code'], (float) $candidate['latitude'], (float) $candidate['longitude'], (string) $candidate['city_timezone'], (string) $candidate['category_slug'], (bool) $candidate['indoor'], (bool) $candidate['outdoor'], (bool) $candidate['free_entry'], websiteUrl: $candidate['website'], phone: $candidate['phone'], externalReferences: [new ExternalReferenceInput('overture', (string) $candidate['external_id'], null)]));
             $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
-            $this->connection->executeStatement('INSERT INTO place_source_links (id, place_id, source, external_id, source_release, first_linked_at, last_seen_at, last_payload_hash, source_provenance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb) ON CONFLICT (source, external_id) DO NOTHING', [Uuid::v7()->toRfc4122(), $placeId, $candidate['source'], $candidate['external_id'], $candidate['source_release'], $now, $now, $candidate['source_payload_hash'], $candidate['source_provenance']]);
-            $changed = $this->connection->executeStatement('UPDATE place_candidates SET status = ?, approved_place_id = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?', [CandidateStatus::APPROVED->value, $placeId, $reviewer, $now, $now, $candidateId, $expectedVersion]);
+            $this->connection->executeStatement('INSERT INTO place_source_links (id, place_id, source, external_id, source_release, first_linked_at, last_seen_at, last_payload_hash, source_provenance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb) ON CONFLICT (source, external_id) DO NOTHING', [Uuid::v7()->toRfc4122(), $placeId, $candidate['source'], $candidate['external_id'], $candidate['source_release'], $now, $now, $candidate['source_payload_hash'], $this->encodeProvenance($licenseState['effective'])]);
+            $changed = $this->connection->executeStatement('UPDATE place_candidates SET status = ?, approved_place_id = ?, source_license_review_required = false, reviewed_by = ?, reviewed_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?', [CandidateStatus::APPROVED->value, $placeId, $reviewer, $now, $now, $candidateId, $expectedVersion]);
             if (1 !== $changed) {
                 throw new ConcurrentCandidateModification();
             }
@@ -236,12 +248,12 @@ SQL, [$candidateId]);
             throw new \DomainException('A bounded reviewed license identifier is required.');
         }
         $this->connection->transactional(function () use ($id, $version, $fingerprint, $license, $reviewer): void {
-            $candidate = $this->connection->fetchAssociative("SELECT status, source_release, source_provenance FROM place_candidates WHERE id = ? AND version = ? AND status IN ('PENDING','NEEDS_MAPPING','POSSIBLE_DUPLICATE') FOR UPDATE", [$id, $version]);
+            $candidate = $this->connection->fetchAssociative("SELECT status, source, external_id, source_release, source_payload_hash, source_provenance, source_license_resolutions, source_license_review_required FROM place_candidates WHERE id = ? AND version = ? AND status IN ('PENDING','NEEDS_MAPPING','POSSIBLE_DUPLICATE','APPROVED') FOR UPDATE", [$id, $version]);
             if (false === $candidate) {
                 throw new ConcurrentCandidateModification();
             }
-            $provenance = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
-            if (!\is_array($provenance) || [] === $provenance) {
+            $provenance = $this->decodeProvenance((string) $candidate['source_provenance']);
+            if ([] === $provenance) {
                 throw new \DomainException('Candidate has no source provenance to resolve.');
             }
             $matches = [];
@@ -261,17 +273,25 @@ SQL, [$candidateId]);
             if (isset($selected['license']) && \is_string($selected['license']) && '' !== trim($selected['license'])) {
                 throw new \DomainException('Provider-supplied source license cannot be overwritten in this workflow.');
             }
-            $provenance[$index]['license'] = $license;
-            $encoded = json_encode($provenance, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
-            if (\strlen($encoded) > 16_384) {
-                throw new \DomainException('Bounded source provenance exceeds 16 KiB.');
-            }
             $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
-            if (1 !== $this->connection->executeStatement('UPDATE place_candidates SET source_provenance = ?::jsonb, reviewed_by = ?, reviewed_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?', [$encoded, $reviewer, $now, $now, $id, $version])) {
+            $resolutions = $this->decodeResolutions((string) $candidate['source_license_resolutions']);
+            $resolution = SourceLicenseResolution::review($selected, $license, $reviewer, $now, (string) $candidate['source_release']);
+            $resolutions[$fingerprint] = $resolution;
+            $licenseState = $this->licenseState($provenance, $resolutions);
+            $encoded = $this->encodeResolutions($licenseState['resolutions']);
+            if (1 !== $this->connection->executeStatement('UPDATE place_candidates SET source_license_resolutions = ?::jsonb, source_license_review_required = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?', [$encoded, $licenseState['unresolved'] ? 'true' : 'false', $reviewer, $now, $now, $id, $version])) {
                 throw new ConcurrentCandidateModification();
             }
+            if (CandidateStatus::APPROVED->value === $candidate['status'] && !$licenseState['unresolved']) {
+                $link = $this->connection->fetchAssociative('SELECT id FROM place_source_links WHERE source = ? AND external_id = ? FOR UPDATE', [$candidate['source'], $candidate['external_id']]);
+                if (false === $link) {
+                    throw new \DomainException('Approved candidate has no source link.');
+                }
+                $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$candidate['source_release'], $candidate['source_payload_hash'], $this->encodeProvenance($licenseState['effective']), $link['id']]);
+                $this->audit->append($id, 'ADMIN', 'SOURCE_LINK_PROVENANCE_UPDATED', (string) $candidate['status'], (string) $candidate['status'], ['place_source_links.source_release', 'place_source_links.last_payload_hash', 'place_source_links.source_provenance', 'source_license_review_required'], 'Final reviewed source resolution advanced the last compliant source state.', null, $reviewer, (string) $candidate['source_release']);
+            }
             $auditIdentity = ['dataset' => $selected['dataset'], 'property' => $selected['property'], 'fingerprint' => $fingerprint, 'license' => $license];
-            $this->audit->append($id, 'ADMIN', 'SOURCE_LICENSE_RESOLVED', (string) $candidate['status'], (string) $candidate['status'], ['source_provenance', 'reviewed_by', 'reviewed_at', 'updated_at', 'version'], json_encode($auditIdentity, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE), null, $reviewer, (string) $candidate['source_release']);
+            $this->audit->append($id, 'ADMIN', 'SOURCE_LICENSE_RESOLVED', (string) $candidate['status'], (string) $candidate['status'], ['source_license_resolutions', 'source_license_review_required', 'reviewed_by', 'reviewed_at', 'updated_at', 'version'], json_encode($auditIdentity, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE), null, $reviewer, (string) $candidate['source_release']);
         });
     }
 
@@ -324,7 +344,10 @@ SQL, [$candidateId]);
         $status = OvertureOperatingStatus::PERMANENTLY_CLOSED === OvertureOperatingStatus::normalize($source->operatingStatus) ? CandidateStatus::STALE->value : ([] === $source->provenance ? CandidateStatus::NEEDS_MAPPING->value : ($duplicate->score >= 70 ? CandidateStatus::POSSIBLE_DUPLICATE->value : (false === $categoryId ? CandidateStatus::NEEDS_MAPPING->value : $classification->status->value)));
         $discoveryReasons = [] === $source->provenance ? [...$classification->reasons, 'missing_source_provenance'] : $classification->reasons;
 
-        return ['discovery_run_id' => $runId, 'source' => 'overture', 'external_id' => $source->externalId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'source_provenance' => $this->provenance($source), 'name' => $normalized->name, 'normalized_name' => $normalized->normalizedName, 'address_line1' => $source->addressLine1, 'postal_code' => $source->postalCode, 'locality' => $source->locality, 'country_code' => $source->countryCode, 'latitude' => $source->latitude, 'longitude' => $source->longitude, 'website' => $source->website, 'normalized_website_host' => $normalized->websiteHost, 'phone' => $source->phone, 'normalized_phone' => $normalized->phone, 'source_categories' => json_encode($source->categories, \JSON_THROW_ON_ERROR), 'suggested_place_category_id' => false === $categoryId ? null : $categoryId, 'suggested_city_id' => $cityId, 'city_selection_source' => null === $cityId ? null : 'AUTO', 'confidence' => $source->confidence, 'operating_status' => $source->operatingStatus, 'discovery_score' => $classification->score, 'discovery_reasons' => json_encode($discoveryReasons, \JSON_THROW_ON_ERROR), 'duplicate_score' => 0 === $duplicate->score ? null : $duplicate->score, 'duplicate_reasons' => [] === $duplicate->reasons ? null : json_encode($duplicate->reasons, \JSON_THROW_ON_ERROR), 'possible_duplicate_place_id' => $duplicate->placeIds[0] ?? null, 'possible_duplicate_candidate_ids' => json_encode($duplicate->candidateIds, \JSON_THROW_ON_ERROR), 'status' => $status, 'last_seen_at' => $now, 'updated_at' => $now];
+        $provenance = $this->provenance($source);
+        $rawProvenance = $this->decodeProvenance($provenance);
+
+        return ['discovery_run_id' => $runId, 'source' => 'overture', 'external_id' => $source->externalId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'source_provenance' => $provenance, 'source_license_resolutions' => '{}', 'source_license_review_required' => $this->hasUnlicensedSource($rawProvenance) ? 'true' : 'false', 'name' => $normalized->name, 'normalized_name' => $normalized->normalizedName, 'address_line1' => $source->addressLine1, 'postal_code' => $source->postalCode, 'locality' => $source->locality, 'country_code' => $source->countryCode, 'latitude' => $source->latitude, 'longitude' => $source->longitude, 'website' => $source->website, 'normalized_website_host' => $normalized->websiteHost, 'phone' => $source->phone, 'normalized_phone' => $normalized->phone, 'source_categories' => json_encode($source->categories, \JSON_THROW_ON_ERROR), 'suggested_place_category_id' => false === $categoryId ? null : $categoryId, 'suggested_city_id' => $cityId, 'city_selection_source' => null === $cityId ? null : 'AUTO', 'confidence' => $source->confidence, 'operating_status' => $source->operatingStatus, 'discovery_score' => $classification->score, 'discovery_reasons' => json_encode($discoveryReasons, \JSON_THROW_ON_ERROR), 'duplicate_score' => 0 === $duplicate->score ? null : $duplicate->score, 'duplicate_reasons' => [] === $duplicate->reasons ? null : json_encode($duplicate->reasons, \JSON_THROW_ON_ERROR), 'possible_duplicate_place_id' => $duplicate->placeIds[0] ?? null, 'possible_duplicate_candidate_ids' => json_encode($duplicate->candidateIds, \JSON_THROW_ON_ERROR), 'status' => $status, 'last_seen_at' => $now, 'updated_at' => $now];
     }
 
     private function provenance(ProviderPlace $source): string
@@ -335,6 +358,117 @@ SQL, [$candidateId]);
         }
 
         return $json;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function decodeProvenance(string $json): array
+    {
+        $provenance = json_decode($json, true, 16, \JSON_THROW_ON_ERROR);
+        if (!\is_array($provenance) || !array_is_list($provenance)) {
+            throw new \DomainException('Source provenance must be a JSON array.');
+        }
+
+        return $provenance;
+    }
+
+    /** @return array<string, SourceLicenseResolution> */
+    private function decodeResolutions(string $json): array
+    {
+        $data = json_decode($json, true, 16, \JSON_THROW_ON_ERROR);
+        if (!\is_array($data) || array_is_list($data) && [] !== $data) {
+            throw new \DomainException('Reviewed source license resolutions must be a JSON object.');
+        }
+        $resolutions = [];
+        foreach ($data as $fingerprint => $resolution) {
+            if (!\is_string($fingerprint) || !\is_array($resolution)) {
+                throw new \DomainException('Reviewed source license resolution is malformed.');
+            }
+            $resolutions[$fingerprint] = SourceLicenseResolution::fromArray($fingerprint, $resolution);
+        }
+
+        return $resolutions;
+    }
+
+    /**
+     * @param list<array<string, mixed>>             $provenance
+     * @param array<string, SourceLicenseResolution> $resolutions
+     *
+     * @return array{effective: list<array<string, mixed>>, resolutions: array<string, SourceLicenseResolution>, unresolved: bool, removed: list<string>}
+     */
+    private function licenseState(array $provenance, array $resolutions): array
+    {
+        $counts = [];
+        $sourcesByFingerprint = [];
+        foreach ($provenance as $source) {
+            $fingerprint = SourceProvenanceFingerprint::fromArray($source);
+            $counts[$fingerprint] = ($counts[$fingerprint] ?? 0) + 1;
+            $sourcesByFingerprint[$fingerprint][] = $source;
+        }
+        $retained = [];
+        $removed = [];
+        foreach ($resolutions as $fingerprint => $resolution) {
+            if (1 === ($counts[$fingerprint] ?? 0)) {
+                $source = $sourcesByFingerprint[$fingerprint][0];
+                if (!isset($source['license']) || !\is_string($source['license']) || '' === trim($source['license'])) {
+                    $retained[$fingerprint] = $resolution;
+                    continue;
+                }
+            }
+            $removed[] = $fingerprint;
+        }
+        $effective = [];
+        $unresolved = [] === $provenance;
+        foreach ($provenance as $source) {
+            $providerLicense = isset($source['license']) && \is_string($source['license']) && '' !== trim($source['license']);
+            $resolution = $retained[SourceProvenanceFingerprint::fromArray($source)] ?? null;
+            if (!$providerLicense && null !== $resolution) {
+                $source['license'] = $resolution->license;
+            } elseif (!$providerLicense) {
+                $unresolved = true;
+            }
+            $effective[] = $source;
+        }
+
+        return ['effective' => $effective, 'resolutions' => $retained, 'unresolved' => $unresolved, 'removed' => $removed];
+    }
+
+    /** @param array<string, SourceLicenseResolution> $resolutions */
+    private function encodeResolutions(array $resolutions): string
+    {
+        $json = json_encode((object) $resolutions, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+        if (\strlen($json) > 16_384) {
+            throw new \DomainException('Bounded reviewed source license resolutions exceed 16 KiB.');
+        }
+
+        return $json;
+    }
+
+    /** @param list<array<string, mixed>> $provenance */
+    private function encodeProvenance(array $provenance): string
+    {
+        $json = json_encode($provenance, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+        if (\strlen($json) > 16_384) {
+            throw new \DomainException('Bounded effective source provenance exceeds 16 KiB.');
+        }
+
+        return $json;
+    }
+
+    /** @param list<array<string, mixed>> $provenance */
+    private function hasUnlicensedSource(array $provenance): bool
+    {
+        return [] === $provenance || [] !== array_filter($provenance, static fn (array $source): bool => !isset($source['license']) || !\is_string($source['license']) || '' === trim($source['license']));
+    }
+
+    /** @param list<string> $fingerprints */
+    private function auditRemovedResolutions(string $candidateId, array $fingerprints, string $runId, string $sourceRelease): void
+    {
+        if ([] === $fingerprints) {
+            return;
+        }
+        foreach ($fingerprints as $fingerprint) {
+            $this->audit->append($candidateId, 'SYSTEM', 'SOURCE_LICENSE_RESOLUTION_STALE', null, null, ['source_license_resolutions', 'source_license_review_required'], json_encode(['fingerprint' => $fingerprint], \JSON_THROW_ON_ERROR), $runId, null, $sourceRelease);
+        }
     }
 
     /** @param array<string, mixed> $draft */

@@ -104,40 +104,115 @@ final class ApprovedSourceRefreshIntegrationTest extends KernelTestCase
         self::assertSame(OvertureOperatingStatus::PERMANENTLY_CLOSED->value, $candidate['operating_status']);
         self::assertNull($this->connection->fetchOne("SELECT source_provenance->0->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
         try {
-            $service->approve(self::CANDIDATE, 2, 'admin@example.test');
+            $service->approve(self::CANDIDATE, 3, 'admin@example.test');
             self::fail('Unresolved current-release licensing must block approval.');
         } catch (\DomainException $exception) {
             self::assertStringContainsString('licensing', $exception->getMessage());
         }
         try {
-            $service->resolveUnlicensedProvenance(self::CANDIDATE, 2, SourceProvenanceFingerprint::fromArray($overtureSource->jsonSerialize()), '<script>', 'admin@example.test');
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, 3, SourceProvenanceFingerprint::fromArray($overtureSource->jsonSerialize()), '<script>', 'admin@example.test');
             self::fail('Malformed reviewed license identifiers must be rejected.');
         } catch (\DomainException $exception) {
             self::assertStringContainsString('bounded', $exception->getMessage());
         }
-        $service->resolveUnlicensedProvenance(self::CANDIDATE, 2, SourceProvenanceFingerprint::fromArray($overtureSource->jsonSerialize()), 'Reviewed-Overture-1.0', 'admin@example.test');
-        self::assertSame('Reviewed-Overture-1.0', $this->connection->fetchOne("SELECT source_provenance->0->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
+        $service->resolveUnlicensedProvenance(self::CANDIDATE, 3, SourceProvenanceFingerprint::fromArray($overtureSource->jsonSerialize()), 'Reviewed-Overture-1.0', 'admin@example.test');
+        self::assertNull($this->connection->fetchOne("SELECT source_provenance->0->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
+        self::assertSame('Reviewed-Overture-1.0', $this->connection->fetchOne("SELECT source_license_resolutions->?->>'license' FROM place_candidates WHERE id = ?", [SourceProvenanceFingerprint::fromArray($overtureSource->jsonSerialize()), self::CANDIDATE]));
         self::assertNull($this->connection->fetchOne("SELECT source_provenance->1->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
         try {
-            $service->approve(self::CANDIDATE, 3, 'admin@example.test');
+            $service->approve(self::CANDIDATE, 4, 'admin@example.test');
             self::fail('Every current source license must be resolved before approval.');
         } catch (\DomainException $exception) {
             self::assertStringContainsString('licensing', $exception->getMessage());
         }
         try {
-            $service->resolveUnlicensedProvenance(self::CANDIDATE, 2, SourceProvenanceFingerprint::fromArray($foursquareSource->jsonSerialize()), 'Reviewed-Foursquare-1.0', 'admin@example.test');
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, 3, SourceProvenanceFingerprint::fromArray($foursquareSource->jsonSerialize()), 'Reviewed-Foursquare-1.0', 'admin@example.test');
             self::fail('A stale candidate version must be rejected.');
         } catch (\DomainException $exception) {
             self::assertInstanceOf(ConcurrentCandidateModification::class, $exception);
         }
-        $service->resolveUnlicensedProvenance(self::CANDIDATE, 3, SourceProvenanceFingerprint::fromArray($foursquareSource->jsonSerialize()), 'Reviewed-Foursquare-1.0', 'admin@example.test');
-        $placeId = $service->approve(self::CANDIDATE, 4, 'admin@example.test');
+        $service->resolveUnlicensedProvenance(self::CANDIDATE, 4, SourceProvenanceFingerprint::fromArray($foursquareSource->jsonSerialize()), 'Reviewed-Foursquare-1.0', 'admin@example.test');
+        $placeId = $service->approve(self::CANDIDATE, 5, 'admin@example.test');
         self::assertSame('2026-10-15.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
         self::assertSame(['Reviewed-Overture-1.0', 'Reviewed-Foursquare-1.0'], $this->connection->fetchFirstColumn("SELECT jsonb_array_elements(source_provenance)->>'license' FROM place_source_links WHERE place_id = ?", [$placeId]));
         self::assertSame('SOURCE_LICENSE_RESOLVED', $this->connection->fetchOne("SELECT action FROM place_candidate_audit_events WHERE candidate_id = ? AND action = 'SOURCE_LICENSE_RESOLVED'", [self::CANDIDATE]));
         $auditReasons = $this->connection->fetchFirstColumn("SELECT reason FROM place_candidate_audit_events WHERE candidate_id = ? AND action = 'SOURCE_LICENSE_RESOLVED' ORDER BY created_at, id", [self::CANDIDATE]);
         self::assertStringContainsString(SourceProvenanceFingerprint::fromArray($overtureSource->jsonSerialize()), $auditReasons[0]);
         self::assertStringContainsString('Foursquare', $auditReasons[1]);
+    }
+
+    public function testApprovedRefreshRetainsExactResolutionButChangedFingerprintHoldsLastCompliantLink(): void
+    {
+        $service = self::getContainer()->get(PlaceDiscoveryService::class);
+        $normalizer = self::getContainer()->get(PlaceNormalizer::class);
+        $profile = self::getContainer()->get(FamilyDiscoveryProfile::class);
+        self::assertInstanceOf(PlaceDiscoveryService::class, $service);
+        self::assertInstanceOf(PlaceNormalizer::class, $normalizer);
+        self::assertInstanceOf(FamilyDiscoveryProfile::class, $profile);
+        $reviewed = new ProviderSourceRecord('', 'Overture', null, 'omf-1', provider: 'Overture Maps Foundation', resource: 'places', version: '1');
+        $this->connection->update('place_candidates', ['source_provenance' => json_encode([$reviewed], \JSON_THROW_ON_ERROR), 'source_license_review_required' => 'true'], ['id' => self::CANDIDATE]);
+        $fingerprint = SourceProvenanceFingerprint::fromArray($reviewed->jsonSerialize());
+        $service->resolveUnlicensedProvenance(self::CANDIDATE, 1, $fingerprint, 'Reviewed-1.0', 'admin@example.test');
+        $placeId = $service->approve(self::CANDIDATE, 2, 'admin@example.test');
+
+        $same = $this->sourcePlace('2026-12-01.0', [$reviewed]);
+        $service->import(self::RUN, $same, $normalizer->normalize($same), $profile->classify($same, $normalizer->normalize($same)));
+        self::assertFalse((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertNull($this->connection->fetchOne("SELECT source_provenance->0->>'license' FROM place_candidates WHERE id = ?", [self::CANDIDATE]));
+        self::assertSame('Reviewed-1.0', $this->connection->fetchOne("SELECT source_provenance->0->>'license' FROM place_source_links WHERE place_id = ?", [$placeId]));
+        self::assertSame('2026-12-01.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+
+        $changed = new ProviderSourceRecord('', 'Overture', null, 'omf-2', provider: 'Overture Maps Foundation', resource: 'places', version: '2');
+        $unresolved = $this->sourcePlace('2026-12-08.0', [$changed, new ProviderSourceRecord('/names/primary', 'Foursquare', null, 'fsq-2')]);
+        $service->import(self::RUN, $unresolved, $normalizer->normalize($unresolved), $profile->classify($unresolved, $normalizer->normalize($unresolved)));
+        self::assertTrue((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertSame('2026-12-08.0', $this->connection->fetchOne('SELECT source_release FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertSame('2026-12-01.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+        self::assertSame(1, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM place_candidate_audit_events WHERE candidate_id = ? AND action = 'SOURCE_LICENSE_RESOLUTION_STALE'", [self::CANDIDATE]));
+        try {
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, 4, $fingerprint, 'Stale-1.0', 'admin@example.test');
+            self::fail('A pre-refresh form version must be rejected.');
+        } catch (ConcurrentCandidateModification) {
+        }
+
+        $providerLicensed = new ProviderSourceRecord('', 'Overture', 'Provider-2.0', 'omf-2', provider: 'Overture Maps Foundation', resource: 'places', version: '2');
+        $fullyLicensed = $this->sourcePlace('2026-12-15.0', [$providerLicensed, new ProviderSourceRecord('/names/primary', 'Foursquare', 'Apache-2.0', 'fsq-2')]);
+        $service->import(self::RUN, $fullyLicensed, $normalizer->normalize($fullyLicensed), $profile->classify($fullyLicensed, $normalizer->normalize($fullyLicensed)));
+        self::assertFalse((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertSame('2026-12-15.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+        self::assertSame(['Provider-2.0', 'Apache-2.0'], $this->connection->fetchFirstColumn("SELECT jsonb_array_elements(source_provenance)->>'license' FROM place_source_links WHERE place_id = ?", [$placeId]));
+
+        $missingProvenance = $this->sourcePlace('2026-12-22.0', []);
+        $service->import(self::RUN, $missingProvenance, $normalizer->normalize($missingProvenance), $profile->classify($missingProvenance, $normalizer->normalize($missingProvenance)));
+        self::assertTrue((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertSame('2026-12-15.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+    }
+
+    public function testFinalApprovedResolutionAtomicallyAdvancesSourceLinkWithoutChangingPlace(): void
+    {
+        $service = self::getContainer()->get(PlaceDiscoveryService::class);
+        $normalizer = self::getContainer()->get(PlaceNormalizer::class);
+        $profile = self::getContainer()->get(FamilyDiscoveryProfile::class);
+        self::assertInstanceOf(PlaceDiscoveryService::class, $service);
+        self::assertInstanceOf(PlaceNormalizer::class, $normalizer);
+        self::assertInstanceOf(FamilyDiscoveryProfile::class, $profile);
+        $placeId = $service->approve(self::CANDIDATE, 1, 'admin@example.test');
+        $placeBefore = $this->connection->fetchAssociative('SELECT name, status, version FROM places WHERE id = ?', [$placeId]);
+        $first = new ProviderSourceRecord('', 'Overture', null, 'omf-final');
+        $second = new ProviderSourceRecord('/names/primary', 'Foursquare', null, 'fsq-final');
+        $latest = $this->sourcePlace('2027-01-05.0', [$first, $second]);
+        $service->import(self::RUN, $latest, $normalizer->normalize($latest), $profile->classify($latest, $normalizer->normalize($latest)));
+
+        $service->resolveUnlicensedProvenance(self::CANDIDATE, 3, SourceProvenanceFingerprint::fromArray($first->jsonSerialize()), 'Reviewed-Overture-2.0', 'admin@example.test');
+        self::assertTrue((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertNotSame('2027-01-05.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+        $service->resolveUnlicensedProvenance(self::CANDIDATE, 4, SourceProvenanceFingerprint::fromArray($second->jsonSerialize()), 'Reviewed-Foursquare-2.0', 'admin@example.test');
+
+        self::assertFalse((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        self::assertSame('2027-01-05.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+        self::assertSame(['Reviewed-Overture-2.0', 'Reviewed-Foursquare-2.0'], $this->connection->fetchFirstColumn("SELECT jsonb_array_elements(source_provenance)->>'license' FROM place_source_links WHERE place_id = ?", [$placeId]));
+        self::assertSame($placeBefore, $this->connection->fetchAssociative('SELECT name, status, version FROM places WHERE id = ?', [$placeId]));
+        self::assertSame(1, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM place_candidate_audit_events WHERE candidate_id = ? AND action = 'SOURCE_LINK_PROVENANCE_UPDATED' AND actor_type = 'ADMIN'", [self::CANDIDATE]));
     }
 
     public function testLicenseSelectorRejectsStaleAmbiguousAndAlreadyLicensedSources(): void
@@ -158,13 +233,13 @@ final class ApprovedSourceRefreshIntegrationTest extends KernelTestCase
             $service->resolveUnlicensedProvenance(self::CANDIDATE, 1, SourceProvenanceFingerprint::fromArray($old->jsonSerialize()), 'Reviewed-1.0', 'admin@example.test');
             self::fail('A selector from pre-refresh provenance must be rejected.');
         } catch (\DomainException $exception) {
-            self::assertStringContainsString('stale', $exception->getMessage());
+            self::assertInstanceOf(ConcurrentCandidateModification::class, $exception);
         }
 
         $duplicate = $replacement->jsonSerialize();
         $this->connection->update('place_candidates', ['source_provenance' => json_encode([$duplicate, $duplicate], \JSON_THROW_ON_ERROR)], ['id' => self::CANDIDATE]);
         try {
-            $service->resolveUnlicensedProvenance(self::CANDIDATE, 1, SourceProvenanceFingerprint::fromArray($duplicate), 'Reviewed-1.0', 'admin@example.test');
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, 2, SourceProvenanceFingerprint::fromArray($duplicate), 'Reviewed-1.0', 'admin@example.test');
             self::fail('An ambiguous source identity must be rejected.');
         } catch (\DomainException $exception) {
             self::assertStringContainsString('ambiguous', $exception->getMessage());
@@ -174,7 +249,7 @@ final class ApprovedSourceRefreshIntegrationTest extends KernelTestCase
         $licensed['license'] = 'Provider-License-1.0';
         $this->connection->update('place_candidates', ['source_provenance' => json_encode([$licensed], \JSON_THROW_ON_ERROR)], ['id' => self::CANDIDATE]);
         try {
-            $service->resolveUnlicensedProvenance(self::CANDIDATE, 1, SourceProvenanceFingerprint::fromArray($licensed), 'Replacement-License-1.0', 'admin@example.test');
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, 2, SourceProvenanceFingerprint::fromArray($licensed), 'Replacement-License-1.0', 'admin@example.test');
             self::fail('A provider-supplied license must not be overwritten.');
         } catch (\DomainException $exception) {
             self::assertStringContainsString('cannot be overwritten', $exception->getMessage());
@@ -185,5 +260,11 @@ final class ApprovedSourceRefreshIntegrationTest extends KernelTestCase
     private function place(string $release, ?string $status, string $name): ProviderPlace
     {
         return new ProviderPlace('gers-normal', $release, '2', $name, 50.0413, 21.999, 'New source address', '35-001', 'Rzeszów', 'PL', 'https://source.example', null, ['playground'], 'playground', 0.95, $status, ['id' => 'gers-normal', 'name' => $name, 'operating_status' => $status], [new ProviderSourceRecord('/names/primary', 'Foursquare', 'Apache-2.0', 'fsq-1', '2026-08-01T00:00:00Z')]);
+    }
+
+    /** @param list<ProviderSourceRecord> $provenance */
+    private function sourcePlace(string $release, array $provenance): ProviderPlace
+    {
+        return new ProviderPlace('gers-normal', $release, '9', 'Refreshed source place', 50.0413, 21.999, 'New source address', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.95, OvertureOperatingStatus::OPEN->value, ['id' => 'gers-normal', 'name' => 'Refreshed source place'], $provenance);
     }
 }

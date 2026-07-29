@@ -66,6 +66,23 @@ class OvertureHelperSchemaTest(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "license"):
             HELPER.normalize_sources([{"property": "", "dataset": "Overture", "license": ["invalid"]}])
 
+    def test_source_count_boundary_is_fail_closed(self):
+        sources = [{"property": f"/{index}", "dataset": "Overture"} for index in range(HELPER.MAX_SOURCE_ITEMS)]
+        self.assertEqual(HELPER.MAX_SOURCE_ITEMS, len(HELPER.normalize_sources(sources)))
+        with self.assertRaisesRegex(ValueError, "32 items"):
+            HELPER.normalize_sources([*sources, {"property": "/overflow", "dataset": "Overture"}])
+
+    def test_source_field_byte_boundaries_are_fail_closed_without_slicing(self):
+        for field in ("property", "dataset", "record_id", "license"):
+            with self.subTest(field=field, boundary="exact"):
+                source = {"property": "", "dataset": "Overture", field: "x" * HELPER.MAX_SOURCE_FIELD_BYTES}
+                normalized = HELPER.normalize_sources([source])[0]
+                self.assertEqual("x" * HELPER.MAX_SOURCE_FIELD_BYTES, normalized[field])
+            with self.subTest(field=field, boundary="overflow"):
+                source = {"property": "", "dataset": "Overture", field: "x" * (HELPER.MAX_SOURCE_FIELD_BYTES + 1)}
+                with self.assertRaisesRegex(ValueError, field):
+                    HELPER.normalize_sources([source])
+
     def test_update_time_normalizes_strings_aware_and_naive_datetimes_and_null(self):
         values = [
             None,

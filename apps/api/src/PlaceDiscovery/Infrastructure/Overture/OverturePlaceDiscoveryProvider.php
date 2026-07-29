@@ -19,6 +19,9 @@ use Symfony\Component\Process\Process;
 
 final readonly class OverturePlaceDiscoveryProvider implements PlaceDiscoveryProvider
 {
+    private const MAX_SOURCE_ITEMS = 32;
+    private const MAX_SOURCE_FIELD_BYTES = 255;
+
     public function __construct(
         private string $helperPath,
         private string $pythonBinary = 'python3',
@@ -162,13 +165,25 @@ final readonly class OverturePlaceDiscoveryProvider implements PlaceDiscoveryPro
             throw new ProviderSchemaViolation('Overture known field has an incompatible type: operating_status');
         }
         $provenance = [];
-        foreach (\array_slice($data['sources'] ?? [], 0, 32) as $item) {
+        $sources = $data['sources'] ?? [];
+        if (!array_is_list($sources)) {
+            throw new ProviderSchemaViolation('Overture source provenance must be an array.');
+        }
+        if (\count($sources) > self::MAX_SOURCE_ITEMS) {
+            throw new ProviderSchemaViolation('Overture source provenance exceeds the 32-item limit.');
+        }
+        foreach ($sources as $item) {
             if (!\is_array($item) || !\array_key_exists('property', $item) || !isset($item['dataset']) || !\is_string($item['property']) || !\is_string($item['dataset']) || (isset($item['license']) && !\is_string($item['license']))) {
                 throw new ProviderSchemaViolation('Overture source provenance has an incompatible type.');
             }
             foreach (['record_id', 'update_time', 'provider', 'resource', 'version'] as $optional) {
                 if (isset($item[$optional]) && !\is_string($item[$optional])) {
                     throw new ProviderSchemaViolation('Overture source provenance has an incompatible type: '.$optional);
+                }
+            }
+            foreach (['property', 'dataset', 'license', 'record_id', 'update_time', 'provider', 'resource', 'version'] as $bounded) {
+                if (isset($item[$bounded]) && \strlen($item[$bounded]) > self::MAX_SOURCE_FIELD_BYTES) {
+                    throw new ProviderSchemaViolation('Overture source provenance field exceeds 255 bytes: '.$bounded);
                 }
             }
             if (isset($item['confidence']) && (!is_numeric($item['confidence']) || (float) $item['confidence'] < 0 || (float) $item['confidence'] > 1)) {

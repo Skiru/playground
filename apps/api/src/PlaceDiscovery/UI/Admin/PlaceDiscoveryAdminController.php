@@ -50,10 +50,15 @@ final class PlaceDiscoveryAdminController extends AbstractController
         if (false === $candidate) {
             throw $this->createNotFoundException();
         }
+        $candidate['source_license_resolutions'] = json_decode((string) $candidate['source_license_resolutions'], true, 16, \JSON_THROW_ON_ERROR);
         $candidate['source_provenance'] = json_decode((string) $candidate['source_provenance'], true, 16, \JSON_THROW_ON_ERROR);
         foreach ($candidate['source_provenance'] as &$source) {
             if (\is_array($source)) {
                 $source['fingerprint'] = SourceProvenanceFingerprint::fromArray($source);
+                $providerLicense = isset($source['license']) && \is_string($source['license']) && '' !== trim($source['license']);
+                $reviewed = $candidate['source_license_resolutions'][$source['fingerprint']] ?? null;
+                $source['effective_license'] = $providerLicense ? $source['license'] : (\is_array($reviewed) && \is_string($reviewed['license'] ?? null) ? $reviewed['license'] : null);
+                $source['license_origin'] = $providerLicense ? 'provider' : (null !== $source['effective_license'] ? 'reviewed' : null);
             }
         }
         unset($source);

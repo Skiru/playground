@@ -10,6 +10,7 @@ use App\PlaceDiscovery\Application\Port\ProviderTimeout;
 use App\PlaceDiscovery\Application\Port\ProviderUnavailable;
 use App\PlaceDiscovery\Domain\Aggregate\DiscoveryArea;
 use App\PlaceDiscovery\Infrastructure\Overture\OverturePlaceDiscoveryProvider;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class OverturePlaceDiscoveryProviderProcessTest extends TestCase
@@ -46,6 +47,58 @@ final class OverturePlaceDiscoveryProviderProcessTest extends TestCase
         $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); echo json_encode(["id"=>"one","name"=>"Park","latitude"=>50,"longitude"=>20,"sources"=>[["property"=>"","dataset"=>"Overture","license"=>[]]]]), "\n";');
         $this->expectException(ProviderSchemaViolation::class);
         iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
+    }
+
+    public function testAcceptsExactProvenanceCountAndFieldBounds(): void
+    {
+        $sources = array_fill(0, 32, ['property' => str_repeat('p', 255), 'dataset' => str_repeat('d', 255), 'record_id' => str_repeat('r', 255), 'license' => str_repeat('l', 255)]);
+        $record = ['id' => 'one', 'name' => 'Park', 'latitude' => 50, 'longitude' => 20, 'sources' => $sources];
+        $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); echo '.var_export(json_encode($record, \JSON_THROW_ON_ERROR), true).', "\n";');
+
+        $places = iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
+
+        self::assertCount(32, $places[0]->provenance);
+        self::assertSame(str_repeat('p', 255), $places[0]->provenance[0]->property);
+    }
+
+    public function testRejectsProvenanceCountOverflowWithoutOmittingRows(): void
+    {
+        $record = ['id' => 'one', 'name' => 'Park', 'latitude' => 50, 'longitude' => 20, 'sources' => array_fill(0, 33, ['property' => '', 'dataset' => 'Overture'])];
+        $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); echo '.var_export(json_encode($record, \JSON_THROW_ON_ERROR), true).', "\n";');
+        $this->expectException(ProviderSchemaViolation::class);
+        $this->expectExceptionMessage('32-item');
+
+        iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
+    }
+
+    public function testRejectsObjectShapedProvenanceWithoutPartialNormalization(): void
+    {
+        $record = ['id' => 'one', 'name' => 'Park', 'latitude' => 50, 'longitude' => 20, 'sources' => ['unexpected' => ['property' => '', 'dataset' => 'Overture']]];
+        $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); echo '.var_export(json_encode($record, \JSON_THROW_ON_ERROR), true).', "\n";');
+        $this->expectException(ProviderSchemaViolation::class);
+        $this->expectExceptionMessage('must be an array');
+
+        iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
+    }
+
+    #[DataProvider('overlongProvenanceFields')]
+    public function testRejectsOverlongProvenanceFieldsWithoutSlicing(string $field): void
+    {
+        $source = ['property' => '', 'dataset' => 'Overture', $field => str_repeat('x', 256)];
+        $record = ['id' => 'one', 'name' => 'Park', 'latitude' => 50, 'longitude' => 20, 'sources' => [$source]];
+        $provider = $this->provider('if (in_array("--check-release", $argv, true)) exit(0); echo '.var_export(json_encode($record, \JSON_THROW_ON_ERROR), true).', "\n";');
+        $this->expectException(ProviderSchemaViolation::class);
+        $this->expectExceptionMessage($field);
+
+        iterator_to_array($provider->streamPlaces($this->area(), 'family-v1', '2026-07-22.0', 1));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function overlongProvenanceFields(): iterable
+    {
+        foreach (['property', 'dataset', 'record_id', 'license'] as $field) {
+            yield $field => [$field];
+        }
     }
 
     public function testRejectsMalformedKnownTaxonomyType(): void
@@ -106,7 +159,6 @@ final class OverturePlaceDiscoveryProviderProcessTest extends TestCase
             break;
         }
         unset($stream);
-        self::assertTrue(true);
     }
 
     private function provider(string $body, int $timeout = 5): OverturePlaceDiscoveryProvider

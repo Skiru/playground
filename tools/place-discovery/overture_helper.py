@@ -18,6 +18,8 @@ RELEASE_PATTERN = __import__("re").compile(r"^20\d{2}-\d{2}-\d{2}\.\d+$")
 MAX_STDERR_BYTES = 8192
 MAX_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_ADDRESS_SPACE_BYTES = 2 * 1024 * 1024 * 1024
+MAX_SOURCE_ITEMS = 32
+MAX_SOURCE_FIELD_BYTES = 255
 
 
 def latest_release() -> str:
@@ -111,8 +113,10 @@ def normalize_sources(raw_sources: object) -> list[dict]:
         return []
     if not isinstance(raw_sources, list):
         raise TypeError("sources is not an array")
+    if len(raw_sources) > MAX_SOURCE_ITEMS:
+        raise ValueError(f"source provenance exceeds {MAX_SOURCE_ITEMS} items")
     result = []
-    for source in raw_sources[:32]:
+    for source in raw_sources:
         if not isinstance(source, dict):
             raise TypeError("source provenance is not an object")
         if "property" not in source or "dataset" not in source:
@@ -124,20 +128,25 @@ def normalize_sources(raw_sources: object) -> list[dict]:
             raise TypeError("source provenance property or dataset has an incompatible type")
         if license_id is not None and (not isinstance(license_id, str) or not license_id.strip()):
             raise TypeError("source provenance license has an incompatible type")
+        for key, value in (("property", property_path), ("dataset", dataset), ("license", license_id)):
+            if value is not None and len(value.encode("utf-8")) > MAX_SOURCE_FIELD_BYTES:
+                raise ValueError(f"source provenance {key} exceeds {MAX_SOURCE_FIELD_BYTES} bytes")
         optional_strings = {}
         for key in ("record_id", "provider", "resource", "version"):
             value = source.get(key)
             if value is not None and not isinstance(value, str):
                 raise TypeError(f"source provenance {key} has an incompatible type")
-            optional_strings[key] = value[:255] if value is not None else None
+            if value is not None and len(value.encode("utf-8")) > MAX_SOURCE_FIELD_BYTES:
+                raise ValueError(f"source provenance {key} exceeds {MAX_SOURCE_FIELD_BYTES} bytes")
+            optional_strings[key] = value
         optional_strings["update_time"] = normalize_update_time(source.get("update_time"))
         confidence = source.get("confidence")
         if confidence is not None and (not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1):
             raise TypeError("source provenance confidence has an incompatible type")
         result.append({
-            "property": property_path[:255],
-            "dataset": dataset[:255],
-            "license": license_id[:255] if license_id is not None else None,
+            "property": property_path,
+            "dataset": dataset,
+            "license": license_id,
             **optional_strings,
             "confidence": float(confidence) if confidence is not None else None,
         })
@@ -148,8 +157,8 @@ def normalize_update_time(value: object) -> str | None:
     if value is None:
         return None
     if isinstance(value, str):
-        if len(value) > 255:
-            raise ValueError("source provenance update_time exceeds 255 bytes")
+        if len(value.encode("utf-8")) > MAX_SOURCE_FIELD_BYTES:
+            raise ValueError(f"source provenance update_time exceeds {MAX_SOURCE_FIELD_BYTES} bytes")
         if "T" not in value:
             raise ValueError("source provenance update_time is not ISO/RFC-3339")
         try:
@@ -164,8 +173,8 @@ def normalize_update_time(value: object) -> str | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=datetime.timezone.utc)
     normalized = parsed.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
-    if len(normalized) > 255:
-        raise ValueError("source provenance update_time exceeds 255 bytes")
+    if len(normalized.encode("utf-8")) > MAX_SOURCE_FIELD_BYTES:
+        raise ValueError(f"source provenance update_time exceeds {MAX_SOURCE_FIELD_BYTES} bytes")
     return normalized
 
 

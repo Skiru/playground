@@ -2,6 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Kernel;
+use App\PlaceDiscovery\Application\ConcurrentCandidateModification;
+use App\PlaceDiscovery\Application\PlaceDiscoveryService;
+use App\PlaceDiscovery\Domain\FamilyDiscoveryProfile;
+use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
+use App\PlaceDiscovery\Domain\PlaceNormalizer;
+use App\PlaceDiscovery\Domain\ProviderPlace;
+use App\PlaceDiscovery\Domain\ProviderSourceRecord;
+use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
+
+require dirname(__DIR__, 3).'/vendor/autoload.php';
+
 if (!extension_loaded('pgsql') || !extension_loaded('pcntl')) {
     throw new RuntimeException('pgsql and pcntl extensions are required.');
 }
@@ -21,6 +33,7 @@ function connection(): PgSql\Connection
     return $connection;
 }
 
+/** @param list<bool|float|int|string|null> $parameters */
 function execute(PgSql\Connection $connection, string $sql, array $parameters = []): PgSql\Result
 {
     $result = [] === $parameters ? pg_query($connection, $sql) : pg_query_params($connection, $sql, $parameters);
@@ -90,8 +103,19 @@ SQL, [$id, $externalId]);
     return 1 === pg_num_rows($result);
 }
 
+function deleteLicenseRaceAudits(PgSql\Connection $connection): void
+{
+    execute($connection, 'ALTER TABLE place_candidate_audit_events DISABLE TRIGGER place_candidate_audit_no_update');
+    try {
+        execute($connection, "DELETE FROM place_candidate_audit_events WHERE candidate_id='00000000-0000-7000-8000-000000009915'");
+    } finally {
+        execute($connection, 'ALTER TABLE place_candidate_audit_events ENABLE TRIGGER place_candidate_audit_no_update');
+    }
+}
+
 $main = connection();
-$externalIds = ['race-candidate', 'race-source-link', 'race-approval', 'race-import-approval'];
+$externalIds = ['race-candidate', 'race-source-link', 'race-approval', 'race-import-approval', 'race-license-refresh'];
+deleteLicenseRaceAudits($main);
 execute($main, 'DELETE FROM place_source_links WHERE external_id = ANY($1::varchar[])', ['{'.implode(',', $externalIds).'}']);
 execute($main, 'DELETE FROM place_candidates WHERE external_id = ANY($1::varchar[])', ['{'.implode(',', $externalIds).'}']);
 
@@ -107,7 +131,7 @@ try {
 
     candidateInsert($main, '00000000-0000-7000-8000-000000009912', 'race-source-link');
     $linkInsert = static function (PgSql\Connection $db): bool {
-        $result = execute($db, "INSERT INTO place_source_links (id,place_id,source,external_id,source_release,first_linked_at,last_seen_at,last_payload_hash) VALUES (gen_random_uuid(),'00000000-0000-7000-8000-000000000410','overture','race-source-link','2099-02-01.0',now(),now(),repeat('a',64)) ON CONFLICT (source,external_id) DO NOTHING RETURNING id");
+        $result = execute($db, "INSERT INTO place_source_links (id,place_id,source,external_id,source_release,first_linked_at,last_seen_at,last_payload_hash) VALUES (gen_random_uuid(),'00000000-0000-7000-8000-000000000410','overture','race-source-link','2099-02-01.0',now(),now(),repeat('a',64)) ON CONFLICT DO NOTHING RETURNING id");
 
         return 1 === pg_num_rows($result);
     };
@@ -162,6 +186,57 @@ try {
         throw new RuntimeException('Import/approval race lost terminal state or source refresh.');
     }
 
+    $raceSource = new ProviderSourceRecord('', 'Overture', null, 'race-record', provider: 'Overture Maps Foundation', resource: 'places', version: '1');
+    $rawProvenance = json_encode([$raceSource], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES);
+    execute($main, <<<'SQL'
+INSERT INTO place_candidates (id, discovery_run_id, source, external_id, source_release, source_record_version, source_payload_hash, source_snapshot, source_provenance, source_license_review_required, name, normalized_name, address_line1, postal_code, locality, country_code, latitude, longitude, source_categories, suggested_place_category_id, suggested_city_id, city_selection_source, indoor, outdoor, free_entry, confidence, operating_status, discovery_score, discovery_reasons, status, approved_place_id, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES ('00000000-0000-7000-8000-000000009915', '00000000-0000-7000-8000-000000000901', 'overture', 'race-license-refresh', '2099-05-01.0', '1', repeat('b',64), '{"id":"race-license-refresh","name":"Race License Park"}'::jsonb, $1::jsonb, true, 'Race License Park', 'race license park', 'Race 1', '35-001', 'Rzeszów', 'PL', 50.04, 22.0, '["playground"]'::jsonb, '00000000-0000-7000-8000-000000000201', '00000000-0000-7000-8000-000000000105', 'AUTO', true, false, true, 0.9, 'open', 90, '[]'::jsonb, 'APPROVED', '00000000-0000-7000-8000-000000000414', now(), now(), now(), now())
+SQL, [$rawProvenance]);
+    execute($main, "INSERT INTO place_source_links (id,place_id,source,external_id,source_release,first_linked_at,last_seen_at,last_payload_hash,source_provenance) VALUES (gen_random_uuid(),'00000000-0000-7000-8000-000000000414','overture','race-license-refresh','2099-04-01.0',now(),now(),repeat('a',64),'[{\"property\":\"\",\"dataset\":\"Overture\",\"license\":\"Old-Compliant-1.0\"}]'::jsonb)");
+    $refreshLicense = static function (PgSql\Connection $db) use ($raceSource): string {
+        $kernel = new Kernel('test', false);
+        $kernel->boot();
+        try {
+            $container = $kernel->getContainer()->get('test.service_container');
+            $service = $container->get(PlaceDiscoveryService::class);
+            $normalizer = $container->get(PlaceNormalizer::class);
+            $profile = $container->get(FamilyDiscoveryProfile::class);
+            $source = new ProviderPlace('race-license-refresh', '2099-05-08.0', '2', 'Race License Park', 50.04, 22.0, 'Race 1', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.9, OvertureOperatingStatus::OPEN->value, ['id' => 'race-license-refresh', 'name' => 'Race License Park'], [$raceSource]);
+
+            return $service->import('00000000-0000-7000-8000-000000000901', $source, $normalizer->normalize($source), $profile->classify($source, $normalizer->normalize($source)));
+        } finally {
+            $kernel->shutdown();
+        }
+    };
+    $resolveLicense = static function (PgSql\Connection $db) use ($raceSource): bool {
+        $kernel = new Kernel('test', false);
+        $kernel->boot();
+        try {
+            $kernel->getContainer()->get('test.service_container')->get(PlaceDiscoveryService::class)->resolveUnlicensedProvenance('00000000-0000-7000-8000-000000009915', 1, SourceProvenanceFingerprint::fromArray($raceSource->jsonSerialize()), 'Reviewed-Race-1.0', 'race-admin@example.test');
+
+            return true;
+        } catch (ConcurrentCandidateModification) {
+            return false;
+        } finally {
+            $kernel->shutdown();
+        }
+    };
+    $licenseRaceResults = race($refreshLicense, $resolveLicense);
+    $main = connection();
+    $candidateState = pg_fetch_assoc(execute($main, "SELECT version,source_release,source_license_review_required FROM place_candidates WHERE external_id='race-license-refresh'"));
+    $linkState = pg_fetch_assoc(execute($main, "SELECT source_release FROM place_source_links WHERE external_id='race-license-refresh'"));
+    if (false === $candidateState || false === $linkState) {
+        throw new RuntimeException('Refresh/license-resolution race lost its candidate or source link.');
+    }
+    $refreshAudits = (int) pg_fetch_result(execute($main, "SELECT count(*) FROM place_candidate_audit_events WHERE candidate_id='00000000-0000-7000-8000-000000009915' AND action='SOURCE_REFRESHED'"), 0, 0);
+    $resolutionAudits = (int) pg_fetch_result(execute($main, "SELECT count(*) FROM place_candidate_audit_events WHERE candidate_id='00000000-0000-7000-8000-000000009915' AND action='SOURCE_LICENSE_RESOLVED'"), 0, 0);
+    $resolutionWon = (bool) $licenseRaceResults[1];
+    $validResolvedState = $resolutionWon && '3' === $candidateState['version'] && 'f' === $candidateState['source_license_review_required'] && '2099-05-08.0' === $linkState['source_release'] && 1 === $resolutionAudits;
+    $validRefreshState = !$resolutionWon && '2' === $candidateState['version'] && 't' === $candidateState['source_license_review_required'] && '2099-04-01.0' === $linkState['source_release'] && 0 === $resolutionAudits;
+    if (1 !== $refreshAudits || (!$validResolvedState && !$validRefreshState)) {
+        throw new RuntimeException('Refresh/license-resolution race produced an invalid state or lost an audit event.');
+    }
+
     $lockKey = 'place-discovery:operation:overture:2099-04-01.0:00000000-0000-7000-8000-000000000900';
     $lockAction = static function (PgSql\Connection $db) use ($lockKey): bool {
         $acquired = 't' === pg_fetch_result(execute($db, 'SELECT pg_try_advisory_lock(hashtext($1))', [$lockKey]), 0, 0);
@@ -178,9 +253,10 @@ try {
         throw new RuntimeException('Equivalent CLI/worker lock race admitted more than one owner.');
     }
 
-    echo json_encode(['candidate_insert' => 'PASS', 'source_link_insert' => 'PASS', 'approval_approval' => 'PASS', 'import_approval' => 'PASS', 'cli_async_lock' => 'PASS'], \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT)."\n";
+    echo json_encode(['candidate_insert' => 'PASS', 'source_link_insert' => 'PASS', 'approval_approval' => 'PASS', 'import_approval' => 'PASS', 'refresh_license_resolution' => 'PASS', 'cli_async_lock' => 'PASS'], \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT)."\n";
 } finally {
     $cleanup = connection();
+    deleteLicenseRaceAudits($cleanup);
     execute($cleanup, 'DELETE FROM place_source_links WHERE external_id = ANY($1::varchar[])', ['{'.implode(',', $externalIds).'}']);
     execute($cleanup, 'DELETE FROM place_candidates WHERE external_id = ANY($1::varchar[])', ['{'.implode(',', $externalIds).'}']);
 }
