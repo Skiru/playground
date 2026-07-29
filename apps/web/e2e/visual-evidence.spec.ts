@@ -50,12 +50,11 @@ test("capture deterministic review and discussion evidence", async ({ browser },
   const bobContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
   const alice = await aliceContext.newPage()
   const bob = await bobContext.newPage()
-  const shortComment = "Czy przy wejściu jest miejsce na wózek?"
-  const longComment = "Byliśmy tutaj w sobotę z dwójką dzieci.\n\nNajmłodsze spokojnie bawiło się w strefie malucha, a starsze miało dość miejsca na ruch. Obsługa jasno wyjaśniła zasady i pomogła znaleźć przewijak. To czytelny, dłuższy komentarz testowy sprawdzający naturalne zawijanie polskiego tekstu."
-  const reply = "Tak, wózki można zostawić w oznaczonej strefie obok szatni."
-  const review = "Bardzo przyjazne rodzinom miejsce, czytelne zasady i świetnie przygotowana strefa zabawy."
-
   const runId = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()
+  const shortComment = `Czy przy wejściu jest miejsce na wózek? (${runId})`
+  const longComment = `Byliśmy tutaj w sobotę z dwójką dzieci.\n\nNajmłodsze spokojnie bawiło się w strefie malucha, a starsze miało dość miejsca na ruch. Obsługa jasno wyjaśniła zasady i pomogła znaleźć przewijak. To czytelny, dłuższy komentarz testowy sprawdzający naturalne zawijanie polskiego tekstu. (${runId})`
+  const reply = `Tak, wózki można zostawić w oznaczonej strefie obok szatni. (${runId})`
+  const review = `Bardzo przyjazne rodzinom miejsce, czytelne zasady i świetnie przygotowana strefa zabawy. (${runId})`
   await loginAs(alice, `c6a-r1-alicja-${runId}@example.test`, "Alicja Testowa")
   await alice.goto(placePath)
   await alice.getByRole("button", { name: "Dodaj opinię" }).click()
