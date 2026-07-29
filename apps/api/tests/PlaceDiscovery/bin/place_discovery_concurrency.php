@@ -10,6 +10,7 @@ use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\PlaceDiscovery\Domain\PlaceNormalizer;
 use App\PlaceDiscovery\Domain\ProviderPlace;
 use App\PlaceDiscovery\Domain\ProviderSourceRecord;
+use App\PlaceDiscovery\Domain\SourceLicenseResolution;
 use App\PlaceDiscovery\Domain\SourceProvenanceFingerprint;
 
 require dirname(__DIR__, 3).'/vendor/autoload.php';
@@ -113,6 +114,23 @@ function deleteLicenseRaceAudits(PgSql\Connection $connection): void
     }
 }
 
+/** @return list<ProviderSourceRecord> */
+function maximumRaceSources(): array
+{
+    $sources = [];
+    for ($index = 0; $index < 32; ++$index) {
+        $suffix = str_pad((string) $index, 2, '0', \STR_PAD_LEFT);
+        $sources[] = new ProviderSourceRecord(str_pad('/p/'.$suffix, 50, 'p'), str_pad('Dataset-'.$suffix, 50, 'd'), null, str_pad('record-'.$suffix, 50, 'r'), provider: str_pad('Provider-'.$suffix, 50, 'p'), resource: str_pad('resource-'.$suffix, 50, 'r'), version: str_pad('version-'.$suffix, 50, 'v'));
+    }
+
+    return $sources;
+}
+
+function maximumRaceLicense(int $index): string
+{
+    return str_pad('Reviewed-'.$index.'-', 255, 'L');
+}
+
 $main = connection();
 $externalIds = ['race-candidate', 'race-source-link', 'race-approval', 'race-import-approval', 'race-license-refresh'];
 deleteLicenseRaceAudits($main);
@@ -186,14 +204,20 @@ try {
         throw new RuntimeException('Import/approval race lost terminal state or source refresh.');
     }
 
-    $raceSource = new ProviderSourceRecord('', 'Overture', null, 'race-record', provider: 'Overture Maps Foundation', resource: 'places', version: '1');
-    $rawProvenance = json_encode([$raceSource], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES);
+    $raceSources = maximumRaceSources();
+    $rawProvenance = json_encode($raceSources, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES);
+    $resolutions = [];
+    foreach (array_slice($raceSources, 0, 31) as $index => $raceSource) {
+        $source = $raceSource->jsonSerialize();
+        $resolutions[SourceProvenanceFingerprint::fromArray($source)] = SourceLicenseResolution::review($source, maximumRaceLicense($index), 'race-admin@example.test', '2099-05-01T00:00:00+00:00', '2099-05-01.0');
+    }
+    $encodedResolutions = json_encode((object) $resolutions, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES);
     execute($main, <<<'SQL'
-INSERT INTO place_candidates (id, discovery_run_id, source, external_id, source_release, source_record_version, source_payload_hash, source_snapshot, source_provenance, source_license_review_required, name, normalized_name, address_line1, postal_code, locality, country_code, latitude, longitude, source_categories, suggested_place_category_id, suggested_city_id, city_selection_source, indoor, outdoor, free_entry, confidence, operating_status, discovery_score, discovery_reasons, status, approved_place_id, first_seen_at, last_seen_at, created_at, updated_at)
-VALUES ('00000000-0000-7000-8000-000000009915', '00000000-0000-7000-8000-000000000901', 'overture', 'race-license-refresh', '2099-05-01.0', '1', repeat('b',64), '{"id":"race-license-refresh","name":"Race License Park"}'::jsonb, $1::jsonb, true, 'Race License Park', 'race license park', 'Race 1', '35-001', 'Rzeszów', 'PL', 50.04, 22.0, '["playground"]'::jsonb, '00000000-0000-7000-8000-000000000201', '00000000-0000-7000-8000-000000000105', 'AUTO', true, false, true, 0.9, 'open', 90, '[]'::jsonb, 'APPROVED', '00000000-0000-7000-8000-000000000414', now(), now(), now(), now())
-SQL, [$rawProvenance]);
+INSERT INTO place_candidates (id, discovery_run_id, source, external_id, source_release, source_record_version, source_payload_hash, source_snapshot, source_provenance, source_license_resolutions, source_license_review_required, name, normalized_name, address_line1, postal_code, locality, country_code, latitude, longitude, source_categories, suggested_place_category_id, suggested_city_id, city_selection_source, indoor, outdoor, free_entry, confidence, operating_status, discovery_score, discovery_reasons, status, approved_place_id, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES ('00000000-0000-7000-8000-000000009915', '00000000-0000-7000-8000-000000000901', 'overture', 'race-license-refresh', '2099-05-01.0', '1', repeat('b',64), '{"id":"race-license-refresh","name":"Race License Park"}'::jsonb, $1::jsonb, $2::jsonb, true, 'Race License Park', 'race license park', 'Race 1', '35-001', 'Rzeszów', 'PL', 50.04, 22.0, '["playground"]'::jsonb, '00000000-0000-7000-8000-000000000201', '00000000-0000-7000-8000-000000000105', 'AUTO', true, false, true, 0.9, 'open', 90, '[]'::jsonb, 'APPROVED', '00000000-0000-7000-8000-000000000414', now(), now(), now(), now())
+SQL, [$rawProvenance, $encodedResolutions]);
     execute($main, "INSERT INTO place_source_links (id,place_id,source,external_id,source_release,first_linked_at,last_seen_at,last_payload_hash,source_provenance) VALUES (gen_random_uuid(),'00000000-0000-7000-8000-000000000414','overture','race-license-refresh','2099-04-01.0',now(),now(),repeat('a',64),'[{\"property\":\"\",\"dataset\":\"Overture\",\"license\":\"Old-Compliant-1.0\"}]'::jsonb)");
-    $refreshLicense = static function (PgSql\Connection $db) use ($raceSource): string {
+    $refreshLicense = static function (PgSql\Connection $db) use ($raceSources): string {
         $kernel = new Kernel('test', false);
         $kernel->boot();
         try {
@@ -201,18 +225,18 @@ SQL, [$rawProvenance]);
             $service = $container->get(PlaceDiscoveryService::class);
             $normalizer = $container->get(PlaceNormalizer::class);
             $profile = $container->get(FamilyDiscoveryProfile::class);
-            $source = new ProviderPlace('race-license-refresh', '2099-05-08.0', '2', 'Race License Park', 50.04, 22.0, 'Race 1', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.9, OvertureOperatingStatus::OPEN->value, ['id' => 'race-license-refresh', 'name' => 'Race License Park'], [$raceSource]);
+            $source = new ProviderPlace('race-license-refresh', '2099-05-08.0', '2', 'Race License Park', 50.04, 22.0, 'Race 1', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.9, OvertureOperatingStatus::OPEN->value, ['id' => 'race-license-refresh', 'name' => 'Race License Park'], $raceSources);
 
             return $service->import('00000000-0000-7000-8000-000000000901', $source, $normalizer->normalize($source), $profile->classify($source, $normalizer->normalize($source)));
         } finally {
             $kernel->shutdown();
         }
     };
-    $resolveLicense = static function (PgSql\Connection $db) use ($raceSource): bool {
+    $resolveLicense = static function (PgSql\Connection $db) use ($raceSources): bool {
         $kernel = new Kernel('test', false);
         $kernel->boot();
         try {
-            $kernel->getContainer()->get('test.service_container')->get(PlaceDiscoveryService::class)->resolveUnlicensedProvenance('00000000-0000-7000-8000-000000009915', 1, SourceProvenanceFingerprint::fromArray($raceSource->jsonSerialize()), 'Reviewed-Race-1.0', 'race-admin@example.test');
+            $kernel->getContainer()->get('test.service_container')->get(PlaceDiscoveryService::class)->resolveUnlicensedProvenance('00000000-0000-7000-8000-000000009915', 1, SourceProvenanceFingerprint::fromArray($raceSources[31]->jsonSerialize()), maximumRaceLicense(31), 'race-admin@example.test');
 
             return true;
         } catch (ConcurrentCandidateModification) {
@@ -224,14 +248,14 @@ SQL, [$rawProvenance]);
     $licenseRaceResults = race($refreshLicense, $resolveLicense);
     $main = connection();
     $candidateState = pg_fetch_assoc(execute($main, "SELECT version,source_release,source_license_review_required FROM place_candidates WHERE external_id='race-license-refresh'"));
-    $linkState = pg_fetch_assoc(execute($main, "SELECT source_release FROM place_source_links WHERE external_id='race-license-refresh'"));
+    $linkState = pg_fetch_assoc(execute($main, "SELECT source_release,octet_length(source_provenance::text) AS provenance_bytes,jsonb_array_length(source_provenance) AS provenance_count FROM place_source_links WHERE external_id='race-license-refresh'"));
     if (false === $candidateState || false === $linkState) {
         throw new RuntimeException('Refresh/license-resolution race lost its candidate or source link.');
     }
     $refreshAudits = (int) pg_fetch_result(execute($main, "SELECT count(*) FROM place_candidate_audit_events WHERE candidate_id='00000000-0000-7000-8000-000000009915' AND action='SOURCE_REFRESHED'"), 0, 0);
     $resolutionAudits = (int) pg_fetch_result(execute($main, "SELECT count(*) FROM place_candidate_audit_events WHERE candidate_id='00000000-0000-7000-8000-000000009915' AND action='SOURCE_LICENSE_RESOLVED'"), 0, 0);
     $resolutionWon = (bool) $licenseRaceResults[1];
-    $validResolvedState = $resolutionWon && '3' === $candidateState['version'] && 'f' === $candidateState['source_license_review_required'] && '2099-05-08.0' === $linkState['source_release'] && 1 === $resolutionAudits;
+    $validResolvedState = $resolutionWon && '3' === $candidateState['version'] && 'f' === $candidateState['source_license_review_required'] && '2099-05-08.0' === $linkState['source_release'] && '32' === $linkState['provenance_count'] && (int) $linkState['provenance_bytes'] > PlaceDiscoveryService::RAW_SOURCE_PROVENANCE_MAX_BYTES && (int) $linkState['provenance_bytes'] <= PlaceDiscoveryService::EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES && 1 === $resolutionAudits;
     $validRefreshState = !$resolutionWon && '2' === $candidateState['version'] && 't' === $candidateState['source_license_review_required'] && '2099-04-01.0' === $linkState['source_release'] && 0 === $resolutionAudits;
     if (1 !== $refreshAudits || (!$validResolvedState && !$validRefreshState)) {
         throw new RuntimeException('Refresh/license-resolution race produced an invalid state or lost an audit event.');

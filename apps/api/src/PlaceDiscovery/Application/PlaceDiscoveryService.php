@@ -21,6 +21,9 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class PlaceDiscoveryService
 {
+    public const RAW_SOURCE_PROVENANCE_MAX_BYTES = 16_384;
+    public const EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES = 32_768;
+
     // 16 KiB raw provenance plus metadata for all 32 bounded reviewed sources fits below 128 KiB.
     public const SOURCE_LICENSE_RESOLUTIONS_MAX_BYTES = 131_072;
 
@@ -58,7 +61,7 @@ final readonly class PlaceDiscoveryService
             if (false !== $link) {
                 $this->connection->update('place_source_links', ['last_seen_at' => $now], ['id' => $link['id']]);
                 if (!$licenseState['unresolved']) {
-                    $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$source->release, $hash, $this->encodeProvenance($licenseState['effective']), $link['id']]);
+                    $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$source->release, $hash, $this->encodeEffectiveProvenance($licenseState['effective']), $link['id']]);
                 }
                 $changedAfterEdit = null !== $existing['manually_edited_at'] && $existing['source_payload_hash'] !== $hash;
                 $operatingStatus = OvertureOperatingStatus::normalize($source->operatingStatus);
@@ -152,7 +155,7 @@ SQL, [$candidateId]);
             $slug = mb_substr(trim($slugBase, '-'), 0, 70).'-'.substr(str_replace('-', '', $candidateId), 0, 8);
             $placeId = $this->places->create(new CreatePlaceDraft((string) $candidate['name'], $slug, 'Kandydat zatwierdzony przez administratora.', 'Miejsce utworzone jako szkic z danych Overture Maps. Wymaga uzupełnienia i publikacji w osobnym kroku.', (string) $candidate['address_line1'], (string) $candidate['postal_code'], (string) $candidate['city_slug'], (string) $candidate['country_code'], (float) $candidate['latitude'], (float) $candidate['longitude'], (string) $candidate['city_timezone'], (string) $candidate['category_slug'], (bool) $candidate['indoor'], (bool) $candidate['outdoor'], (bool) $candidate['free_entry'], websiteUrl: $candidate['website'], phone: $candidate['phone'], externalReferences: [new ExternalReferenceInput('overture', (string) $candidate['external_id'], null)]));
             $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
-            $this->connection->executeStatement('INSERT INTO place_source_links (id, place_id, source, external_id, source_release, first_linked_at, last_seen_at, last_payload_hash, source_provenance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb) ON CONFLICT (source, external_id) DO NOTHING', [Uuid::v7()->toRfc4122(), $placeId, $candidate['source'], $candidate['external_id'], $candidate['source_release'], $now, $now, $candidate['source_payload_hash'], $this->encodeProvenance($licenseState['effective'])]);
+            $this->connection->executeStatement('INSERT INTO place_source_links (id, place_id, source, external_id, source_release, first_linked_at, last_seen_at, last_payload_hash, source_provenance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb) ON CONFLICT (source, external_id) DO NOTHING', [Uuid::v7()->toRfc4122(), $placeId, $candidate['source'], $candidate['external_id'], $candidate['source_release'], $now, $now, $candidate['source_payload_hash'], $this->encodeEffectiveProvenance($licenseState['effective'])]);
             $changed = $this->connection->executeStatement('UPDATE place_candidates SET status = ?, approved_place_id = ?, source_license_review_required = false, reviewed_by = ?, reviewed_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?', [CandidateStatus::APPROVED->value, $placeId, $reviewer, $now, $now, $candidateId, $expectedVersion]);
             if (1 !== $changed) {
                 throw new ConcurrentCandidateModification();
@@ -290,7 +293,7 @@ SQL, [$candidateId]);
                 if (false === $link) {
                     throw new \DomainException('Approved candidate has no source link.');
                 }
-                $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$candidate['source_release'], $candidate['source_payload_hash'], $this->encodeProvenance($licenseState['effective']), $link['id']]);
+                $this->connection->executeStatement('UPDATE place_source_links SET source_release = ?, last_payload_hash = ?, source_provenance = ?::jsonb WHERE id = ?', [$candidate['source_release'], $candidate['source_payload_hash'], $this->encodeEffectiveProvenance($licenseState['effective']), $link['id']]);
                 $this->audit->append($id, 'ADMIN', 'SOURCE_LINK_PROVENANCE_UPDATED', (string) $candidate['status'], (string) $candidate['status'], ['place_source_links.source_release', 'place_source_links.last_payload_hash', 'place_source_links.source_provenance', 'source_license_review_required'], 'Final reviewed source resolution advanced the last compliant source state.', null, $reviewer, (string) $candidate['source_release']);
             }
             $auditIdentity = ['dataset' => $selected['dataset'], 'property' => $selected['property'], 'fingerprint' => $fingerprint, 'license' => $license];
@@ -347,20 +350,16 @@ SQL, [$candidateId]);
         $status = OvertureOperatingStatus::PERMANENTLY_CLOSED === OvertureOperatingStatus::normalize($source->operatingStatus) ? CandidateStatus::STALE->value : ([] === $source->provenance ? CandidateStatus::NEEDS_MAPPING->value : ($duplicate->score >= 70 ? CandidateStatus::POSSIBLE_DUPLICATE->value : (false === $categoryId ? CandidateStatus::NEEDS_MAPPING->value : $classification->status->value)));
         $discoveryReasons = [] === $source->provenance ? [...$classification->reasons, 'missing_source_provenance'] : $classification->reasons;
 
-        $provenance = $this->provenance($source);
+        $provenance = $this->encodeRawProvenance($source->provenance);
         $rawProvenance = $this->decodeProvenance($provenance);
 
         return ['discovery_run_id' => $runId, 'source' => 'overture', 'external_id' => $source->externalId, 'source_release' => $source->release, 'source_record_version' => $source->recordVersion, 'source_payload_hash' => $hash, 'source_snapshot' => $snapshot, 'source_provenance' => $provenance, 'source_license_resolutions' => '{}', 'source_license_review_required' => $this->hasUnlicensedSource($rawProvenance) ? 'true' : 'false', 'name' => $normalized->name, 'normalized_name' => $normalized->normalizedName, 'address_line1' => $source->addressLine1, 'postal_code' => $source->postalCode, 'locality' => $source->locality, 'country_code' => $source->countryCode, 'latitude' => $source->latitude, 'longitude' => $source->longitude, 'website' => $source->website, 'normalized_website_host' => $normalized->websiteHost, 'phone' => $source->phone, 'normalized_phone' => $normalized->phone, 'source_categories' => json_encode($source->categories, \JSON_THROW_ON_ERROR), 'suggested_place_category_id' => false === $categoryId ? null : $categoryId, 'suggested_city_id' => $cityId, 'city_selection_source' => null === $cityId ? null : 'AUTO', 'confidence' => $source->confidence, 'operating_status' => $source->operatingStatus, 'discovery_score' => $classification->score, 'discovery_reasons' => json_encode($discoveryReasons, \JSON_THROW_ON_ERROR), 'duplicate_score' => 0 === $duplicate->score ? null : $duplicate->score, 'duplicate_reasons' => [] === $duplicate->reasons ? null : json_encode($duplicate->reasons, \JSON_THROW_ON_ERROR), 'possible_duplicate_place_id' => $duplicate->placeIds[0] ?? null, 'possible_duplicate_candidate_ids' => json_encode($duplicate->candidateIds, \JSON_THROW_ON_ERROR), 'status' => $status, 'last_seen_at' => $now, 'updated_at' => $now];
     }
 
-    private function provenance(ProviderPlace $source): string
+    /** @param list<array<string, mixed>|object> $provenance */
+    private function encodeRawProvenance(array $provenance): string
     {
-        $json = json_encode($source->provenance, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
-        if (\strlen($json) > 16_384) {
-            throw new \DomainException('Bounded source provenance exceeds 16 KiB.');
-        }
-
-        return $json;
+        return $this->encodeJsonb($provenance, self::RAW_SOURCE_PROVENANCE_MAX_BYTES, 'Bounded raw source provenance exceeds 16 KiB.');
     }
 
     /** @return list<array<string, mixed>> */
@@ -438,20 +437,20 @@ SQL, [$candidateId]);
     /** @param array<string, SourceLicenseResolution> $resolutions */
     private function encodeResolutions(array $resolutions): string
     {
-        $json = json_encode((object) $resolutions, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
-        if ((int) $this->connection->fetchOne('SELECT octet_length(?::jsonb::text)', [$json]) > self::SOURCE_LICENSE_RESOLUTIONS_MAX_BYTES) {
-            throw new \DomainException('Bounded reviewed source license resolutions exceed 128 KiB.');
-        }
-
-        return $json;
+        return $this->encodeJsonb((object) $resolutions, self::SOURCE_LICENSE_RESOLUTIONS_MAX_BYTES, 'Bounded reviewed source license resolutions exceed 128 KiB.');
     }
 
     /** @param list<array<string, mixed>> $provenance */
-    private function encodeProvenance(array $provenance): string
+    private function encodeEffectiveProvenance(array $provenance): string
     {
-        $json = json_encode($provenance, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
-        if (\strlen($json) > 16_384) {
-            throw new \DomainException('Bounded effective source provenance exceeds 16 KiB.');
+        return $this->encodeJsonb($provenance, self::EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES, 'Bounded effective source provenance exceeds 32 KiB.');
+    }
+
+    private function encodeJsonb(mixed $value, int $maximumBytes, string $error): string
+    {
+        $json = json_encode($value, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+        if ((int) $this->connection->fetchOne('SELECT octet_length(?::jsonb::text)', [$json]) > $maximumBytes) {
+            throw new \DomainException($error);
         }
 
         return $json;

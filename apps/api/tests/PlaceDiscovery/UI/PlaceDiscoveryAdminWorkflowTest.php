@@ -101,11 +101,17 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
         self::assertSelectorTextContains('body', 'Wyniki 1-25');
         self::assertSelectorTextContains('body', 'Wymagające przeglądu');
         self::assertSelectorTextNotContains('tbody', 'queue-ordinary-');
+        self::assertSelectorCount(0, 'nav[aria-label="Paginacja kandydatów"] a.page-link[href*="page=0"]');
+        self::assertSelectorExists('nav[aria-label="Paginacja kandydatów"] li:first-child span.page-link[aria-disabled="true"]');
         $pageTwo = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&perPage=25&page=2');
         self::assertSelectorTextContains('tbody', 'queue-actionable-1');
         self::assertSelectorTextContains('tbody', 'queue-ordinary-');
+        self::assertSelectorExists('nav[aria-label="Paginacja kandydatów"] a.page-link[href*="page=1"]');
+        self::assertSelectorExists('nav[aria-label="Paginacja kandydatów"] a.page-link[href*="page=3"]');
         $pageThree = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&perPage=25&page=3');
         self::assertSelectorTextContains('tbody', 'queue-ordinary-');
+        self::assertSelectorCount(0, 'nav[aria-label="Paginacja kandydatów"] a.page-link[href*="page=4"]');
+        self::assertSelectorExists('nav[aria-label="Paginacja kandydatów"] li:last-child span.page-link[aria-disabled="true"]');
 
         $filtered = $this->client->request('GET', '/admin?routeName=admin_place_discovery_candidates&status=APPROVED&license_review_required=1&perPage=25&page=2');
         self::assertResponseIsSuccessful();

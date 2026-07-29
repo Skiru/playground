@@ -279,28 +279,98 @@ final class ApprovedSourceRefreshIntegrationTest extends KernelTestCase
     public function testMaximumAcceptedProvenanceCanBeFullyReviewedAndLinked(): void
     {
         $service = self::getContainer()->get(PlaceDiscoveryService::class);
+        $normalizer = self::getContainer()->get(PlaceNormalizer::class);
+        $profile = self::getContainer()->get(FamilyDiscoveryProfile::class);
         self::assertInstanceOf(PlaceDiscoveryService::class, $service);
-        $sources = [];
-        for ($index = 0; $index < 32; ++$index) {
-            $sources[] = new ProviderSourceRecord('/properties/'.str_pad((string) $index, 3, '0', \STR_PAD_LEFT), 'Dataset-'.str_repeat(\chr(65 + $index % 26), 60), null, 'record-'.str_repeat((string) ($index % 10), 80), provider: 'Provider-'.str_repeat('P', 20), resource: 'places-'.str_repeat('R', 15), version: 'version-'.str_repeat('V', 15));
-        }
+        self::assertInstanceOf(PlaceNormalizer::class, $normalizer);
+        self::assertInstanceOf(FamilyDiscoveryProfile::class, $profile);
+        $sources = $this->maximumUnlicensedSources();
         $provenance = array_map(static fn (ProviderSourceRecord $source): array => $source->jsonSerialize(), $sources);
         $rawJson = json_encode($provenance, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
-        self::assertLessThanOrEqual(16_384, \strlen($rawJson));
-        $this->connection->update('place_candidates', ['source_provenance' => $rawJson, 'source_license_resolutions' => '{}', 'source_license_review_required' => 'true'], ['id' => self::CANDIDATE]);
+        $rawBytes = $this->jsonbBytes($rawJson);
+        self::assertLessThanOrEqual(PlaceDiscoveryService::RAW_SOURCE_PROVENANCE_MAX_BYTES, $rawBytes);
+        $pending = $this->sourcePlace('2027-02-01.0', $sources);
+        self::assertSame('refreshed', $service->import(self::RUN, $pending, $normalizer->normalize($pending), $profile->classify($pending, $normalizer->normalize($pending))));
+        self::assertSame($rawBytes, (int) $this->connection->fetchOne('SELECT octet_length(source_provenance::text) FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
 
-        $version = 1;
+        $version = 2;
         foreach ($provenance as $index => $source) {
-            $service->resolveUnlicensedProvenance(self::CANDIDATE, $version++, SourceProvenanceFingerprint::fromArray($source), 'Reviewed-License-'.($index + 1).'.0', 'admin@example.test');
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, $version++, SourceProvenanceFingerprint::fromArray($source), $this->maximumReviewedLicense($index), 'admin@example.test');
+            self::assertSame($index < 31, (bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
         }
 
         self::assertFalse((bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
         $resolutionBytes = (int) $this->connection->fetchOne('SELECT octet_length(source_license_resolutions::text) FROM place_candidates WHERE id = ?', [self::CANDIDATE]);
-        self::assertGreaterThan(16_384, $resolutionBytes);
+        self::assertGreaterThan(PlaceDiscoveryService::RAW_SOURCE_PROVENANCE_MAX_BYTES, $resolutionBytes);
         self::assertLessThanOrEqual(PlaceDiscoveryService::SOURCE_LICENSE_RESOLUTIONS_MAX_BYTES, $resolutionBytes);
         $placeId = $service->approve(self::CANDIDATE, $version, 'admin@example.test');
         self::assertSame(32, (int) $this->connection->fetchOne('SELECT jsonb_array_length(source_provenance) FROM place_source_links WHERE place_id = ?', [$placeId]));
         self::assertSame(0, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM jsonb_array_elements((SELECT source_provenance FROM place_source_links WHERE place_id = ?)) item WHERE NULLIF(BTRIM(item->>'license'), '') IS NULL", [$placeId]));
+        $effectiveBytes = (int) $this->connection->fetchOne('SELECT octet_length(source_provenance::text) FROM place_source_links WHERE place_id = ?', [$placeId]);
+        self::assertGreaterThan(PlaceDiscoveryService::RAW_SOURCE_PROVENANCE_MAX_BYTES, $effectiveBytes);
+        self::assertLessThanOrEqual(PlaceDiscoveryService::EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES, $effectiveBytes);
+        self::assertSame(array_map($this->maximumReviewedLicense(...), range(0, 31)), $this->connection->fetchFirstColumn("SELECT item->>'license' FROM jsonb_array_elements((SELECT source_provenance FROM place_source_links WHERE place_id = ?)) item", [$placeId]));
+        self::assertSame('draft', $this->connection->fetchOne('SELECT status FROM places WHERE id = ?', [$placeId]));
+    }
+
+    public function testFinalMaximumResolutionAdvancesApprovedSourceLinkWithoutMutatingPlace(): void
+    {
+        $service = self::getContainer()->get(PlaceDiscoveryService::class);
+        $normalizer = self::getContainer()->get(PlaceNormalizer::class);
+        $profile = self::getContainer()->get(FamilyDiscoveryProfile::class);
+        self::assertInstanceOf(PlaceDiscoveryService::class, $service);
+        self::assertInstanceOf(PlaceNormalizer::class, $normalizer);
+        self::assertInstanceOf(FamilyDiscoveryProfile::class, $profile);
+        $placeId = $service->approve(self::CANDIDATE, 1, 'admin@example.test');
+        $placeBefore = $this->connection->fetchAssociative('SELECT name,status,version FROM places WHERE id = ?', [$placeId]);
+        $sources = $this->maximumUnlicensedSources();
+        $refresh = $this->sourcePlace('2027-03-01.0', $sources);
+        self::assertSame('linked', $service->import(self::RUN, $refresh, $normalizer->normalize($refresh), $profile->classify($refresh, $normalizer->normalize($refresh))));
+        self::assertSame('2026-07-22.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+
+        $version = 3;
+        foreach ($sources as $index => $source) {
+            $service->resolveUnlicensedProvenance(self::CANDIDATE, $version++, SourceProvenanceFingerprint::fromArray($source->jsonSerialize()), $this->maximumReviewedLicense($index), 'admin@example.test');
+            self::assertSame($index < 31, (bool) $this->connection->fetchOne('SELECT source_license_review_required FROM place_candidates WHERE id = ?', [self::CANDIDATE]));
+        }
+
+        self::assertSame('2027-03-01.0', $this->connection->fetchOne('SELECT source_release FROM place_source_links WHERE place_id = ?', [$placeId]));
+        self::assertSame($this->connection->fetchOne('SELECT source_payload_hash FROM place_candidates WHERE id = ?', [self::CANDIDATE]), $this->connection->fetchOne('SELECT last_payload_hash FROM place_source_links WHERE place_id = ?', [$placeId]));
+        $effectiveBytes = (int) $this->connection->fetchOne('SELECT octet_length(source_provenance::text) FROM place_source_links WHERE place_id = ?', [$placeId]);
+        self::assertGreaterThan(PlaceDiscoveryService::RAW_SOURCE_PROVENANCE_MAX_BYTES, $effectiveBytes);
+        self::assertLessThanOrEqual(PlaceDiscoveryService::EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES, $effectiveBytes);
+        self::assertSame(array_map($this->maximumReviewedLicense(...), range(0, 31)), $this->connection->fetchFirstColumn("SELECT item->>'license' FROM jsonb_array_elements((SELECT source_provenance FROM place_source_links WHERE place_id = ?)) item", [$placeId]));
+        self::assertSame($placeBefore, $this->connection->fetchAssociative('SELECT name,status,version FROM places WHERE id = ?', [$placeId]));
+    }
+
+    public function testEffectiveProvenanceOverflowFailsInApplicationAndDatabaseWithoutPartialState(): void
+    {
+        $service = self::getContainer()->get(PlaceDiscoveryService::class);
+        self::assertInstanceOf(PlaceDiscoveryService::class, $service);
+        $base = $this->jsonbBytes(json_encode([['padding' => '']], \JSON_THROW_ON_ERROR));
+        $oversized = [['padding' => str_repeat('x', PlaceDiscoveryService::EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES - $base + 1)]];
+        $json = json_encode($oversized, \JSON_THROW_ON_ERROR);
+        self::assertSame(PlaceDiscoveryService::EFFECTIVE_SOURCE_PROVENANCE_MAX_BYTES + 1, $this->jsonbBytes($json));
+        $method = new \ReflectionMethod($service, 'encodeEffectiveProvenance');
+        try {
+            $method->invoke($service, $oversized);
+            self::fail('The effective provenance application byte bound must fail closed.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('32 KiB', $exception->getMessage());
+        }
+
+        $this->connection->createSavepoint('effective_provenance_overflow');
+        try {
+            $this->connection->executeStatement("INSERT INTO place_source_links (id, place_id, source, external_id, source_release, first_linked_at, last_seen_at, last_payload_hash, source_provenance) VALUES (gen_random_uuid(), '00000000-0000-7000-8000-000000000400', 'overture', 'effective-provenance-overflow', '2099-01-01.0', now(), now(), repeat('a', 64), ?::jsonb)", [$json]);
+            self::fail('The effective provenance database byte bound must fail closed.');
+        } catch (Exception $exception) {
+            self::assertStringContainsString('chk_source_link_provenance_size', $exception->getMessage());
+        } finally {
+            $this->connection->rollbackSavepoint('effective_provenance_overflow');
+        }
+        self::assertSame(0, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM place_source_links WHERE external_id = 'effective-provenance-overflow'"));
+        self::assertSame(0, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM place_candidates WHERE external_id = 'effective-provenance-overflow'"));
+        self::assertSame(0, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM place_candidate_audit_events WHERE action = 'EFFECTIVE_PROVENANCE_OVERFLOW'"));
     }
 
     public function testResolutionDatabaseBoundRejectsOneByteOverLimit(): void
@@ -328,6 +398,28 @@ final class ApprovedSourceRefreshIntegrationTest extends KernelTestCase
     private function sourcePlace(string $release, array $provenance): ProviderPlace
     {
         return new ProviderPlace('gers-normal', $release, '9', 'Refreshed source place', 50.0413, 21.999, 'New source address', '35-001', 'Rzeszów', 'PL', null, null, ['playground'], 'playground', 0.95, OvertureOperatingStatus::OPEN->value, ['id' => 'gers-normal', 'name' => 'Refreshed source place'], $provenance);
+    }
+
+    /** @return list<ProviderSourceRecord> */
+    private function maximumUnlicensedSources(): array
+    {
+        $sources = [];
+        for ($index = 0; $index < 32; ++$index) {
+            $suffix = str_pad((string) $index, 2, '0', \STR_PAD_LEFT);
+            $sources[] = new ProviderSourceRecord(str_pad('/p/'.$suffix, 50, 'p'), str_pad('Dataset-'.$suffix, 50, 'd'), null, str_pad('record-'.$suffix, 50, 'r'), provider: str_pad('Provider-'.$suffix, 50, 'p'), resource: str_pad('resource-'.$suffix, 50, 'r'), version: str_pad('version-'.$suffix, 50, 'v'));
+        }
+
+        return $sources;
+    }
+
+    private function maximumReviewedLicense(int $index): string
+    {
+        return str_pad('Reviewed-'.$index.'-', 255, 'L');
+    }
+
+    private function jsonbBytes(string $json): int
+    {
+        return (int) $this->connection->fetchOne('SELECT octet_length(?::jsonb::text)', [$json]);
     }
 
     /** @param list<string> $parameters */
