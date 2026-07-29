@@ -44,6 +44,8 @@ RUN APP_SECRET=build-time-placeholder DATABASE_URL='postgresql://build:build@dat
     composer dump-autoload --no-dev --classmap-authoritative --no-interaction \
     && composer check-platform-reqs --no-dev \
     && APP_SECRET=build-time-placeholder DATABASE_URL='postgresql://build:build@database:5432/build?serverVersion=18&charset=utf8' \
+    php bin/console assets:install public --env=prod --no-debug \
+    && APP_SECRET=build-time-placeholder DATABASE_URL='postgresql://build:build@database:5432/build?serverVersion=18&charset=utf8' \
     php bin/console cache:warmup --env=prod --no-debug \
     && php -r "require 'vendor/autoload.php'; if (!class_exists(App\\Kernel::class)) { exit(1); }"
 

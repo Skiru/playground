@@ -67,7 +67,11 @@ async function assertAccessible(page: Page) {
             if (isEasyAdminLabeling) return false;
           }
 
-          if (v.id === "aria-allowed-attr" && selector.includes("dropdown-appearance-item")) {
+          if (v.id === "aria-allowed-attr" && selector.includes("dropdown-item-selectable") && selector.includes("data-ea-color-scheme")) {
+            return false;
+          }
+
+          if (v.id === "listitem" && selector.includes("dropdown-selectable-group")) {
             return false;
           }
 

@@ -10,6 +10,7 @@
 **/coverage
 **/playwright-report
 **/test-results
+apps/api/public/bundles
 reports
 .DS_Store
 .idea
