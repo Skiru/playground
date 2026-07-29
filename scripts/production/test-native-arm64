@@ -13,6 +13,9 @@ export ENV_FILE=$env_file
 export CERTIFICATION_WORK_DIR=$work
 export CERTIFICATION_SUBNET="10.253.$((RANDOM % 200 + 20)).0/24"
 export CERTIFICATION_EDGE_SUBNET="10.254.$((RANDOM % 200 + 20)).0/24"
+export API_IMAGE=family-places-api:native
+export WEB_IMAGE=family-places-web:native
+export POSTGIS_IMAGE=family-places-postgis:native
 
 compose=(
   docker compose

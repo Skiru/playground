@@ -12,6 +12,7 @@ services:
       MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:8080/media
     ports:
       - "127.0.0.1:8080:80"
+    networks: [internal, edge]
     volumes:
       - media-data:/data/familyplaces-media
   worker:
@@ -39,6 +40,7 @@ services:
       APP_ENV: prod
     ports:
       - "127.0.0.1:3000:3000"
+    networks: [internal, edge]
   database:
     environment:
       POSTGRES_DB: family_places_test

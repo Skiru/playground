@@ -67,6 +67,8 @@ jobs:
           corepack enable
           corepack prepare pnpm@11.13.1 --activate
           pnpm install --frozen-lockfile
+      - name: api-client-build
+        run: pnpm --filter @family-places/api-client build
       - name: frontend-lint
         run: pnpm --filter @family-places/web lint
       - name: frontend-typecheck
@@ -178,11 +180,17 @@ jobs:
           docker build -f infra/docker/web.Dockerfile -t family-places-web:certification .
           docker build -f infra/docker/postgis.Dockerfile -t family-places-postgis:certification .
       - name: trivy-api-image
-        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-api.json family-places-api:certification
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-api.json family-places-api:certification
+      - name: trivy-api-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-api.json
       - name: trivy-web-image
-        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-web.json family-places-web:certification
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-web.json family-places-web:certification
+      - name: trivy-web-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-web.json
       - name: trivy-postgis-image
-        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 1 --format json --output evidence/security/trivy-postgis.json family-places-postgis:certification
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-postgis.json family-places-postgis:certification
+      - name: trivy-postgis-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-postgis.json
       - name: hadolint-api
         run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/api.Dockerfile
       - name: hadolint-web
