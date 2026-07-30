@@ -1,0 +1,75 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+output_dir="$repo_dir/release-dry-run"
+version=0.1.0
+source_sha=$(git -C "$repo_dir" rev-parse HEAD)
+source_tree=$(git -C "$repo_dir" rev-parse 'HEAD^{tree}')
+created_at=$(git -C "$repo_dir" show -s --format=%cI HEAD)
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+
+rm -rf "$output_dir"
+mkdir -p "$output_dir"
+exec >"$output_dir/validation.log" 2>&1
+
+"$repo_dir/scripts/release/test-manifest"
+"$repo_dir/scripts/ci/check-action-pins"
+"$repo_dir/scripts/ci/check-release-workflow"
+
+# Exercise release source validation against a branch-safe local ancestry fixture.
+fixture="$tmp_dir/source-fixture"
+git init -q "$fixture"
+git -C "$fixture" config user.name 'FamilyPlaces release dry-run'
+git -C "$fixture" config user.email 'release-dry-run@familyplaces.invalid'
+printf 'fixture\n' > "$fixture/source.txt"
+git -C "$fixture" add source.txt
+git -C "$fixture" commit -q -m source
+fixture_sha=$(git -C "$fixture" rev-parse HEAD)
+git -C "$fixture" branch fixture-main
+git -C "$fixture" checkout -q --detach "$fixture_sha"
+(cd "$fixture" && "$repo_dir/scripts/release/validate-request" "$version" "$fixture_sha" fixture-main)
+if (cd "$fixture" && "$repo_dir/scripts/release/validate-request" invalid "$fixture_sha" fixture-main); then
+  printf 'invalid SemVer unexpectedly passed\n' >&2
+  exit 1
+fi
+if (cd "$fixture" && "$repo_dir/scripts/release/validate-request" "$version" deadbeef fixture-main); then
+  printf 'short source SHA unexpectedly passed\n' >&2
+  exit 1
+fi
+printf 'divergent\n' > "$fixture/divergent.txt"
+git -C "$fixture" add divergent.txt
+git -C "$fixture" commit -q -m divergent
+divergent_sha=$(git -C "$fixture" rev-parse HEAD)
+if (cd "$fixture" && "$repo_dir/scripts/release/validate-request" "$version" "$divergent_sha" fixture-main); then
+  printf 'source outside main ancestry unexpectedly passed\n' >&2
+  exit 1
+fi
+
+while IFS='|' read -r component dockerfile image; do
+  archive="$tmp_dir/$component.tar"
+  layout="$output_dir/$component-oci-layout"
+  docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    --provenance=true \
+    --sbom=true \
+    --file "$repo_dir/$dockerfile" \
+    --tag "$image:sha-$source_sha" \
+    --tag "$image:v$version" \
+    --build-arg "OCI_REVISION=$source_sha" \
+    --build-arg "OCI_VERSION=$version" \
+    --build-arg "OCI_CREATED=$created_at" \
+    --output "type=oci,dest=$archive" \
+    "$repo_dir"
+  mkdir -p "$layout"
+  tar -xf "$archive" -C "$layout"
+done <<'EOF'
+api|infra/docker/api.Dockerfile|ghcr.io/skiru/family-places-api
+web|infra/docker/web.Dockerfile|ghcr.io/skiru/family-places-web
+postgis|infra/docker/postgis.Dockerfile|ghcr.io/skiru/family-places-postgis
+EOF
+
+python3 "$repo_dir/scripts/release/release_manifest.py" from-layouts \
+  "$output_dir" "$output_dir/release.json" "$version" "$source_sha" "$source_tree"
+printf 'release dry-run passed without publishing images\n'

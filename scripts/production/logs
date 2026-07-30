@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+compose logs --tail=200 "$@"

@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+docker image prune --force --filter 'until=168h'
+docker builder prune --force --filter 'until=168h'

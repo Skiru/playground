@@ -12,6 +12,7 @@ services:
       MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:8080/media
     ports:
       - "127.0.0.1:8080:80"
+    networks: [internal, edge]
     volumes:
       - media-data:/data/familyplaces-media
   worker:
@@ -23,6 +24,25 @@ services:
       LOCK_DSN: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
       MEDIA_E2E_MODE: "true"
       MEDIA_PUBLIC_BASE_URL: http://127.0.0.1:8080/media
+    volumes:
+      - media-data:/data/familyplaces-media
+  fixtures:
+    profiles: [fixtures]
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: development
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 0
+      APP_SECRET: deterministic-e2e-secret
+      DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
+      LOCK_DSN: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
+      DEV_AUTH_ENABLED: "true"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks: [internal]
     volumes:
       - media-data:/data/familyplaces-media
   web:
@@ -39,6 +59,7 @@ services:
       APP_ENV: prod
     ports:
       - "127.0.0.1:3000:3000"
+    networks: [internal, edge]
   database:
     environment:
       POSTGRES_DB: family_places_test

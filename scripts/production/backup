@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+set -Eeuo pipefail
+source "${0:A:h}/lib.zsh"
+require_env; source "$ENV_FILE"
+kind=${1:-daily}; [[ $kind == daily || $kind == weekly || $kind == pre-deploy ]] || die 'backup kind must be daily, weekly, or pre-deploy'
+command -v aws >/dev/null || die 'AWS CLI is required'; command -v age >/dev/null || die 'age is required'; command -v jq >/dev/null || die 'jq is required'
+mkdir -p "$ROOT/.production/backups"; exec 9>"$ROOT/.production/backup.lock"; flock -n 9 || die 'backup already active'
+umask 077; stamp=$(date -u +%Y%m%dT%H%M%SZ); name="familyplaces-${kind}-${stamp}"; work=$(mktemp -d "$ROOT/.production/backups/.backup.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+dump="$work/$name.dump"; encrypted="$work/$name.dump.age"; checksum_file="$work/$name.dump.age.sha256"; manifest="$work/$name.manifest.json"
+compose exec -T database pg_dump -Fc -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$dump"; pg_restore --list "$dump" >/dev/null; age -r "$AGE_RECIPIENT" -o "$encrypted" "$dump"
+checksum=$(sha256 "$encrypted"); print -- "$checksum  $name.dump.age" > "$checksum_file"
+postgres_full=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SHOW server_version'); postgres_major=${postgres_full%%.*}; postgis_version=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT PostGIS_Version()'); migration=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COALESCE(max(version), '') FROM doctrine_migration_versions" 2>/dev/null || true)
+object="$(backup_prefix)/$kind/$name.dump.age"
+jq -n --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg kind "$kind" --arg sha "${RELEASE_SHA:?RELEASE_SHA is required}" --arg version "${RELEASE_VERSION:?RELEASE_VERSION is required}" --arg major "$postgres_major" --arg full "$postgres_full" --arg postgis "$postgis_version" --arg database "$POSTGRES_DB" --arg object "$object" --arg checksum "$checksum" --arg migration "$migration" '{formatVersion:1,createdAt:$createdAt,kind:$kind,sourceReleaseSha:$sha,sourceReleaseVersion:$version,postgresMajor:$major,postgresFullVersion:$full,postgisVersion:$postgis,databaseName:$database,dumpFormat:"pg_dump custom",encryption:"age",encryptedObjectName:$object,encryptedSha256:$checksum,checksumObjectName:($object+".sha256"),applicationMigrationVersion:$migration}' > "$manifest"
+backup_aws s3 cp "$encrypted" "s3://$BACKUP_S3_BUCKET/$object" >/dev/null; backup_aws s3 cp "$checksum_file" "s3://$BACKUP_S3_BUCKET/$object.sha256" >/dev/null; backup_aws s3 cp "$manifest" "s3://$BACKUP_S3_BUCKET/${object%.dump.age}.manifest.json" >/dev/null
+for remote in "$object" "$object.sha256" "${object%.dump.age}.manifest.json"; do backup_aws s3api head-object --bucket "$BACKUP_S3_BUCKET" --key "$remote" >/dev/null; done
+remote="$work/remote.dump.age"; remote_checksum="$work/remote.sha256"; remote_manifest="$work/remote.manifest.json"; backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/$object" "$remote" >/dev/null; backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/$object.sha256" "$remote_checksum" >/dev/null; backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/${object%.dump.age}.manifest.json" "$remote_manifest" >/dev/null
+[[ $(sha256 "$remote") == "$checksum" ]] || die 'remote encrypted object checksum mismatch'; [[ $(awk '{print $1}' "$remote_checksum") == "$checksum" ]] || die 'remote checksum object mismatch'; [[ $(jq -r .encryptedSha256 "$remote_manifest") == "$checksum" ]] || die 'remote manifest checksum mismatch'
+print -- "$object"

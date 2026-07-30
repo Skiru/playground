@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+workflow="$repo_dir/.github/workflows/release-containers.yml"
+
+require() {
+  grep -F -- "$1" "$workflow" >/dev/null || {
+    printf 'release workflow contract missing: %s\n' "$1" >&2
+    exit 1
+  }
+}
+
+require 'workflow_dispatch:'
+require "inputs.publish_confirmation == 'PUBLISH'"
+require 'uses: ./.github/workflows/certified-release-gates.yml'
+require 'subject-name: ghcr.io/skiru/family-places-api'
+require 'subject-name: ghcr.io/skiru/family-places-web'
+require 'subject-name: ghcr.io/skiru/family-places-postgis'
+# These are literal GitHub/shell expressions that must remain unexpanded here.
+# shellcheck disable=SC2016
+require 'subject-digest: ${{ needs.release-build-and-push.outputs.api_digest }}'
+# shellcheck disable=SC2016
+require 'subject-digest: ${{ needs.release-build-and-push.outputs.web_digest }}'
+# shellcheck disable=SC2016
+require 'subject-digest: ${{ needs.release-build-and-push.outputs.postgis_digest }}'
+require 'push-to-registry: true'
+# shellcheck disable=SC2016
+require 'gh attestation verify "${image}@${digest}" --repo "$GITHUB_REPOSITORY"'
+
+if grep -Eq -- '--tag .*:(main|latest)([" ]|$)' "$repo_dir/scripts/release/build-and-push"; then
+  printf 'release build script contains a forbidden mutable tag\n' >&2
+  exit 1
+fi
+
+printf 'release workflow construction contract passed\n'

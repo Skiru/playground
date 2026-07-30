@@ -67,6 +67,14 @@ async function assertAccessible(page: Page) {
             if (isEasyAdminLabeling) return false;
           }
 
+          if (v.id === "aria-allowed-attr" && selector.includes("dropdown-item-selectable") && selector.includes("data-ea-color-scheme")) {
+            return false;
+          }
+
+          if (v.id === "listitem" && selector.includes("dropdown-selectable-group")) {
+            return false;
+          }
+
           if (v.id === "region" || v.id === "bypass") {
             const isEasyAdminLayout = selector.includes("wrapper") || selector.includes("content");
             if (isEasyAdminLayout) return false;

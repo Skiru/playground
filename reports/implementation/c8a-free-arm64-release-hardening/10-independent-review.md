@@ -1,0 +1,3 @@
+# Independent review
+
+Adversarial local reviews were run after the runtime/security repair and after the final quality/browser changes. No blocking repository issue remained. Review concerns around vulnerability visibility were resolved by retaining complete Trivy reports and gating every fixable HIGH/CRITICAL finding separately; EasyAdmin asset checks now use clean-image generated assets and application-specific styling assertions. GitHub Actions run `30469494129` independently executed every mandatory gate successfully on x64 and native ARM64 runners. Image publication and production external-service validation remain owner actions, not certification claims.

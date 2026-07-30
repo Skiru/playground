@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+status=0
+
+for workflow in "$repo_dir"/.github/workflows/*.yml "$repo_dir"/.github/workflows/*.yaml; do
+  test -e "$workflow" || continue
+  while IFS= read -r line; do
+    reference=$(printf '%s\n' "$line" | sed -E 's/^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]*//; s/[[:space:]]+#.*$//; s/^['"'"'"]//; s/['"'"'"]$//')
+    case "$reference" in
+      ./*) continue ;;
+    esac
+    if ! printf '%s\n' "$reference" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?@[0-9a-f]{40}$'; then
+      printf 'unpinned action in %s: %s\n' "${workflow#"$repo_dir/"}" "$reference" >&2
+      status=1
+    fi
+  done <<EOF
+$(grep -E '^[[:space:]]*(-[[:space:]]*)?uses:' "$workflow" || true)
+EOF
+done
+
+test "$status" -eq 0
+printf 'all workflow actions are pinned to full commit SHAs\n'

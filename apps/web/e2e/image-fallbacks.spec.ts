@@ -12,7 +12,7 @@ async function loginAs(page: Page, email: string, displayName: string, roles: st
     return res.ok;
   }, { email, displayName, roles });
   expect(ok).toBeTruthy();
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "networkidle" });
 }
 
 const requiredAssets = [

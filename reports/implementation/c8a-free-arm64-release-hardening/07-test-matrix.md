@@ -1,0 +1,3 @@
+# Test matrix
+
+PASS: GitHub Actions run `30469494129` for SHA `680be22f857b57533a00ea062235fd04628b88bf` completed successfully. All named quality gates, 32 desktop browser tests, 32 mobile browser tests, accessibility, Gitleaks, Trivy, Hadolint, ShellCheck, dependency audits, Compose policy, SBOM, native ARM64 builds, PostgreSQL 18/PostGIS 3.6 fresh-volume and restart checks, network-only MinIO media, encrypted backup/retention/restore, restore refusal, rollback acceptance/refusal, cleanup, and provenance executed and passed. Local Rancher Desktop ARM64 rehearsal evidence was used only during repair and is distinct from the successful GitHub `ubuntu-24.04-arm` result.

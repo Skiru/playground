@@ -21,3 +21,6 @@ test-results/
 .playwright-mcp/
 .playwright-cache/
 artifacts/
+__pycache__/
+release-dry-run/
+release-manifest/

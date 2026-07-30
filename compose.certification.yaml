@@ -1,0 +1,58 @@
+services:
+  gateway:
+    ports: !reset []
+
+  cloudflared:
+    profiles: [external-tunnel]
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [internal]
+    volumes: [minio-certification-data:/data]
+
+  certification-tools:
+    build:
+      context: .
+      dockerfile: infra/docker/certification-tools.Dockerfile
+    image: family-places-certification-tools:local
+    profiles: [certification]
+    working_dir: /workspace
+    env_file: ${ENV_FILE:?ENV_FILE is required for certification}
+    environment:
+      ENV_FILE: /certification/production.env
+      CERTIFICATION_DIRECT_DATABASE: "true"
+      PGHOST: database
+      PGPORT: 5432
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for certification}
+      AGE_IDENTITY_FILE: /certification/age.key
+      BACKUP_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ENDPOINT: http://minio:9000
+    depends_on:
+      database: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    networks: [internal]
+    volumes:
+      - .:/workspace
+      - ${CERTIFICATION_WORK_DIR:?CERTIFICATION_WORK_DIR is required for certification}:/certification
+
+volumes:
+  minio-certification-data:
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: ${CERTIFICATION_SUBNET:?CERTIFICATION_SUBNET is required for certification}
+  edge:
+    ipam:
+      config:
+        - subnet: ${CERTIFICATION_EDGE_SUBNET:?CERTIFICATION_EDGE_SUBNET is required for certification}

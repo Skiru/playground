@@ -1,0 +1,135 @@
+name: C8A certification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feat/family-places-c8a-free-arm64-production-release-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c8a-certification-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SECRET: c8a-certification-only-secret
+  DATABASE_URL: postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8
+  LOCK_DSN: postgresql://family_places:family_places@database:5432/family_places?serverVersion=18&charset=utf8
+  POSTGRES_DB: family_places
+  POSTGRES_USER: family_places
+  POSTGRES_PASSWORD: family_places
+  API_IMAGE: family-places-api:certification
+  WEB_IMAGE: family-places-web:certification
+  POSTGIS_IMAGE: family-places-postgis:certification
+  MEDIA_PUBLIC_BASE_URL: http://gateway:8080/media
+  MAP_STYLE_URL: http://gateway:8080/fixtures/map-style.json
+  MAP_ATTRIBUTION: FamilyPlaces certification map
+  MAP_PROVIDER_NAME: FamilyPlaces
+  CLOUDFLARE_TUNNEL_TOKEN_FILE: /tmp/c8a-cloudflared-token
+
+jobs:
+  certified-gates:
+    uses: ./.github/workflows/certified-release-gates.yml
+    with:
+      source_sha: ${{ github.sha }}
+
+  browser-x64:
+    runs-on: ubuntu-24.04
+    env:
+      COMPOSE_PROJECT_NAME: c8a-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+      WEB_BASE_URL: http://127.0.0.1:3000
+      API_BASE_URL_BROWSER: http://127.0.0.1:8080
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with: {node-version: 24, package-manager-cache: false}
+      - name: e2e-dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.13.1 --activate
+          pnpm install --frozen-lockfile
+          pnpm --filter @family-places/web exec playwright install --with-deps chromium
+      - name: e2e-build
+        run: docker compose -f compose.yaml -f compose.e2e.yaml build api web fixtures
+      - name: e2e-database-start
+        run: ./scripts/ci/start-fresh-e2e-database
+      - name: e2e-migrations
+        run: docker compose -f compose.yaml -f compose.e2e.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+      - name: e2e-fixtures
+        run: docker compose -f compose.yaml -f compose.e2e.yaml run --rm fixtures php bin/console doctrine:fixtures:load --no-interaction
+      - name: e2e-api-start
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d api
+      - name: e2e-web-start
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d web
+      - name: e2e-worker-start
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
+      - name: e2e-readiness
+        run: |
+          docker compose -f compose.yaml -f compose.e2e.yaml ps
+          docker compose -f compose.yaml -f compose.e2e.yaml exec -T api curl --fail --silent http://localhost/api/v1/health/ready
+          docker compose -f compose.yaml -f compose.e2e.yaml exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+          curl --noproxy '*' --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/api/v1/health/ready
+          curl --noproxy '*' --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/ > /dev/null
+      - name: playwright-desktop
+        run: pnpm --filter @family-places/web exec playwright test --project=chromium-desktop --workers=1 --timeout=60000 --global-timeout=2700000 --reporter=line,github
+      - name: playwright-mobile
+        run: pnpm --filter @family-places/web exec playwright test --project=chromium-mobile --workers=1 --timeout=60000 --global-timeout=2700000 --reporter=line,github
+      - name: accessibility
+        run: pnpm --filter @family-places/web exec playwright test --project=chromium-desktop e2e/accessibility.spec.ts e2e/community-accessibility.spec.ts e2e/admin-easyadmin.spec.ts --reporter=line
+      - name: e2e-failure-diagnostics
+        if: failure()
+        continue-on-error: true
+        run: |
+          mkdir -p evidence/browser
+          docker compose -f compose.yaml -f compose.e2e.yaml ps --all > evidence/browser/compose-ps.txt
+          docker compose -f compose.yaml -f compose.e2e.yaml logs > evidence/browser/compose.log
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-x64-evidence
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            evidence/browser
+          if-no-files-found: ignore
+      - name: e2e-cleanup
+        if: always()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml down --volumes --remove-orphans
+
+  release-dry-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with: {fetch-depth: 0}
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: non-publishing-release-dry-run
+        run: ./scripts/release/dry-run
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-dry-run
+          path: release-dry-run
+          if-no-files-found: error
+
+  provenance:
+    needs: [certified-gates, browser-x64, release-dry-run]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with: {fetch-depth: 0}
+      - name: verify-git-provenance
+        run: |
+          git rev-parse HEAD > certification-sha.txt
+          git rev-parse 'HEAD^{tree}' > certification-tree.txt
+          git fsck --no-reflogs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: provenance-evidence
+          path: |
+            certification-sha.txt
+            certification-tree.txt
