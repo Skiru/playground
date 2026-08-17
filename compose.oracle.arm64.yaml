@@ -1,0 +1,286 @@
+name: family-places-oracle
+
+services:
+  api:
+    platform: linux/arm64
+    image: ${API_IMAGE:?API_IMAGE must be an immutable GHCR digest}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    mem_limit: 900m
+    cpus: 0.55
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+      - /app/var:rw,noexec,nosuid,size=128m,uid=33,gid=33,mode=0770
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      DEV_AUTH_ENABLED: "false"
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/data/familyplaces-media}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?MEDIA_PUBLIC_BASE_URL is required in production}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
+      STORAGE_S3_KEY: ${STORAGE_S3_KEY:-}
+      STORAGE_S3_SECRET: ${STORAGE_S3_SECRET:-}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-auto}
+      STORAGE_S3_PUBLIC_URL: ${STORAGE_S3_PUBLIC_URL:-}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost/api/v1/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+    volumes:
+      - media-data:/data/familyplaces-media
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  worker:
+    platform: linux/arm64
+    image: ${API_IMAGE:?API_IMAGE must be an immutable GHCR digest}
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=128M"]
+    restart: unless-stopped
+    stop_grace_period: 60s
+    mem_limit: 512m
+    cpus: 0.35
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /app/var:rw,noexec,nosuid,size=96m,uid=33,gid=33,mode=0770
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/data/familyplaces-media}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
+      STORAGE_S3_KEY: ${STORAGE_S3_KEY:-}
+      STORAGE_S3_SECRET: ${STORAGE_S3_SECRET:-}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-auto}
+      STORAGE_S3_PUBLIC_URL: ${STORAGE_S3_PUBLIC_URL:-}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - media-data:/data/familyplaces-media
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  web:
+    platform: linux/arm64
+    image: ${WEB_IMAGE:?WEB_IMAGE must be an immutable GHCR digest}
+    restart: unless-stopped
+    stop_grace_period: 20s
+    mem_limit: 512m
+    cpus: 0.35
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api
+      MAP_STYLE_URL: ${MAP_STYLE_URL:?MAP_STYLE_URL is required in production}
+      MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:?MAP_ATTRIBUTION is required in production}
+      MAP_PROVIDER_NAME: ${MAP_PROVIDER_NAME:?MAP_PROVIDER_NAME is required in production}
+      GOOGLE_IDENTITY_ENABLED: ${GOOGLE_IDENTITY_ENABLED:-false}
+      PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      DEV_AUTH_ENABLED: "false"
+      APP_ENV: prod
+      PORT: 3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  database:
+    platform: linux/arm64
+    image: ${POSTGIS_IMAGE:?POSTGIS_IMAGE must be an immutable GHCR digest}
+    restart: unless-stopped
+    stop_grace_period: 90s
+    mem_limit: 3g
+    cpus: 0.75
+    command: [postgres, -c, shared_buffers=768MB, -c, effective_cache_size=2GB, -c, max_connections=60, -c, work_mem=8MB, -c, maintenance_work_mem=256MB]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required in production}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required in production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in production}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    volumes:
+      - database-data:/var/lib/postgresql
+    networks:
+      - internal
+    logging:
+      driver: local
+      options:
+        max-size: 20m
+        max-file: "5"
+
+  gateway:
+    platform: linux/arm64
+    image: caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c
+    restart: unless-stopped
+    stop_grace_period: 15s
+    mem_limit: 128m
+    cpus: 0.15
+    read_only: true
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:?DOMAIN_NAME is required in production}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@playground.com.pl}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    volumes:
+      - ./infra/deployment/Caddyfile.oracle:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: "3"
+
+  place-discovery-scheduler:
+    profiles: [discovery]
+    platform: linux/arm64
+    image: ${API_IMAGE:?API_IMAGE must be an immutable GHCR digest}
+    command: ["php", "bin/console", "messenger:consume", "scheduler_place_discovery", "--time-limit=3600", "--memory-limit=128M"]
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal
+      - discovery-egress
+
+  place-discovery-worker:
+    profiles: [discovery]
+    platform: linux/arm64
+    image: ${API_IMAGE:?API_IMAGE must be an immutable GHCR digest}
+    command: ["php", "bin/console", "messenger:consume", "place_discovery", "--time-limit=3600", "--memory-limit=256M", "--failure-limit=5"]
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+      PLACE_DISCOVERY_HELPER: /opt/familyplaces/overture_helper.py
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal
+      - discovery-egress
+
+  redis:
+    profiles: [redis]
+    image: redis:8-bookworm
+    platform: linux/arm64
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+
+volumes:
+  database-data:
+  caddy-data:
+  caddy-config:
+  media-data:
+
+networks:
+  discovery-egress:
+  internal:
+    internal: true
