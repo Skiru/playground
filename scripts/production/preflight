@@ -2,14 +2,16 @@
 set -Eeuo pipefail
 source "${0:A:h}/lib.zsh"
 require_env
-[[ $(uname -m) == aarch64 ]] || die 'Oracle production host must be aarch64'
+arch=$(uname -m)
+docker_arch=$(docker info --format '{{.Server.Architecture}}')
+[[ $arch == aarch64 || $arch == x86_64 || $arch == arm64 ]] || die "Unsupported production host architecture: $arch"
 command -v docker >/dev/null || die 'Docker is required'
 docker compose version >/dev/null || die 'Docker Compose v2 is required'
-[[ $(docker info --format '{{.Server.Architecture}}') == aarch64 ]] || die 'Docker daemon is not arm64'
-[[ $(sysctl -n hw.memsize 2>/dev/null || free -b | awk '/Mem:/ {print $2}') -ge 8589934592 ]] || die 'at least 8 GB RAM is required'
+[[ $(sysctl -n hw.memsize 2>/dev/null || free -b | awk '/Mem:/ {print $2}') -ge 3750000000 ]] || die 'at least 4 GB RAM is required'
 "$ROOT/scripts/validate-production-env" "$ENV_FILE"
 source "$ENV_FILE"
-for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do docker buildx imagetools inspect "$image" | grep -q 'linux/arm64' || die "missing arm64 manifest: ${image%%@*}"; docker pull "$image" >/dev/null; done
+host_platform="linux/$([[ $arch == aarch64 || $arch == arm64 ]] && print arm64 || print amd64)"
+for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do docker buildx imagetools inspect "$image" | grep -q "$host_platform" || die "missing $host_platform manifest: ${image%%@*}"; docker pull "$image" >/dev/null; done
 [[ -r ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-} ]] || die 'missing readable Cloudflare Tunnel token file'
 command -v aws >/dev/null || die 'AWS CLI is required for R2 verification and backup'
 AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3api head-bucket --bucket "$STORAGE_S3_BUCKET" >/dev/null

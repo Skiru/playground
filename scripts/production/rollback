@@ -10,5 +10,10 @@ for key in releaseSha releaseTree releaseVersion apiImageDigest webImageDigest p
 if [[ $validate_only == true ]]; then print 'rollback descriptor accepted'; exit 0; fi
 mkdir -p "$ROOT/.production"; exec 9>"$ROOT/.production/deploy.lock"; flock -n 9 || die 'another deployment is active'
 export API_IMAGE=$(jq -r .apiImageDigest "$target") WEB_IMAGE=$(jq -r .webImageDigest "$target") POSTGIS_IMAGE=$(jq -r .postgisImageDigest "$target")
-compose pull; compose up --wait -d worker api web gateway cloudflared; "${0:A:h}/smoke"
+compose pull; if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
+    compose up --wait -d worker api web gateway cloudflared
+else
+    compose up --wait -d worker api web gateway
+fi
+"${0:A:h}/smoke"
 print 'image rollback completed; no database downgrade was attempted'

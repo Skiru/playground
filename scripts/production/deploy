@@ -10,7 +10,12 @@ compose up --wait -d database
 before=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COALESCE(max(version), '') FROM doctrine_migration_versions" 2>/dev/null || true)
 compose run --rm --no-deps api php bin/console doctrine:migrations:migrate --no-interaction
 after=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COALESCE(max(version), '') FROM doctrine_migration_versions" 2>/dev/null || true)
-compose up --wait -d worker api web gateway cloudflared; "${0:A:h}/smoke"
+if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
+    compose up --wait -d worker api web gateway cloudflared
+else
+    compose up --wait -d worker api web gateway
+fi
+"${0:A:h}/smoke"
 descriptor="$(release_dir)/$timestamp-${RELEASE_SHA}.json"
 jq -n --arg sha "$RELEASE_SHA" --arg tree "$(git -C "$ROOT" rev-parse HEAD^{tree})" --arg version "$RELEASE_VERSION" --arg api "$API_IMAGE" --arg web "$WEB_IMAGE" --arg postgis "$POSTGIS_IMAGE" --arg before "$before" --arg after "$after" --arg backup "$backup_object" --arg deployed "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{releaseSha:$sha,releaseTree:$tree,releaseVersion:$version,apiImageDigest:$api,webImageDigest:$web,postgisImageDigest:$postgis,migrationVersionBefore:$before,migrationVersionAfter:$after,rollbackCompatibility:(if $before == $after then "image-only" else "requires-explicit-certificate" end),deploymentTimestamp:$deployed,backupObject:$backup,backupChecksumObject:($backup+".sha256")}' > "$descriptor"
 cp "$descriptor" "$(release_descriptor)"
