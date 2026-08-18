@@ -1,4 +1,4 @@
-FROM golang:1.26.5-bookworm@sha256:1ecb7edf62a0408027bd5729dfd6b1b8766e578e8df93995b225dfd0944eb651 AS gosu-builder
+FROM golang:1.26-bookworm@sha256:116d58cbd88c1297624acc6e967a060012422bacf9930927e23fb719189c6f36 AS gosu-builder
 RUN CGO_ENABLED=0 go install -trimpath -ldflags '-s -w' github.com/tianon/gosu@6456aaa0f3c854d199d0f037f068eb97515b7513
 
 FROM postgres:18-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
@@ -21,6 +21,7 @@ ARG POSTGIS_VERSION=3.6
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3008
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
     && install -d -m 0755 /usr/share/keyrings \
     && curl --fail --silent --show-error --location https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \

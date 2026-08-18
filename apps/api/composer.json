@@ -21,7 +21,7 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
         "dragonmantank/cron-expression": "^3.6",
-        "easycorp/easyadmin-bundle": "^5.0",
+        "easycorp/easyadmin-bundle": "^5.5.1",
         "google/apiclient": "^2.19",
         "jsor/doctrine-postgis": "^2.4",
         "symfony/console": "8.1.*",

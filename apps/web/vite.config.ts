@@ -4,6 +4,9 @@ import { defineConfig } from "vite";
 import "./app/brand/validate";
 
 export default defineConfig({
+  build: {
+    emptyOutDir: true,
+  },
   plugins: [tailwindcss(), reactRouter()],
   resolve: {
     tsconfigPaths: true,

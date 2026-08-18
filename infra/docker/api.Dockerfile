@@ -1,4 +1,5 @@
-FROM dunglas/frankenphp:builder@sha256:fb8a2d3de8d89e515cfc1e2421f267d39d8c2e4dfcaab425e3e81f2be43d7f81 AS frankenphp-builder
+FROM dunglas/frankenphp:builder@sha256:dd9d093f74005fb9a7c22c0c4edca9424015c0f3e28f720d76ff79c2b8f084e7 AS frankenphp-builder
+COPY --from=golang:1.26-bookworm@sha256:116d58cbd88c1297624acc6e967a060012422bacf9930927e23fb719189c6f36 /usr/local/go /usr/local/go
 COPY --from=caddy:builder@sha256:198d47eaee306d4d0c38a9960c89ff2c959aa29ad51d3e2dafa3e93ac961782a /usr/bin/xcaddy /usr/bin/xcaddy
 RUN CGO_ENABLED=1 \
     XCADDY_SETCAP=1 \
@@ -15,7 +16,7 @@ RUN CGO_ENABLED=1 \
         --replace github.com/getkin/kin-openapi=github.com/getkin/kin-openapi@v0.144.0 \
         --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1
 
-FROM dunglas/frankenphp:php8.5-bookworm@sha256:9c07e0c60c8f856e3730c618fa2376ccb7f2493c1379f7bbe8737d89531f2d2a AS vendor
+FROM dunglas/frankenphp:php8.5-bookworm@sha256:d904ac794314fea494f806b5c491b74e09335535c0eb721309e45d1aaebd127f AS vendor
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
 COPY --from=composer:2@sha256:5946476338742b200bb9ff88f8be56275ddae4b3949c72305cb0dbf10cfcb760 /usr/bin/composer /usr/bin/composer
@@ -23,7 +24,7 @@ WORKDIR /app
 COPY apps/api/composer.json apps/api/composer.lock ./
 RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --prefer-dist
 
-FROM dunglas/frankenphp:php8.5-bookworm@sha256:9c07e0c60c8f856e3730c618fa2376ccb7f2493c1379f7bbe8737d89531f2d2a AS base
+FROM dunglas/frankenphp:php8.5-bookworm@sha256:d904ac794314fea494f806b5c491b74e09335535c0eb721309e45d1aaebd127f AS base
 COPY --from=frankenphp-builder /usr/local/bin/frankenphp /usr/local/bin/frankenphp
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
@@ -73,6 +74,7 @@ FROM production AS discovery
 USER root
 # hadolint ignore=DL3008
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 COPY tools/place-discovery/requirements.txt /opt/familyplaces/requirements.txt

@@ -59,6 +59,7 @@ services:
       DEV_AUTH_ENABLED: false
       APP_ENV: prod
   database:
+    image: ${POSTGIS_IMAGE:-family-places-postgis:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required in production}
