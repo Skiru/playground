@@ -140,7 +140,8 @@ jobs:
           POSTGIS_DIGEST: ${{ needs.release-build-and-push.outputs.postgis_digest }}
         run: |
           while IFS='|' read -r image digest; do
-            gh attestation verify "${image}@${digest}" --repo "$GITHUB_REPOSITORY"
+            gh attestation verify "oci://${image}@${digest}" \
+              --repo "$GITHUB_REPOSITORY"
           done <<EOF
           ghcr.io/skiru/family-places-api|$API_DIGEST
           ghcr.io/skiru/family-places-web|$WEB_DIGEST
