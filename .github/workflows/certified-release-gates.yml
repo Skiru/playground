@@ -40,8 +40,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.dev.yaml down --volumes --remove-orphans
       - name: compose-base-render
         run: docker compose config --quiet
-      - name: compose-production-arm-render
-        run: docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config --quiet
+      - name: compose-production-render
+        run: docker compose -f compose.yaml -f compose.prod.yaml config --quiet
       - name: backend-dependencies
         run: docker compose -f compose.yaml -f compose.dev.yaml run --rm api composer install --no-interaction --prefer-dist
       - name: backend-format
@@ -154,7 +154,7 @@ jobs:
         run: docker run --rm -e HOME=/tmp -v "$PWD:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm@11.13.1 audit --audit-level high'
       - name: compose-policy
         run: |
-          docker compose -f compose.yaml -f compose.prod.yaml -f compose.prod.arm64.yaml config > evidence/security/compose.yaml
+          docker compose -f compose.yaml -f compose.prod.yaml config > evidence/security/compose.yaml
           if grep -Eq '"?(5432|6379):' evidence/security/compose.yaml; then exit 1; fi
           if grep -Eq 'cloudflare.*token.*(=|:).+[^_]' evidence/security/compose.yaml; then exit 1; fi
           if grep -Eq 'image: .*:(latest|main)( |$)' evidence/security/compose.yaml; then exit 1; fi
@@ -167,36 +167,4 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: {name: security-x64-evidence, path: evidence/security, if-no-files-found: ignore}
 
-  native-arm64-full-stack:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
-      - name: install-arm-certification-tools
-        run: ./scripts/ci/install-arm-certification-tools
-      - name: native-arm-rehearsal
-        run: ./scripts/production/test-native-arm64
-      - name: native-arm-failure-summary
-        if: failure()
-        run: |
-          for evidence_file in evidence/native-arm64/*.txt evidence/native-arm64/*.log; do
-            if [ -f "$evidence_file" ]; then
-              printf '\n===== %s =====\n' "$evidence_file"
-              tail -n 100 "$evidence_file"
-            fi
-          done
-          failed_files=$(mktemp)
-          grep -l '^status=FAIL' evidence/native-arm64/*.txt > "$failed_files" 2>/dev/null || true
-          while IFS= read -r failed_file; do
-            failure_message=$(tail -n 20 "$failed_file" | tr '\n' '|')
-            echo "::error file=${failed_file},title=Native ARM stage failure::${failure_message}"
-          done < "$failed_files"
-      - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: native-arm64-evidence
-          path: |
-            .production
-            evidence/native-arm64
-          if-no-files-found: ignore
+

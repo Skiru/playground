@@ -51,7 +51,7 @@ while IFS='|' read -r component dockerfile image; do
   archive="$tmp_dir/$component.tar"
   layout="$output_dir/$component-oci-layout"
   docker buildx build \
-    --platform linux/amd64,linux/arm64 \
+    --platform linux/amd64 \
     --provenance=true \
     --sbom=true \
     --file "$repo_dir/$dockerfile" \

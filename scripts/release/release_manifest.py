@@ -18,10 +18,12 @@ IMAGES = (
     ("web", "ghcr.io/skiru/family-places-web"),
     ("postgis", "ghcr.io/skiru/family-places-postgis"),
 )
-PLATFORMS = (("linux", "amd64"), ("linux", "arm64"))
+PLATFORMS = (("linux", "amd64"),)
 INDEX_MEDIA_TYPES = {
     "application/vnd.docker.distribution.manifest.list.v2+json",
     "application/vnd.oci.image.index.v1+json",
+    "application/vnd.oci.image.manifest.v1+json",
+    "application/vnd.docker.distribution.manifest.v2+json",
 }
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -110,14 +112,14 @@ def validate_manifest(
 
         platforms = image.get("platforms")
         _require(isinstance(platforms, list), f"{component}: platforms must be an array")
-        _require(len(platforms) == 2, f"{component}: exactly two platforms are required")
+        _require(len(platforms) == 1, f"{component}: exactly one platform is required")
         actual_platforms = {
             (platform.get("os"), platform.get("architecture"))
             for platform in platforms
             if isinstance(platform, dict)
         }
         _require(actual_platforms == set(PLATFORMS),
-                 f"{component}: platforms must be exactly linux/amd64 and linux/arm64")
+                 f"{component}: platforms must be exactly linux/amd64")
         for platform in platforms:
             _require(DIGEST_RE.fullmatch(str(platform.get("digest"))) is not None,
                      f"{component}: invalid platform digest")

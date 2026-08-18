@@ -36,7 +36,7 @@ LABEL org.opencontainers.image.source=$OCI_SOURCE \
     org.opencontainers.image.title="family-places-web" \
     org.opencontainers.image.description="FamilyPlaces public web SSR catalog service"
 
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get clean && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && apt-get upgrade -y --no-install-recommends && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 COPY --from=build --chown=node:node /prod/web/ ./

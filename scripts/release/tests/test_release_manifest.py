@@ -30,7 +30,6 @@ def valid_manifest():
             "tagDigests": {"version": digest, "sha": digest},
             "platforms": [
                 {"os": "linux", "architecture": "amd64", "digest": DIGESTS[index + 3], "sourceRevision": SHA},
-                {"os": "linux", "architecture": "arm64", "digest": DIGESTS[index + 6], "sourceRevision": SHA},
             ],
         })
     return {
@@ -53,11 +52,11 @@ class ReleaseManifestTests(unittest.TestCase):
     def test_accepts_complete_manifest(self):
         release_manifest.validate_manifest(valid_manifest(), "0.1.0", SHA, TREE)
 
-    def test_rejects_missing_arm64(self):
-        self.assert_invalid(lambda value: value["images"][0].update(platforms=value["images"][0]["platforms"][:1]))
+    def test_rejects_empty_platforms(self):
+        self.assert_invalid(lambda value: value["images"][0].update(platforms=[]))
 
     def test_rejects_unexpected_architecture(self):
-        self.assert_invalid(lambda value: value["images"][1]["platforms"][1].update(architecture="s390x"))
+        self.assert_invalid(lambda value: value["images"][1]["platforms"][0].update(architecture="s390x"))
 
     def test_rejects_mismatched_immutable_tags(self):
         self.assert_invalid(lambda value: value["images"][2]["tagDigests"].update(version=DIGESTS[12]))
@@ -65,8 +64,8 @@ class ReleaseManifestTests(unittest.TestCase):
     def test_rejects_invalid_manifest_digest(self):
         self.assert_invalid(lambda value: value["images"][0].update(manifestDigest="not-a-digest"))
 
-    def test_rejects_single_platform_manifest_media_type(self):
-        self.assert_invalid(lambda value: value["images"][0].update(manifestMediaType="application/vnd.oci.image.manifest.v1+json"))
+    def test_rejects_invalid_manifest_media_type(self):
+        self.assert_invalid(lambda value: value["images"][0].update(manifestMediaType="invalid/media-type"))
 
     def test_rejects_wrong_source_revision_label(self):
         self.assert_invalid(lambda value: value["images"][0]["platforms"][0].update(sourceRevision="c" * 40))
