@@ -1,13 +1,15 @@
 {
-    auto_https off
     admin off
+    email {$ACME_EMAIL:admin@playground.com.pl}
 }
 
-:8080 {
+{$GATEWAY_DOMAIN:playground.com.pl} {
     encode zstd gzip
     header {
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
         -Server
     }
     # `handle`, unlike `handle_path`, keeps the original /api prefix for Symfony.

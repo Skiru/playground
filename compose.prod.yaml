@@ -1,6 +1,32 @@
 services:
+  gateway:
+    image: ${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
+    build: !reset null
+    restart: unless-stopped
+    stop_grace_period: 15s
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      GATEWAY_DOMAIN: ${GATEWAY_DOMAIN:-playground.com.pl}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@playground.com.pl}
+    mem_limit: 128m
+    cpus: 0.15
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    volumes:
+      - ./infra/deployment/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge, internal]
+
   api:
-    image: ${API_IMAGE:-family-places-api:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50}
+    image: ${API_IMAGE:?API_IMAGE is required in production}
+    build: !reset null
     restart: unless-stopped
     environment:
       APP_ENV: prod
@@ -9,6 +35,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
       GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      APP_PUBLIC_ORIGIN: ${APP_PUBLIC_ORIGIN:-https://playground.com.pl}
+      TRUSTED_AUTH_ORIGINS: ${TRUSTED_AUTH_ORIGINS:-https://playground.com.pl,https://www.playground.com.pl}
       DEV_AUTH_ENABLED: "false"
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/data/familyplaces-media}
@@ -21,8 +49,10 @@ services:
       STORAGE_S3_PUBLIC_URL: ${STORAGE_S3_PUBLIC_URL:-}
     volumes:
       - media-data:/data/familyplaces-media
+
   worker:
-    image: ${API_IMAGE:-family-places-api:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50}
+    image: ${API_IMAGE:?API_IMAGE is required in production}
+    build: !reset null
     restart: unless-stopped
     environment:
       APP_ENV: prod
@@ -40,14 +70,18 @@ services:
       STORAGE_S3_PUBLIC_URL: ${STORAGE_S3_PUBLIC_URL:-}
     volumes:
       - media-data:/data/familyplaces-media
+
   place-discovery-scheduler:
     environment:
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+
   place-discovery-worker:
     environment:
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+
   web:
-    image: ${WEB_IMAGE:-family-places-web:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50}
+    image: ${WEB_IMAGE:?WEB_IMAGE is required in production}
+    build: !reset null
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -58,8 +92,10 @@ services:
       PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: false
       APP_ENV: prod
+
   database:
-    image: ${POSTGIS_IMAGE:-family-places-postgis:sha-2338908d630973138a6d9fd27d2ae8d758ba6d50}
+    image: ${POSTGIS_IMAGE:?POSTGIS_IMAGE is required in production}
+    build: !reset null
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required in production}

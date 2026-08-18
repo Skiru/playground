@@ -1,6 +1,22 @@
 name: family-places
 
 services:
+  gateway:
+    image: caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c
+    environment:
+      GATEWAY_DOMAIN: ${GATEWAY_DOMAIN:-playground.com.pl}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@playground.com.pl}
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    volumes:
+      - ./infra/deployment/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge, internal]
+
   api:
     build:
       context: .
@@ -150,6 +166,8 @@ volumes:
   database-data:
   pnpm-store:
   media-data:
+  caddy-data:
+  caddy-config:
 
 networks:
   edge:
