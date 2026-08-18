@@ -137,6 +137,11 @@ export async function hardenedFetch(
     headers.set("x-correlation-id", incomingCorrId)
   }
 
+  const incomingOrigin = incomingRequest.headers.get("origin")
+  if (incomingOrigin) {
+    headers.set("origin", incomingOrigin)
+  }
+
   const incomingCsrf = incomingRequest.headers.get("x-csrf-token")
   if (incomingCsrf) {
     headers.set("x-csrf-token", incomingCsrf)
