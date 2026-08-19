@@ -1,10 +1,12 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib.sh"
 
 release_arg=""
+dry_run=false
+print_release=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -14,10 +16,18 @@ while [ $# -gt 0 ]; do
       ;;
     --release|-r)
       if [ $# -lt 2 ]; then
-        die "usage: $0 --release <release-version-or-sha>"
+        die "usage: $0 --release <release-version>"
       fi
       release_arg="$2"
       shift 2
+      ;;
+    --dry-run)
+      dry_run=true
+      shift
+      ;;
+    --print-release)
+      print_release=true
+      shift
       ;;
     *)
       if [ -z "$release_arg" ]; then
@@ -31,32 +41,28 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$release_arg" ]; then
-  release_arg="${RELEASE:-${RELEASE_VERSION:-${RELEASE_SHA:-${RELEASE_TAG:-}}}}"
+  die "usage: ./scripts/production/deploy --release <release-version>"
 fi
 
-if [ -z "$release_arg" ] && [ -f "$ROOT/release-manifest/release.json" ]; then
-  release_arg="auto"
-fi
+# Reject 40-char SHA explicitly if passed directly as --release
+case "$release_arg" in
+  [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
+    die "expected release version"
+    ;;
+esac
 
-if [ -z "$release_arg" ] && command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  release_arg=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo "")
+if [ "$dry_run" = "false" ] && [ "$print_release" = "false" ]; then
+  printf '[1/7] Loading production configuration\n'
 fi
-
-if [ -z "$release_arg" ]; then
-  die "usage: ./scripts/production/deploy --release <release-tag-or-sha>"
-fi
-
-printf '[1/7] Loading production configuration\n'
 require_env
 
-printf '[2/7] Resolving release %s\n' "$release_arg"
-mkdir -p "$(release_dir)" "$ROOT/.production"
-exec 9>"$ROOT/.production/deploy.lock"
-if command -v flock >/dev/null 2>&1; then
-  flock -n 9 || die 'another deployment is active'
+if [ "$dry_run" = "false" ] && [ "$print_release" = "false" ]; then
+  printf '[2/7] Resolving release %s\n' "$release_arg"
 fi
 
-resolved_manifest=$(mktemp "$ROOT/.production/.manifest.XXXXXX.json")
+mkdir -p "$(release_dir)" "$ROOT/.production"
+
+resolved_manifest=$(mktemp "$ROOT/.production/.manifest.XXXXXX.json" 2>/dev/null || mktemp /tmp/.manifest.XXXXXX.json)
 trap 'rm -f "$resolved_manifest"' EXIT
 
 python3 "$ROOT/scripts/release/release_manifest.py" resolve "$release_arg" --output "$resolved_manifest" >/dev/null
@@ -74,9 +80,51 @@ case "$arch" in
   *) host_platform="linux/unknown" ;;
 esac
 
-printf '[3/7] Checking host architecture: %s\n' "$host_platform"
-printf '[4/7] Verifying immutable images\n'
+if [ "$dry_run" = "false" ] && [ "$print_release" = "false" ]; then
+  printf '[3/7] Checking host architecture: %s\n' "$host_platform"
+  printf '[4/7] Verifying immutable images and configuration\n'
+fi
+
 "$SCRIPT_DIR/preflight"
+
+# Check discovery mode: if PLACE_DISCOVERY_ENABLED is false/unset, ensure discovery services are not in active compose
+active_services=$(compose config --services 2>/dev/null || true)
+if [ "${PLACE_DISCOVERY_ENABLED:-false}" != "true" ]; then
+  if printf '%s\n' "$active_services" | grep -q 'place-discovery'; then
+    die "discovery is disabled but discovery services are active in compose"
+  fi
+fi
+
+if [ "$print_release" = "true" ]; then
+  printf 'Release: %s\n' "$RELEASE_VERSION"
+  printf 'Source SHA: %s\n' "$RELEASE_SHA"
+  printf 'Host platform: %s\n' "$host_platform"
+  printf 'API: %s\n' "$API_IMAGE"
+  printf 'WEB: %s\n' "$WEB_IMAGE"
+  printf 'POSTGIS: %s\n' "$POSTGIS_IMAGE"
+  printf 'Storage: %s\n' "${STORAGE_DRIVER:-local}"
+  printf 'Backup: %s\n' "$( [ "${BACKUP_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
+  printf 'Discovery: %s\n' "$( [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
+  exit 0
+fi
+
+if [ "$dry_run" = "true" ]; then
+  printf 'Release: %s\n' "$RELEASE_VERSION"
+  printf 'Source SHA: %s\n' "$RELEASE_SHA"
+  printf 'Host platform: %s\n' "$host_platform"
+  printf 'API: %s\n' "$API_IMAGE"
+  printf 'WEB: %s\n' "$WEB_IMAGE"
+  printf 'POSTGIS: %s\n' "$POSTGIS_IMAGE"
+  printf 'Storage: %s\n' "${STORAGE_DRIVER:-local}"
+  printf 'Backup: %s\n' "$( [ "${BACKUP_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
+  printf 'Discovery: %s\n' "$( [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
+  exit 0
+fi
+
+exec 9>"$ROOT/.production/deploy.lock"
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || die 'another deployment is active'
+fi
 
 printf '[5/7] Pulling images\n'
 compose pull

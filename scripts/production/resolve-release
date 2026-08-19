@@ -1,0 +1,64 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
+
+release_arg=""
+json_format=false
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --release=*)
+      release_arg="${1#*=}"
+      shift
+      ;;
+    --release|-r)
+      if [ $# -lt 2 ]; then
+        printf 'error: usage: %s [--release] <release-version>\n' "$0" >&2
+        exit 1
+      fi
+      release_arg="$2"
+      shift 2
+      ;;
+    --json)
+      json_format=true
+      shift
+      ;;
+    *)
+      if [ -z "$release_arg" ]; then
+        release_arg="$1"
+        shift
+      else
+        printf 'error: unexpected argument: %s\n' "$1" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+if [ -z "$release_arg" ]; then
+  printf 'error: usage: ./scripts/production/resolve-release <release-version>\n' >&2
+  exit 1
+fi
+
+tmp_manifest=$(mktemp "${ROOT}/.production/.manifest.XXXXXX.json" 2>/dev/null || mktemp /tmp/.manifest.XXXXXX.json)
+trap 'rm -f "$tmp_manifest"' EXIT
+
+python3 "$ROOT/scripts/release/release_manifest.py" resolve "$release_arg" --output "$tmp_manifest" >/dev/null
+
+if [ "$json_format" = "true" ]; then
+  cat "$tmp_manifest"
+else
+  version=$(jq -r .releaseVersion "$tmp_manifest")
+  sha=$(jq -r .sourceSha "$tmp_manifest")
+  api=$(jq -r '.images[] | select(.component=="api") | .name + "@" + .manifestDigest' "$tmp_manifest")
+  web=$(jq -r '.images[] | select(.component=="web") | .name + "@" + .manifestDigest' "$tmp_manifest")
+  postgis=$(jq -r '.images[] | select(.component=="postgis") | .name + "@" + .manifestDigest' "$tmp_manifest")
+
+  printf 'RELEASE_VERSION=%s\n' "$version"
+  printf 'RELEASE_SHA=%s\n' "$sha"
+  printf 'API_IMAGE=%s\n' "$api"
+  printf 'WEB_IMAGE=%s\n' "$web"
+  printf 'POSTGIS_IMAGE=%s\n' "$postgis"
+fi

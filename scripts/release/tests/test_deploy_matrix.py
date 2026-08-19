@@ -112,6 +112,151 @@ class TestDeployMatrix(unittest.TestCase):
                         pass
         self.assertEqual(zsh_matches, [], f"Found unexpected zsh references in: {zsh_matches}")
 
+    def test_resolve_release_rejects_sha_input(self):
+        with self.assertRaises(release_manifest.ManifestError) as ctx:
+            release_manifest.resolve_release("fe7027903644f49cfe1f78e83bda9e06fcde3b42")
+        self.assertIn("expected release version", str(ctx.exception))
+
+    def test_deploy_script_rejects_sha_input(self):
+        root = pathlib.Path(__file__).parents[3]
+        cmd = [str(root / "scripts/production/deploy"), "--release", "fe7027903644f49cfe1f78e83bda9e06fcde3b42"]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("expected release version", res.stderr)
+
+    def test_resolve_release_script_0_1_5(self):
+        root = pathlib.Path(__file__).parents[3]
+        cmd = [str(root / "scripts/production/resolve-release"), "0.1.5"]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("RELEASE_VERSION=0.1.5", res.stdout)
+        self.assertIn("RELEASE_SHA=fe7027903644f49cfe1f78e83bda9e06fcde3b42", res.stdout)
+        self.assertIn("API_IMAGE=ghcr.io/skiru/family-places-api@sha256:", res.stdout)
+        self.assertIn("WEB_IMAGE=ghcr.io/skiru/family-places-web@sha256:", res.stdout)
+        self.assertIn("POSTGIS_IMAGE=ghcr.io/skiru/family-places-postgis@sha256:", res.stdout)
+
+    def test_deploy_script_dry_run_0_1_5(self):
+        root = pathlib.Path(__file__).parents[3]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token_file = os.path.join(tmpdir, "cf-token")
+            with open(token_file, "w") as f:
+                f.write("dummy-token\n")
+
+            env_file = os.path.join(tmpdir, ".env.production")
+            with open(env_file, "w") as f:
+                f.write(f"""
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=test_app_secret_12345678901234567890123456789012
+POSTGRES_DB=family_places
+POSTGRES_USER=family_places
+POSTGRES_PASSWORD=test_db_password_12345678901234567890123456789012
+DATABASE_URL="postgresql://family_places:test_db_password_12345678901234567890123456789012@database:5432/family_places?serverVersion=18&charset=utf8"
+MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
+GOOGLE_IDENTITY_ENABLED=false
+APP_PUBLIC_ORIGIN=https://playground.com.pl
+TRUSTED_AUTH_ORIGINS=https://playground.com.pl
+GATEWAY_DOMAIN=playground.com.pl
+ACME_EMAIL=admin@example.com
+DEV_AUTH_ENABLED=false
+PLACE_DISCOVERY_ENABLED=false
+STORAGE_DRIVER=local
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+BACKUP_ENABLED=false
+MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+MAP_PROVIDER_NAME=OpenFreeMap
+MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
+""")
+
+            env = dict(os.environ, ENV_FILE=env_file)
+            cmd = [str(root / "scripts/production/deploy"), "--release", "0.1.5", "--dry-run"]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+            self.assertEqual(res.returncode, 0, f"deploy --dry-run failed: {res.stderr}")
+            self.assertIn("Release: 0.1.5", res.stdout)
+            self.assertIn("Source SHA: fe7027903644f49cfe1f78e83bda9e06fcde3b42", res.stdout)
+            self.assertIn("API: ghcr.io/skiru/family-places-api@sha256:", res.stdout)
+            self.assertIn("WEB: ghcr.io/skiru/family-places-web@sha256:", res.stdout)
+            self.assertIn("POSTGIS: ghcr.io/skiru/family-places-postgis@sha256:", res.stdout)
+            self.assertIn("Storage: local", res.stdout)
+            self.assertIn("Backup: disabled", res.stdout)
+            self.assertIn("Discovery: disabled", res.stdout)
+
+    def test_deploy_script_rejects_missing_cloudflare_token(self):
+        root = pathlib.Path(__file__).parents[3]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env_file = os.path.join(tmpdir, ".env.production")
+            with open(env_file, "w") as f:
+                f.write(f"""
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=test_app_secret_12345678901234567890123456789012
+POSTGRES_DB=family_places
+POSTGRES_USER=family_places
+POSTGRES_PASSWORD=test_db_password_12345678901234567890123456789012
+DATABASE_URL="postgresql://family_places:test_db_password_12345678901234567890123456789012@database:5432/family_places?serverVersion=18&charset=utf8"
+MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
+GOOGLE_IDENTITY_ENABLED=false
+APP_PUBLIC_ORIGIN=https://playground.com.pl
+TRUSTED_AUTH_ORIGINS=https://playground.com.pl
+GATEWAY_DOMAIN=playground.com.pl
+ACME_EMAIL=admin@example.com
+DEV_AUTH_ENABLED=false
+PLACE_DISCOVERY_ENABLED=false
+STORAGE_DRIVER=local
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+BACKUP_ENABLED=false
+MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+MAP_PROVIDER_NAME=OpenFreeMap
+MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_TUNNEL_TOKEN_FILE=/nonexistent/path/token
+""")
+
+            env = dict(os.environ, ENV_FILE=env_file)
+            cmd = [str(root / "scripts/production/deploy"), "--release", "0.1.5", "--dry-run"]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+            self.assertNotEqual(res.returncode, 0)
+            self.assertTrue("CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable" in res.stderr or "Missing Cloudflare tunnel token" in res.stderr)
+
+    def test_deploy_script_rejects_nonexistent_release(self):
+        root = pathlib.Path(__file__).parents[3]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token_file = os.path.join(tmpdir, "cf-token")
+            with open(token_file, "w") as f:
+                f.write("dummy-token\n")
+
+            env_file = os.path.join(tmpdir, ".env.production")
+            with open(env_file, "w") as f:
+                f.write(f"""
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=test_app_secret_12345678901234567890123456789012
+POSTGRES_DB=family_places
+POSTGRES_USER=family_places
+POSTGRES_PASSWORD=test_db_password_12345678901234567890123456789012
+DATABASE_URL="postgresql://family_places:test_db_password_12345678901234567890123456789012@database:5432/family_places?serverVersion=18&charset=utf8"
+MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0
+GOOGLE_IDENTITY_ENABLED=false
+APP_PUBLIC_ORIGIN=https://playground.com.pl
+TRUSTED_AUTH_ORIGINS=https://playground.com.pl
+GATEWAY_DOMAIN=playground.com.pl
+ACME_EMAIL=admin@example.com
+DEV_AUTH_ENABLED=false
+PLACE_DISCOVERY_ENABLED=false
+STORAGE_DRIVER=local
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+BACKUP_ENABLED=false
+MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+MAP_PROVIDER_NAME=OpenFreeMap
+MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
+""")
+
+            env = dict(os.environ, ENV_FILE=env_file)
+            cmd = [str(root / "scripts/production/deploy"), "--release", "999.999.999", "--dry-run"]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+            self.assertNotEqual(res.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

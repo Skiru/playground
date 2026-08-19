@@ -292,57 +292,53 @@ def build_layout_manifest(
 
 
 def resolve_release(release_input: str, output_path: pathlib.Path | None = None) -> dict[str, Any]:
-    # 1. Check local release-manifest/release.json if it exists
+    clean_input = release_input.strip()
+
+    if SHA_RE.fullmatch(clean_input):
+        raise ManifestError("expected release version")
+
+    version = ""
+    if SEMVER_RE.fullmatch(clean_input):
+        version = clean_input
+    elif clean_input.startswith("v") and SEMVER_RE.fullmatch(clean_input[1:]):
+        version = clean_input[1:]
+    elif clean_input not in ("local", "auto"):
+        raise ManifestError(f"expected release version, got '{release_input}'")
+
+    # 1. Check local release-manifest/release.json if it exists and matches version
     local_manifest_path = pathlib.Path("release-manifest/release.json")
     if local_manifest_path.is_file():
         try:
             manifest = _read_json(local_manifest_path)
-            version = manifest.get("releaseVersion", "")
-            sha = manifest.get("sourceSha", "")
-            tree = manifest.get("sourceTree", sha)
-            if release_input in (version, f"v{version}", sha, "local", "auto"):
-                validate_manifest(manifest, version, sha, tree)
+            local_version = manifest.get("releaseVersion", "")
+            local_sha = manifest.get("sourceSha", "")
+            local_tree = manifest.get("sourceTree", local_sha)
+            if clean_input in (local_version, f"v{local_version}", "local", "auto"):
+                validate_manifest(manifest, local_version, local_sha, local_tree)
                 if output_path:
                     _write_manifest(output_path, manifest)
                 return manifest
         except Exception:
             pass
 
-    # 2. Parse release_input
-    clean_input = release_input.strip()
-    version = ""
-    source_sha = ""
-    source_tree = ""
+    _require(bool(version and SEMVER_RE.fullmatch(version)), f"expected release version, got '{release_input}'")
 
-    if SEMVER_RE.fullmatch(clean_input):
-        version = clean_input
-    elif clean_input.startswith("v") and SEMVER_RE.fullmatch(clean_input[1:]):
-        version = clean_input[1:]
-    elif SHA_RE.fullmatch(clean_input):
-        source_sha = clean_input
+    # Inspect image on GHCR to find source_sha
+    ref = f"ghcr.io/skiru/family-places-api:v{version}"
+    try:
+        config = _run_json("docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Image}}")
+        if "config" in config and isinstance(config["config"], dict):
+            image_config = config
+        elif isinstance(config, dict) and config:
+            image_config = next(iter(config.values()))
+        else:
+            image_config = {}
+        labels = image_config.get("config", {}).get("Labels", {})
+        source_sha = labels.get("org.opencontainers.image.revision", "")
+    except Exception as error:
+        raise ManifestError(f"unable to resolve version {version} on GHCR: {error}") from error
 
-    # If version was provided, inspect image on GHCR to find source_sha
-    if version and not source_sha:
-        ref = f"ghcr.io/skiru/family-places-api:v{version}"
-        try:
-            config = _run_json("docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Image}}")
-            labels = config.get("config", {}).get("Labels", {})
-            source_sha = labels.get("org.opencontainers.image.revision", "")
-        except Exception as error:
-            raise ManifestError(f"unable to resolve version {version} on GHCR: {error}") from error
-
-    # If source_sha was provided without version, inspect image on GHCR to find version
-    if source_sha and not version:
-        ref = f"ghcr.io/skiru/family-places-api:sha-{source_sha}"
-        try:
-            config = _run_json("docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Image}}")
-            labels = config.get("config", {}).get("Labels", {})
-            version = labels.get("org.opencontainers.image.version", "")
-        except Exception as error:
-            raise ManifestError(f"unable to resolve commit {source_sha} on GHCR: {error}") from error
-
-    _require(bool(version and SEMVER_RE.fullmatch(version)), f"could not determine valid release version for '{release_input}'")
-    _require(bool(source_sha and SHA_RE.fullmatch(source_sha)), f"could not determine valid source SHA for '{release_input}'")
+    _require(bool(source_sha and SHA_RE.fullmatch(source_sha)), f"could not determine valid source SHA for release version '{version}'")
 
     # Try resolving tree from git
     try:
