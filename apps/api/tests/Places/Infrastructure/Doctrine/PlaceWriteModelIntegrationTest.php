@@ -171,8 +171,8 @@ final class PlaceWriteModelIntegrationTest extends KernelTestCase
 
     private function handler(Connection $connection): PlaceCommandHandler
     {
-        $storage = $this->createMock(\App\Shared\Application\Storage\StorageInterface::class);
-        $bus = $this->createMock(\Symfony\Component\Messenger\MessageBusInterface::class);
+        $storage = $this->createStub(\App\Shared\Application\Storage\StorageInterface::class);
+        $bus = $this->createStub(\Symfony\Component\Messenger\MessageBusInterface::class);
 
         return new PlaceCommandHandler(new PlaceRepository($connection), new DbalTransactionManager($connection), new FrozenClock(new \DateTimeImmutable('2026-07-16T10:00:00Z')), $storage, $bus);
     }

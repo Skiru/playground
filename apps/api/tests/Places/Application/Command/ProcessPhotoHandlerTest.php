@@ -27,6 +27,7 @@ use App\Shared\Application\Storage\TransientStorageException;
 use App\Shared\Application\Storage\UnsupportedImageException;
 use App\Shared\Application\TransactionManager;
 use Doctrine\DBAL\Connection;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
@@ -34,6 +35,7 @@ use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
+#[AllowMockObjectsWithoutExpectations]
 final class ProcessPhotoHandlerTest extends TestCase
 {
     private $connection;
@@ -244,8 +246,8 @@ final class ProcessPhotoHandlerTest extends TestCase
         $clockMock = $this->createMock(Clock::class);
         $clockMock->method('now')->willReturn(new \DateTimeImmutable('2026-07-18T20:00:00Z'));
 
-        $storageMock = $this->createMock(StorageInterface::class);
-        $busMock = $this->createMock(MessageBusInterface::class);
+        $storageMock = $this->createStub(StorageInterface::class);
+        $busMock = $this->createStub(MessageBusInterface::class);
 
         $commandHandler = new PlaceCommandHandler(
             $placesMock,

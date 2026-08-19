@@ -1,3 +1,5 @@
+name: family-places
+
 services:
   gateway:
     image: ${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
@@ -22,6 +24,11 @@ services:
       - ./infra/deployment/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     networks: [edge, internal]
 
   api:
@@ -47,12 +54,20 @@ services:
       STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
       STORAGE_S3_REGION: ${STORAGE_S3_REGION:-auto}
       STORAGE_S3_PUBLIC_URL: ${STORAGE_S3_PUBLIC_URL:-}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
     volumes:
       - media-data:/data/familyplaces-media
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost/api/v1/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
 
   worker:
     image: ${API_IMAGE:?API_IMAGE is required in production}
     build: !reset null
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=128M"]
     restart: unless-stopped
     environment:
       APP_ENV: prod
@@ -68,16 +83,49 @@ services:
       STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
       STORAGE_S3_REGION: ${STORAGE_S3_REGION:-auto}
       STORAGE_S3_PUBLIC_URL: ${STORAGE_S3_PUBLIC_URL:-}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
     volumes:
       - media-data:/data/familyplaces-media
+    healthcheck:
+      disable: true
+    networks: [internal]
 
   place-discovery-scheduler:
+    profiles: [discovery]
+    image: ${API_IMAGE:?API_IMAGE is required in production}
+    build: !reset null
+    command: ["php", "bin/console", "messenger:consume", "scheduler_place_discovery", "--time-limit=3600", "--memory-limit=128M"]
+    restart: unless-stopped
     environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+    healthcheck:
+      disable: true
+    networks: [internal, discovery-egress]
 
   place-discovery-worker:
+    profiles: [discovery]
+    image: ${API_IMAGE:?API_IMAGE is required in production}
+    build: !reset null
+    command: ["php", "bin/console", "messenger:consume", "place_discovery", "--time-limit=3600", "--memory-limit=256M", "--failure-limit=5"]
+    restart: unless-stopped
     environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      PLACE_DISCOVERY_ENABLED: ${PLACE_DISCOVERY_ENABLED:-false}
+      PLACE_DISCOVERY_HELPER: ${PLACE_DISCOVERY_HELPER:-/opt/familyplaces/overture_helper.py}
+    healthcheck:
+      disable: true
+    networks: [internal, discovery-egress]
 
   web:
     image: ${WEB_IMAGE:?WEB_IMAGE is required in production}
@@ -92,6 +140,12 @@ services:
       PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: false
       APP_ENV: prod
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
 
   database:
     image: ${POSTGIS_IMAGE:?POSTGIS_IMAGE is required in production}
@@ -101,3 +155,24 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required in production}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required in production}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in production}
+    volumes:
+      - database-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    networks: [internal]
+
+volumes:
+  database-data:
+  media-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  edge:
+  discovery-egress:
+  internal:
+    internal: true

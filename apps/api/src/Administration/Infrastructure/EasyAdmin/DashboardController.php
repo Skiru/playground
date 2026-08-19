@@ -44,7 +44,13 @@ final class DashboardController extends AbstractDashboardController
             PlaceAdminFormMapper::class => '?'.PlaceAdminFormMapper::class,
             PlaceAdminCommandFactory::class => '?'.PlaceAdminCommandFactory::class,
             LoggerInterface::class => '?'.LoggerInterface::class,
+            \Doctrine\DBAL\Connection::class => '?'.\Doctrine\DBAL\Connection::class,
         ]);
+    }
+
+    private function connection(): \Doctrine\DBAL\Connection
+    {
+        return $this->container->get(\Doctrine\DBAL\Connection::class);
     }
 
     private function places(): PlaceRepository
@@ -74,7 +80,40 @@ final class DashboardController extends AbstractDashboardController
 
     public function index(): Response
     {
-        return $this->render('admin/dashboard.html.twig');
+        $db = $this->connection();
+
+        $placesCount = [
+            'published' => (int) $db->fetchOne("SELECT COUNT(*) FROM places WHERE status = 'PUBLISHED'"),
+            'draft' => (int) $db->fetchOne("SELECT COUNT(*) FROM places WHERE status = 'DRAFT'"),
+            'pending' => (int) $db->fetchOne("SELECT COUNT(*) FROM places WHERE status = 'PENDING_REVIEW'"),
+            'temporarily_closed' => (int) $db->fetchOne("SELECT COUNT(*) FROM places WHERE status = 'TEMPORARILY_CLOSED'"),
+            'total' => (int) $db->fetchOne('SELECT COUNT(*) FROM places'),
+        ];
+
+        $candidatesCount = [
+            'actionable' => (int) $db->fetchOne('SELECT COUNT(*) FROM place_candidates WHERE source_license_review_required = true OR source_closed_review_required = true'),
+            'needs_mapping' => (int) $db->fetchOne("SELECT COUNT(*) FROM place_candidates WHERE status = 'NEEDS_MAPPING'"),
+            'pending' => (int) $db->fetchOne("SELECT COUNT(*) FROM place_candidates WHERE status = 'PENDING'"),
+            'total' => (int) $db->fetchOne('SELECT COUNT(*) FROM place_candidates'),
+        ];
+
+        $moderationCount = [
+            'open' => (int) $db->fetchOne("SELECT COUNT(*) FROM content_reports WHERE status IN ('OPEN', 'IN_REVIEW')"),
+            'total' => (int) $db->fetchOne('SELECT COUNT(*) FROM content_reports'),
+        ];
+
+        $dictionariesCount = [
+            'cities' => (int) $db->fetchOne('SELECT COUNT(*) FROM cities'),
+            'categories' => (int) $db->fetchOne('SELECT COUNT(*) FROM categories'),
+            'amenities' => (int) $db->fetchOne('SELECT COUNT(*) FROM amenities'),
+        ];
+
+        return $this->render('admin/dashboard.html.twig', [
+            'placesStats' => $placesCount,
+            'candidatesStats' => $candidatesCount,
+            'moderationStats' => $moderationCount,
+            'dictionariesStats' => $dictionariesCount,
+        ]);
     }
 
     public function configureDashboard(): Dashboard
@@ -104,6 +143,9 @@ final class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToRoute('Kandydaci', 'fa fa-magnifying-glass-location', 'admin_place_discovery_candidates');
         yield MenuItem::linkToRoute('Przebiegi', 'fa fa-clock-rotate-left', 'admin_place_discovery_runs');
         yield MenuItem::linkToRoute('Obszary', 'fa fa-map', 'admin_place_discovery_areas');
+
+        yield MenuItem::section('Społeczność i Moderacja');
+        yield MenuItem::linkToUrl('Kolejka moderacji', 'fa fa-shield-halved', '/moderator/queue');
 
         yield MenuItem::section('Słowniki');
         yield MenuItem::linkToRoute('Miasta', 'fa fa-city', 'admin_dictionary_list', ['type' => 'cities']);

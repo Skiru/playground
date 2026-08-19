@@ -40,4 +40,4 @@ jobs:
           docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:database:create --if-not-exists
           docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
           docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
-          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit tests/Places/Domain tests/Places/Application tests/Identity tests/Discovery/Application tests/Shared
+          docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit

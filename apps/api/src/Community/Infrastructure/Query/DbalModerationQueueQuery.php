@@ -290,7 +290,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                         $authorProfile = $profiles[$authorIdStr] ?? null;
                         $slug = $places[$rev['place_id']]['slug'] ?? '';
                         $publicLink = "/miejsca/{$slug}";
-                        $adminLink = "/admin?entity=Review&action=detail&id={$targetIdStr}";
+                        $adminLink = "/moderator/case/{$rId}";
                     }
                     break;
 
@@ -302,7 +302,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                         $authorProfile = $profiles[$authorIdStr] ?? null;
                         $slug = $places[$comm['place_id']]['slug'] ?? '';
                         $publicLink = "/miejsca/{$slug}";
-                        $adminLink = "/admin?entity=PlaceComment&action=detail&id={$targetIdStr}";
+                        $adminLink = "/moderator/case/{$rId}";
                     }
                     break;
 
@@ -313,7 +313,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                         $authorIdStr = $thr['author_id'];
                         $authorProfile = $profiles[$authorIdStr] ?? null;
                         $publicLink = "/forum/watek/{$targetIdStr}";
-                        $adminLink = "/admin?entity=ForumThread&action=detail&id={$targetIdStr}";
+                        $adminLink = "/moderator/case/{$rId}";
                     }
                     break;
 
@@ -324,7 +324,7 @@ final readonly class DbalModerationQueueQuery implements ModerationQueueQuery
                         $authorIdStr = $pst['author_id'];
                         $authorProfile = $profiles[$authorIdStr] ?? null;
                         $publicLink = "/forum/watek/{$pst['thread_id']}";
-                        $adminLink = "/admin?entity=ForumPost&action=detail&id={$targetIdStr}";
+                        $adminLink = "/moderator/case/{$rId}";
                     }
                     break;
             }

@@ -1,8 +1,151 @@
 {% extends '@EasyAdmin/page/content.html.twig' %}
 
-{% block content_title %}FamilyPlaces administration{% endblock %}
+{% block content_title %}Panel Administracyjny FamilyPlaces{% endblock %}
 
 {% block main %}
-    <p>Catalogue administration uses the authoritative Place aggregate.</p>
-    <nav aria-label="Słowniki"><a href="{{ path('admin_places') }}">Miejsca</a> · <a href="{{ path('admin_dictionary_list', {type: 'cities'}) }}">Miasta</a> · <a href="{{ path('admin_dictionary_list', {type: 'categories'}) }}">Kategorie</a> · <a href="{{ path('admin_dictionary_list', {type: 'amenities'}) }}">Udogodnienia</a></nav>
+<div class="row g-3 mb-4">
+    <!-- Miejsca Stats -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold text-uppercase fs-7">Katalog Miejsc</span>
+                    <span class="badge bg-primary rounded-pill">{{ placesStats.total }}</span>
+                </div>
+                <div class="fs-2 fw-bold text-dark mb-2">{{ placesStats.published }} <span class="fs-6 fw-normal text-success">Opublikowane</span></div>
+                <div class="d-flex gap-2 flex-wrap fs-7 text-secondary">
+                    <span>Szkice: <strong>{{ placesStats.draft }}</strong></span> · 
+                    <span>Oczekujące: <strong>{{ placesStats.pending }}</strong></span> · 
+                    <span>Zamknięte: <strong>{{ placesStats.temporarily_closed }}</strong></span>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ path('admin_places') }}" class="btn btn-sm btn-outline-primary w-100">Zarządzaj miejscami &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discovery Stats -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold text-uppercase fs-7">Odkrywanie Miejsc</span>
+                    <span class="badge bg-warning text-dark rounded-pill">{{ candidatesStats.total }}</span>
+                </div>
+                <div class="fs-2 fw-bold text-dark mb-2">{{ candidatesStats.actionable }} <span class="fs-6 fw-normal text-warning">Do weryfikacji</span></div>
+                <div class="d-flex gap-2 flex-wrap fs-7 text-secondary">
+                    <span>Do zmapowania: <strong>{{ candidatesStats.needs_mapping }}</strong></span> · 
+                    <span>Oczekujące: <strong>{{ candidatesStats.pending }}</strong></span>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ path('admin_place_discovery_candidates') }}" class="btn btn-sm btn-outline-warning text-dark w-100">Przeglądaj kandydatów &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moderation Stats -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold text-uppercase fs-7">Moderacja Treści</span>
+                    <span class="badge bg-danger rounded-pill">{{ moderationStats.open }}</span>
+                </div>
+                <div class="fs-2 fw-bold text-dark mb-2">{{ moderationStats.open }} <span class="fs-6 fw-normal text-danger">Otwarte zgłoszenia</span></div>
+                <div class="fs-7 text-secondary">Łącznie obsłużonych: <strong>{{ moderationStats.total }}</strong></div>
+                <div class="mt-3">
+                    <a href="/moderator/queue" class="btn btn-sm btn-outline-danger w-100">Kolejka moderacji &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dictionaries Stats -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold text-uppercase fs-7">Słowniki i Dane</span>
+                    <span class="badge bg-info text-dark rounded-pill">{{ dictionariesStats.cities + dictionariesStats.categories + dictionariesStats.amenities }}</span>
+                </div>
+                <div class="fs-7 text-secondary mt-2 mb-3">
+                    <div>Miasta: <strong>{{ dictionariesStats.cities }}</strong></div>
+                    <div>Kategorie: <strong>{{ dictionariesStats.categories }}</strong></div>
+                    <div>Udogodnienia: <strong>{{ dictionariesStats.amenities }}</strong></div>
+                </div>
+                <div>
+                    <a href="{{ path('admin_dictionary_list', {type: 'cities'}) }}" class="btn btn-sm btn-outline-info text-dark w-100">Słowniki systemowe &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 fw-bold border-0">Szybkie Akcje Administracyjne</div>
+            <div class="card-body pt-0">
+                <div class="row g-2">
+                    <div class="col-sm-6">
+                        <a href="{{ path('admin_places_new') }}" class="btn btn-light border text-start w-100 p-3">
+                            <i class="fa fa-plus text-primary me-2"></i>
+                            <strong>Dodaj nowe miejsce</strong>
+                            <div class="text-muted fs-7 mt-1">Utwórz szkic nowego obiektu przyjaznego rodzinom</div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6">
+                        <a href="{{ path('admin_place_discovery_runs') }}" class="btn btn-light border text-start w-100 p-3">
+                            <i class="fa fa-rotate text-warning me-2"></i>
+                            <strong>Uruchom odkrywanie Overture</strong>
+                            <div class="text-muted fs-7 mt-1">Zleć pobieranie i dopasowywanie kandydatów</div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6">
+                        <a href="{{ path('admin_dictionary_list', {type: 'categories'}) }}" class="btn btn-light border text-start w-100 p-3">
+                            <i class="fa fa-tags text-info me-2"></i>
+                            <strong>Zarządzaj kategoriami</strong>
+                            <div class="text-muted fs-7 mt-1">Edytuj słownik kategorii i ikony w serwisie</div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6">
+                        <a href="/moderator/queue" class="btn btn-light border text-start w-100 p-3">
+                            <i class="fa fa-shield-halved text-danger me-2"></i>
+                            <strong>Centrum Moderacji</strong>
+                            <div class="text-muted fs-7 mt-1">Rozpatruj zgłoszenia dotyczące opinii i forum</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 fw-bold border-0">Informacje o Systemie</div>
+            <div class="card-body pt-0 fs-7">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span>Wersja PHP</span>
+                        <span class="badge bg-light text-dark border">{{ constant('PHP_VERSION') }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span>Framework</span>
+                        <span class="badge bg-light text-dark border">Symfony 8.1 / EasyAdmin</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span>Baza danych</span>
+                        <span class="badge bg-light text-dark border">PostgreSQL + PostGIS</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span>Ochrona CSRF</span>
+                        <span class="badge bg-success">Włączona</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
