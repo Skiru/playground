@@ -169,7 +169,7 @@ MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 """)
 
-            env = dict(os.environ, ENV_FILE=env_file)
+            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_file)
             cmd = [str(root / "scripts/production/deploy"), "--release", "0.1.5", "--dry-run"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertEqual(res.returncode, 0, f"deploy --dry-run failed: {res.stderr}")
@@ -186,6 +186,7 @@ CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
         root = pathlib.Path(__file__).parents[3]
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = os.path.join(tmpdir, ".env.production")
+            token_path = "/nonexistent/path/token"
             with open(env_file, "w") as f:
                 f.write(f"""
 APP_ENV=prod
@@ -209,10 +210,10 @@ BACKUP_ENABLED=false
 MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
-CLOUDFLARE_TUNNEL_TOKEN_FILE=/nonexistent/path/token
+CLOUDFLARE_TUNNEL_TOKEN_FILE={token_path}
 """)
 
-            env = dict(os.environ, ENV_FILE=env_file)
+            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_path)
             cmd = [str(root / "scripts/production/deploy"), "--release", "0.1.5", "--dry-run"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertNotEqual(res.returncode, 0)
@@ -252,7 +253,7 @@ MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 """)
 
-            env = dict(os.environ, ENV_FILE=env_file)
+            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_file)
             cmd = [str(root / "scripts/production/deploy"), "--release", "999.999.999", "--dry-run"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertNotEqual(res.returncode, 0)
