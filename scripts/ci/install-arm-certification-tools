@@ -6,7 +6,7 @@ AWS_CLI_SHA256=2c6ed21cf7cff0a7d77118c69bee867128bf4c588db7b5c044ffba5faeb6ccde
 
 test "$(uname -m)" = aarch64
 sudo apt-get update
-sudo apt-get install --yes --no-install-recommends age ca-certificates curl jq unzip zsh
+sudo apt-get install --yes --no-install-recommends age ca-certificates curl jq unzip bash
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
@@ -26,7 +26,7 @@ fi
 test "$(uname -m)" = aarch64
 age --version
 jq --version
-zsh --version
+bash --version
 /opt/c8a-bin/aws --version
 docker version
 docker compose version

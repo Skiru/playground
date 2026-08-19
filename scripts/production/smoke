@@ -1,30 +1,54 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
-require_env; source "$ENV_FILE"
-retry() { local n=0; until "$@"; do (( ++n >= 12 )) && return 1; sleep 2; done; }
-gateway() { compose exec -T gateway wget -qO- "http://localhost:8080$1"; }
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
+require_env
+
+retry() {
+  local n=0
+  until "$@"; do
+    n=$((n + 1))
+    if [ "$n" -ge 12 ]; then
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+gateway() {
+  compose exec -T gateway wget -qO- "http://localhost:8080$1"
+}
+
 retry gateway / >/dev/null || { compose logs --no-color gateway api web >&2; die 'gateway root failed'; }
 retry gateway /api/v1/health/live | grep -q . || { compose logs --no-color gateway api >&2; die 'gateway API liveness failed'; }
+
 # An API miss must be produced by the backend, never by the frontend SSR fallback.
 compose exec -T gateway wget -S -O /dev/null 'http://localhost:8080/api/v1/does-not-exist?probe=path-preservation' 2>&1 | grep -q ' 404 ' || die 'unknown API route was not a backend 404'
+
 compose exec -T api curl --fail --silent http://localhost/api/v1/health/live >/dev/null
 compose exec -T api curl -s -X POST http://localhost/api/v1/auth/google -H "Content-Type: application/json" -d '{"credential":"smoke-test"}' | grep -q 'GOOGLE_CREDENTIAL_INVALID' || die 'Google auth endpoint failed or returned unexpected response'
 compose exec -T api curl -s -f http://localhost/api/v1/session | grep -q '"authenticated"' || die 'Session endpoint failed'
 compose exec -T api curl -s -f http://localhost/admin/login | grep -q '_csrf_token' || die 'Admin login endpoint failed'
 compose exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
 compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT PostGIS_Version()' | grep -q '^3\.6'
-if [[ "${STORAGE_DRIVER:-local}" == "s3" ]]; then
-  key="release-smoke/$(date -u +%s)-$$"; payload=$(mktemp); recovered=$(mktemp); trap 'rm -f "$payload" "$recovered"' EXIT; print -n "familyplaces-r2-smoke-$key" > "$payload"
+
+if [ "${STORAGE_DRIVER:-local}" = "s3" ]; then
+  key="release-smoke/$(date -u +%s)-$$"
+  payload=$(mktemp)
+  recovered=$(mktemp)
+  trap 'rm -f "$payload" "$recovered"' EXIT
+  printf 'familyplaces-r2-smoke-%s' "$key" > "$payload"
   AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp "$payload" "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
   AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp "s3://$STORAGE_S3_BUCKET/$key" "$recovered" >/dev/null
   cmp -s "$payload" "$recovered" || die 'R2 read-back differs from uploaded bytes'
   AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 rm "s3://$STORAGE_S3_BUCKET/$key" >/dev/null
-  print 'gateway, health, PostGIS, and byte-for-byte R2 smoke passed'
+  printf 'gateway, health, PostGIS, and byte-for-byte R2 smoke passed\n'
 else
   compose exec -T api php bin/console app:media-smoke --write-sentinel >/dev/null || die 'local media smoke write-sentinel failed'
   compose exec -T worker php bin/console app:media-smoke --process-sentinel >/dev/null || die 'local media smoke process-sentinel failed'
   compose exec -T api php bin/console app:media-smoke --verify-sentinel >/dev/null || die 'local media smoke verify-sentinel failed'
   compose exec -T api php bin/console app:media-smoke --cleanup >/dev/null || true
-  print 'gateway, health, PostGIS, and local media storage smoke passed'
+  printf 'gateway, health, PostGIS, and local media storage smoke passed\n'
 fi

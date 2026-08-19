@@ -1,4 +1,8 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
+require_env
 compose logs --tail=200 "$@"

@@ -1,19 +1,56 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
 validate_only=false
-if [[ ${1:-} == --validate-only ]]; then validate_only=true; shift; fi
-target=${1:-}; [[ -n $target && -f $target ]] || die 'usage: rollback [--validate-only] <immutable-release-descriptor.json>'
-require_env; source "$ENV_FILE"; command -v jq >/dev/null || die 'jq is required'
-[[ $(jq -r .rollbackCompatibility "$target") == image-only ]] || die 'refusing rollback: target lacks an image-only migration compatibility certificate'
-for key in releaseSha releaseTree releaseVersion apiImageDigest webImageDigest postgisImageDigest; do jq -e --arg key "$key" '.[$key] | strings | select(length > 0)' "$target" >/dev/null || die "invalid descriptor: $key"; done
-if [[ $validate_only == true ]]; then print 'rollback descriptor accepted'; exit 0; fi
-mkdir -p "$ROOT/.production"; exec 9>"$ROOT/.production/deploy.lock"; flock -n 9 || die 'another deployment is active'
-export API_IMAGE=$(jq -r .apiImageDigest "$target") WEB_IMAGE=$(jq -r .webImageDigest "$target") POSTGIS_IMAGE=$(jq -r .postgisImageDigest "$target")
-compose pull; if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
-    compose up --wait -d worker api web gateway cloudflared
-else
-    compose up --wait -d worker api web gateway
+if [ "${1:-}" = "--validate-only" ]; then
+  validate_only=true
+  shift
 fi
-"${0:A:h}/smoke"
-print 'image rollback completed; no database downgrade was attempted'
+
+target="${1:-}"
+if [ -z "$target" ] || [ ! -f "$target" ]; then
+  die 'usage: rollback [--validate-only] <immutable-release-descriptor.json>'
+fi
+
+require_env
+command -v jq >/dev/null 2>&1 || die 'jq is required'
+
+if [ "$(jq -r .rollbackCompatibility "$target")" != "image-only" ]; then
+  die 'refusing rollback: target lacks an image-only migration compatibility certificate'
+fi
+
+api_img=$(jq -r '.images.api // .apiImageDigest // empty' "$target")
+web_img=$(jq -r '.images.web // .webImageDigest // empty' "$target")
+postgis_img=$(jq -r '.images.postgis // .postgisImageDigest // empty' "$target")
+
+[ -n "$api_img" ] || die 'invalid descriptor: missing API image'
+[ -n "$web_img" ] || die 'invalid descriptor: missing WEB image'
+[ -n "$postgis_img" ] || die 'invalid descriptor: missing POSTGIS image'
+
+if [ "$validate_only" = true ]; then
+  printf 'rollback descriptor accepted\n'
+  exit 0
+fi
+
+mkdir -p "$ROOT/.production"
+exec 9>"$ROOT/.production/deploy.lock"
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || die 'another deployment is active'
+fi
+
+export API_IMAGE="$api_img"
+export WEB_IMAGE="$web_img"
+export POSTGIS_IMAGE="$postgis_img"
+
+compose pull
+if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
+  compose up --wait -d worker api web gateway cloudflared
+else
+  compose up --wait -d worker api web gateway
+fi
+
+"$SCRIPT_DIR/smoke"
+printf 'image rollback completed; no database downgrade was attempted\n'

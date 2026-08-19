@@ -1,5 +1,8 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
 docker image prune --force --filter 'until=168h'
 docker builder prune --force --filter 'until=168h'

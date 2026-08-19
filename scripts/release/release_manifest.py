@@ -18,7 +18,7 @@ IMAGES = (
     ("web", "ghcr.io/skiru/family-places-web"),
     ("postgis", "ghcr.io/skiru/family-places-postgis"),
 )
-PLATFORMS = (("linux", "amd64"),)
+PLATFORMS = (("linux", "amd64"), ("linux", "arm64"))
 INDEX_MEDIA_TYPES = {
     "application/vnd.docker.distribution.manifest.list.v2+json",
     "application/vnd.oci.image.index.v1+json",
@@ -112,14 +112,14 @@ def validate_manifest(
 
         platforms = image.get("platforms")
         _require(isinstance(platforms, list), f"{component}: platforms must be an array")
-        _require(len(platforms) == 1, f"{component}: exactly one platform is required")
+        _require(len(platforms) == 2, f"{component}: multiarch manifest with both linux/amd64 and linux/arm64 is required")
         actual_platforms = {
             (platform.get("os"), platform.get("architecture"))
             for platform in platforms
             if isinstance(platform, dict)
         }
         _require(actual_platforms == set(PLATFORMS),
-                 f"{component}: platforms must be exactly linux/amd64")
+                 f"{component}: platforms must be exactly linux/amd64 and linux/arm64")
         for platform in platforms:
             _require(DIGEST_RE.fullmatch(str(platform.get("digest"))) is not None,
                      f"{component}: invalid platform digest")
@@ -177,6 +177,9 @@ def _platform_entries(index: dict[str, Any], image_name: str, source_sha: str) -
             "sourceRevision": source_sha,
         })
     entries.sort(key=lambda item: item["architecture"])
+    found_pairs = {(e["os"], e["architecture"]) for e in entries}
+    _require(found_pairs == set(PLATFORMS),
+             f"{image_name}: missing required platforms (found {found_pairs}, expected {set(PLATFORMS)})")
     return entries
 
 
@@ -254,6 +257,9 @@ def _layout_platforms(layout: pathlib.Path, index: dict[str, Any], source_sha: s
             "sourceRevision": source_sha,
         })
     entries.sort(key=lambda item: item["architecture"])
+    found_layout_pairs = {(e["os"], e["architecture"]) for e in entries}
+    _require(found_layout_pairs == set(PLATFORMS),
+             f"{layout}: missing required platforms (found {found_layout_pairs}, expected {set(PLATFORMS)})")
     return entries
 
 
@@ -285,6 +291,73 @@ def build_layout_manifest(
     }
 
 
+def resolve_release(release_input: str, output_path: pathlib.Path | None = None) -> dict[str, Any]:
+    # 1. Check local release-manifest/release.json if it exists
+    local_manifest_path = pathlib.Path("release-manifest/release.json")
+    if local_manifest_path.is_file():
+        try:
+            manifest = _read_json(local_manifest_path)
+            version = manifest.get("releaseVersion", "")
+            sha = manifest.get("sourceSha", "")
+            tree = manifest.get("sourceTree", sha)
+            if release_input in (version, f"v{version}", sha, "local", "auto"):
+                validate_manifest(manifest, version, sha, tree)
+                if output_path:
+                    _write_manifest(output_path, manifest)
+                return manifest
+        except Exception:
+            pass
+
+    # 2. Parse release_input
+    clean_input = release_input.strip()
+    version = ""
+    source_sha = ""
+    source_tree = ""
+
+    if SEMVER_RE.fullmatch(clean_input):
+        version = clean_input
+    elif clean_input.startswith("v") and SEMVER_RE.fullmatch(clean_input[1:]):
+        version = clean_input[1:]
+    elif SHA_RE.fullmatch(clean_input):
+        source_sha = clean_input
+
+    # If version was provided, inspect image on GHCR to find source_sha
+    if version and not source_sha:
+        ref = f"ghcr.io/skiru/family-places-api:v{version}"
+        try:
+            config = _run_json("docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Image}}")
+            labels = config.get("config", {}).get("Labels", {})
+            source_sha = labels.get("org.opencontainers.image.revision", "")
+        except Exception as error:
+            raise ManifestError(f"unable to resolve version {version} on GHCR: {error}") from error
+
+    # If source_sha was provided without version, inspect image on GHCR to find version
+    if source_sha and not version:
+        ref = f"ghcr.io/skiru/family-places-api:sha-{source_sha}"
+        try:
+            config = _run_json("docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Image}}")
+            labels = config.get("config", {}).get("Labels", {})
+            version = labels.get("org.opencontainers.image.version", "")
+        except Exception as error:
+            raise ManifestError(f"unable to resolve commit {source_sha} on GHCR: {error}") from error
+
+    _require(bool(version and SEMVER_RE.fullmatch(version)), f"could not determine valid release version for '{release_input}'")
+    _require(bool(source_sha and SHA_RE.fullmatch(source_sha)), f"could not determine valid source SHA for '{release_input}'")
+
+    # Try resolving tree from git
+    try:
+        res = subprocess.run(["git", "rev-parse", f"{source_sha}^{{tree}}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        source_tree = res.stdout.strip()
+    except Exception:
+        source_tree = source_sha
+
+    manifest = build_registry_manifest(version, source_sha, source_tree)
+    validate_manifest(manifest, version, source_sha, source_tree)
+    if output_path:
+        _write_manifest(output_path, manifest)
+    return manifest
+
+
 def _write_manifest(path: pathlib.Path, manifest: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -300,13 +373,20 @@ def main() -> int:
     layouts = subparsers.add_parser("from-layouts")
     layouts.add_argument("layouts", type=pathlib.Path)
     layouts.add_argument("output", type=pathlib.Path)
+    resolve = subparsers.add_parser("resolve")
+    resolve.add_argument("release_input")
+    resolve.add_argument("--output", type=pathlib.Path, default=None)
     for command in (validate, registry, layouts):
         command.add_argument("version")
         command.add_argument("source_sha")
         command.add_argument("source_tree")
     args = parser.parse_args()
     try:
-        if args.command == "validate":
+        if args.command == "resolve":
+            manifest = resolve_release(args.release_input, args.output)
+            print(json.dumps(manifest, indent=2))
+            return 0
+        elif args.command == "validate":
             manifest = _read_json(args.manifest)
         elif args.command == "from-registry":
             manifest = build_registry_manifest(args.version, args.source_sha, args.source_tree)

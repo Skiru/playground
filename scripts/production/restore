@@ -1,17 +1,82 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
-object=${1:-}; target=${2:-}; [[ $object == familyplaces/postgres/*/*.dump.age ]] || die 'restore object must be a validated FamilyPlaces backup object'
-require_env; source "$ENV_FILE"
-command -v aws >/dev/null || die 'AWS CLI is required'; command -v age >/dev/null || die 'age is required'; command -v jq >/dev/null || die 'jq is required'; [[ -n ${AGE_IDENTITY_FILE:-} && -r $AGE_IDENTITY_FILE ]] || die 'AGE_IDENTITY_FILE must reference offline recovery material'
-work=$(mktemp -d); created=false; target=${target:-"${POSTGRES_DB}_restore_$(date +%s)"}; [[ $target != "$POSTGRES_DB" ]] || die 'restore target must not be the production application database'
-cleanup() { local exit_code=$?; if [[ $exit_code -ne 0 && $created == true ]]; then compose exec -T database dropdb -U "$POSTGRES_USER" --if-exists "$target" || true; fi; rm -rf "$work"; exit $exit_code; }; trap cleanup EXIT
-encrypted="$work/backup.dump.age"; checksum_file="$work/backup.dump.age.sha256"; manifest="$work/backup.manifest.json"; dump="$work/backup.dump"
-backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/$object" "$encrypted" >/dev/null; backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/$object.sha256" "$checksum_file" >/dev/null; backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/${object%.dump.age}.manifest.json" "$manifest" >/dev/null
-expected=$(jq -r .encryptedSha256 "$manifest"); [[ $expected =~ '^[0-9a-f]{64}$' && $(sha256 "$encrypted") == "$expected" && $(awk '{print $1}' "$checksum_file") == "$expected" ]] || die 'backup artifacts do not agree on encrypted checksum'
-manifest_major=$(jq -r .postgresMajor "$manifest"); running_major=$(compose exec -T database psql -U "$POSTGRES_USER" -d postgres -tAc 'SHOW server_version_num' | cut -c1-2); [[ $manifest_major == $running_major ]] || die "PostgreSQL major version mismatch: backup=$manifest_major target=$running_major"
-compose exec -T database psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_available_extensions WHERE name = 'postgis'" | grep -qx 1 || die 'PostGIS extension is unavailable on restore target'
-compose exec -T database psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$target'" | grep -qx 1 || { compose exec -T database createdb -U "$POSTGRES_USER" "$target"; created=true; }
-app_relations=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$target" -tAc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN pg_depend d ON d.objid=c.oid AND d.deptype='e' WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S') AND d.objid IS NULL"); [[ $app_relations == 0 ]] || die "restore target contains $app_relations application relation(s)"
-compose exec -T database psql -U "$POSTGRES_USER" -d "$target" -c 'CREATE EXTENSION IF NOT EXISTS postgis' >/dev/null; age -d -i "$AGE_IDENTITY_FILE" -o "$dump" "$encrypted"; pg_restore --list "$dump" >/dev/null; compose exec -T database pg_restore -U "$POSTGRES_USER" --no-owner --role="$POSTGRES_USER" -d "$target" < "$dump"
-print -- "restore completed into fresh target $target"
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
+object="${1:-}"
+target="${2:-}"
+
+case "$object" in
+  familyplaces/postgres/*/*.dump.age) ;;
+  *) die 'restore object must be a validated FamilyPlaces backup object' ;;
+esac
+
+require_env
+
+command -v aws >/dev/null 2>&1 || die 'AWS CLI is required'
+command -v age >/dev/null 2>&1 || die 'age is required'
+command -v jq >/dev/null 2>&1 || die 'jq is required'
+
+if [ -z "${AGE_IDENTITY_FILE:-}" ] || [ ! -r "$AGE_IDENTITY_FILE" ]; then
+  die 'AGE_IDENTITY_FILE must reference offline recovery material'
+fi
+
+work=$(mktemp -d)
+created=false
+target=${target:-"${POSTGRES_DB}_restore_$(date +%s)"}
+
+if [ "$target" = "$POSTGRES_DB" ]; then
+  die 'restore target must not be the production application database'
+fi
+
+cleanup() {
+  local exit_code=$?
+  if [ $exit_code -ne 0 ] && [ "$created" = true ]; then
+    compose exec -T database dropdb -U "$POSTGRES_USER" --if-exists "$target" || true
+  fi
+  rm -rf "$work"
+  exit $exit_code
+}
+trap cleanup EXIT
+
+encrypted="$work/backup.dump.age"
+checksum_file="$work/backup.dump.age.sha256"
+manifest="$work/backup.manifest.json"
+dump="$work/backup.dump"
+
+backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/$object" "$encrypted" >/dev/null
+backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/$object.sha256" "$checksum_file" >/dev/null
+backup_aws s3 cp "s3://$BACKUP_S3_BUCKET/${object%.dump.age}.manifest.json" "$manifest" >/dev/null
+
+expected=$(jq -r .encryptedSha256 "$manifest")
+if ! [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || [ "$(sha256 "$encrypted")" != "$expected" ] || [ "$(awk '{print $1}' "$checksum_file")" != "$expected" ]; then
+  die 'backup artifacts do not agree on encrypted checksum'
+fi
+
+manifest_major=$(jq -r .postgresMajor "$manifest")
+running_major=$(compose exec -T database psql -U "$POSTGRES_USER" -d postgres -tAc 'SHOW server_version_num' | cut -c1-2)
+if [ "$manifest_major" != "$running_major" ]; then
+  die "PostgreSQL major version mismatch: backup=$manifest_major target=$running_major"
+fi
+
+if ! compose exec -T database psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_available_extensions WHERE name = 'postgis'" | grep -qx 1; then
+  die 'PostGIS extension is unavailable on restore target'
+fi
+
+if ! compose exec -T database psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$target'" | grep -qx 1; then
+  compose exec -T database createdb -U "$POSTGRES_USER" "$target"
+  created=true
+fi
+
+app_relations=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$target" -tAc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN pg_depend d ON d.objid=c.oid AND d.deptype='e' WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S') AND d.objid IS NULL")
+if [ "$app_relations" -ne 0 ]; then
+  die "restore target contains $app_relations application relation(s)"
+fi
+
+compose exec -T database psql -U "$POSTGRES_USER" -d "$target" -c 'CREATE EXTENSION IF NOT EXISTS postgis' >/dev/null
+age -d -i "$AGE_IDENTITY_FILE" -o "$dump" "$encrypted"
+pg_restore --list "$dump" >/dev/null
+compose exec -T database pg_restore -U "$POSTGRES_USER" --no-owner --role="$POSTGRES_USER" -d "$target" < "$dump"
+
+printf 'restore completed into fresh target %s\n' "$target"

@@ -29,7 +29,8 @@ def valid_manifest():
             "manifestMediaType": "application/vnd.oci.image.index.v1+json",
             "tagDigests": {"version": digest, "sha": digest},
             "platforms": [
-                {"os": "linux", "architecture": "amd64", "digest": DIGESTS[index + 3], "sourceRevision": SHA},
+                {"os": "linux", "architecture": "amd64", "digest": DIGESTS[(index * 2) + 3], "sourceRevision": SHA},
+                {"os": "linux", "architecture": "arm64", "digest": DIGESTS[(index * 2) + 4], "sourceRevision": SHA},
             ],
         })
     return {
@@ -51,6 +52,11 @@ class ReleaseManifestTests(unittest.TestCase):
 
     def test_accepts_complete_manifest(self):
         release_manifest.validate_manifest(valid_manifest(), "0.1.0", SHA, TREE)
+
+    def test_rejects_single_platform_manifest(self):
+        self.assert_invalid(lambda value: value["images"][0].update(platforms=[
+            {"os": "linux", "architecture": "amd64", "digest": DIGESTS[3], "sourceRevision": SHA}
+        ]))
 
     def test_rejects_empty_platforms(self):
         self.assert_invalid(lambda value: value["images"][0].update(platforms=[]))

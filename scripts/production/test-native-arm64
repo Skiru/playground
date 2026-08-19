@@ -1,13 +1,14 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
+#!/bin/bash
+set -euo pipefail
 
-root=${0:A:h:h:h}
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$SCRIPT_DIR/../.." && pwd)
 work=$(mktemp -d)
 project="familyplaces-c8a-${RANDOM}${RANDOM}"
 env_file="$work/production.env"
 evidence="$root/evidence/native-arm64"
 mkdir -p "$evidence"
-rm -f "$evidence"/*.txt(N) "$evidence"/*.log(N)
+rm -f "$evidence"/*.txt "$evidence"/*.log 2>/dev/null || true
 export COMPOSE_PROJECT_NAME=$project
 export ENV_FILE=$env_file
 export CERTIFICATION_WORK_DIR=$work
@@ -140,23 +141,23 @@ gateway_startup() { "${compose[@]}" up -d gateway; }
 worker_startup() { "${compose[@]}" up -d worker; }
 
 gateway_api_path_preservation() {
-  tools zsh -lc 'for attempt in {1..30}; do curl --fail --silent http://gateway:8080/api/v1/health/live >/dev/null && exit 0; sleep 2; done; exit 1'
+  tools bash -lc 'for attempt in {1..30}; do curl --fail --silent http://gateway:8080/api/v1/health/live >/dev/null && exit 0; sleep 2; done; exit 1'
 }
 
 gateway_query_string_preservation() {
-  tools zsh -lc 'http_code=$(curl --silent --output /tmp/query.json --write-out "%{http_code}" "http://gateway:8080/api/v1/places?page=0&pageSize=1"); [[ $http_code == 400 ]]; jq -e '\''(.code // .type) != null'\'' /tmp/query.json >/dev/null'
+  tools bash -lc 'http_code=$(curl --silent --output /tmp/query.json --write-out "%{http_code}" "http://gateway:8080/api/v1/places?page=0&pageSize=1"); [[ $http_code == 400 ]]; jq -e '\''(.code // .type) != null'\'' /tmp/query.json >/dev/null'
 }
 
 unknown_api_route_isolation() {
-  tools zsh -lc 'http_code=$(curl --silent --output /tmp/not-found.html --write-out "%{http_code}" http://gateway:8080/api/v1/does-not-exist); [[ $http_code == 404 ]]; ! grep -q "window.__reactRouterContext" /tmp/not-found.html'
+  tools bash -lc 'http_code=$(curl --silent --output /tmp/not-found.html --write-out "%{http_code}" http://gateway:8080/api/v1/does-not-exist); [[ $http_code == 404 ]]; ! grep -q "window.__reactRouterContext" /tmp/not-found.html'
 }
 
 frontend_ssr() {
-  tools zsh -lc 'curl --fail --silent http://gateway:8080/ | grep -qi "<html"'
+  tools bash -lc 'curl --fail --silent http://gateway:8080/ | grep -qi "<html"'
 }
 
 minio_media_round_trip() {
-  tools zsh -lc 'export AWS_ACCESS_KEY_ID=$STORAGE_S3_KEY AWS_SECRET_ACCESS_KEY=$STORAGE_S3_SECRET; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 mb s3://$STORAGE_S3_BUCKET; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 mb s3://$BACKUP_S3_BUCKET; print native-arm-media-contract > /tmp/media.txt; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp /tmp/media.txt s3://$STORAGE_S3_BUCKET/certification/media.txt >/dev/null; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp s3://$STORAGE_S3_BUCKET/certification/media.txt /tmp/media.download.txt >/dev/null; cmp /tmp/media.txt /tmp/media.download.txt; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 rm s3://$STORAGE_S3_BUCKET/certification/media.txt >/dev/null'
+  tools bash -lc 'export AWS_ACCESS_KEY_ID=$STORAGE_S3_KEY AWS_SECRET_ACCESS_KEY=$STORAGE_S3_SECRET; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 mb s3://$STORAGE_S3_BUCKET; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 mb s3://$BACKUP_S3_BUCKET; print native-arm-media-contract > /tmp/media.txt; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp /tmp/media.txt s3://$STORAGE_S3_BUCKET/certification/media.txt >/dev/null; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 cp s3://$STORAGE_S3_BUCKET/certification/media.txt /tmp/media.download.txt >/dev/null; cmp /tmp/media.txt /tmp/media.download.txt; aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3 rm s3://$STORAGE_S3_BUCKET/certification/media.txt >/dev/null'
 }
 
 representative_relational_data() {
@@ -168,19 +169,19 @@ representative_spatial_data() {
 }
 
 encrypted_backup() {
-  tools zsh -lc '/workspace/scripts/production/backup pre-deploy > /certification/backup-object'
+  tools bash -lc '/workspace/scripts/production/backup pre-deploy > /certification/backup-object'
   backup_object=$(<"$work/backup-object")
   [[ $backup_object == familyplaces/postgres/pre-deploy/*.dump.age ]]
 }
 
 remote_backup_verification() {
-  tools zsh -lc 'object=$(< /certification/backup-object); export AWS_ACCESS_KEY_ID=$BACKUP_S3_KEY AWS_SECRET_ACCESS_KEY=$BACKUP_S3_SECRET; aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-object --bucket "$BACKUP_S3_BUCKET" --key "$object" >/dev/null; aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3 cp "s3://$BACKUP_S3_BUCKET/$object" /tmp/remote.age >/dev/null; aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3 cp "s3://$BACKUP_S3_BUCKET/$object.sha256" /tmp/remote.sha256 >/dev/null; expected=$(awk '\''{print $1}'\'' /tmp/remote.sha256); [[ $(sha256sum /tmp/remote.age | awk '\''{print $1}'\'') == $expected ]]'
+  tools bash -lc 'object=$(< /certification/backup-object); export AWS_ACCESS_KEY_ID=$BACKUP_S3_KEY AWS_SECRET_ACCESS_KEY=$BACKUP_S3_SECRET; aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-object --bucket "$BACKUP_S3_BUCKET" --key "$object" >/dev/null; aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3 cp "s3://$BACKUP_S3_BUCKET/$object" /tmp/remote.age >/dev/null; aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3 cp "s3://$BACKUP_S3_BUCKET/$object.sha256" /tmp/remote.sha256 >/dev/null; expected=$(awk '\''{print $1}'\'' /tmp/remote.sha256); [[ $(sha256sum /tmp/remote.age | awk '\''{print $1}'\'') == $expected ]]'
 }
 
 backup_retention() { tools /workspace/scripts/production/backup-retention --dry-run; }
 
 restore_to_fresh_database() {
-  tools zsh -lc 'object=$(< /certification/backup-object); /workspace/scripts/production/restore "$object" family_places_restore'
+  tools bash -lc 'object=$(< /certification/backup-object); /workspace/scripts/production/restore "$object" family_places_restore'
 }
 
 relational_restore_verification() {
@@ -192,7 +193,7 @@ spatial_restore_verification() {
 }
 
 restore_refusal() {
-  if tools zsh -lc 'object=$(< /certification/backup-object); /workspace/scripts/production/restore "$object" family_places_restore'; then
+  if tools bash -lc 'object=$(< /certification/backup-object); /workspace/scripts/production/restore "$object" family_places_restore'; then
     print -u2 'restore unexpectedly accepted a non-empty target'
     return 1
   fi

@@ -1,5 +1,13 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
+require_env
 compose ps
-[[ -f "$ROOT/.production/current-release.txt" ]] && cat "$ROOT/.production/current-release.txt"
+current_desc="$(release_descriptor)"
+if [ -f "$current_desc" ]; then
+  printf '\nCurrent Release Descriptor:\n'
+  cat "$current_desc"
+fi

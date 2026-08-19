@@ -1,26 +1,57 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
 require_env
+
 arch=$(uname -m)
-docker_arch=$(docker info --format '{{.Server.Architecture}}')
-[[ $arch == aarch64 || $arch == x86_64 || $arch == arm64 ]] || die "Unsupported production host architecture: $arch"
-command -v docker >/dev/null || die 'Docker is required'
-docker compose version >/dev/null || die 'Docker Compose v2 is required'
-[[ $(sysctl -n hw.memsize 2>/dev/null || free -b | awk '/Mem:/ {print $2}') -ge 3750000000 ]] || die 'at least 4 GB RAM is required'
-"$ROOT/scripts/validate-production-env" "$ENV_FILE"
-source "$ENV_FILE"
-host_platform="linux/$([[ $arch == aarch64 || $arch == arm64 ]] && print arm64 || print amd64)"
-for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do docker buildx imagetools inspect "$image" | grep -q "$host_platform" || die "missing $host_platform manifest: ${image%%@*}"; docker pull "$image" >/dev/null; done
-[[ -r ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-} ]] || die 'missing readable Cloudflare Tunnel token file'
-if [[ "${BACKUP_ENABLED:-true}" == "true" || "${STORAGE_DRIVER:-local}" == "s3" ]]; then
-  command -v aws >/dev/null || die 'AWS CLI is required for S3 verification'
+case "$arch" in
+  x86_64) host_platform="linux/amd64" ;;
+  aarch64|arm64) host_platform="linux/arm64" ;;
+  *) die "Unsupported production host architecture: $arch" ;;
+esac
+
+command -v docker >/dev/null 2>&1 || die 'Docker is required'
+docker compose version >/dev/null 2>&1 || die 'Docker Compose v2 is required'
+command -v jq >/dev/null 2>&1 || die 'jq is required'
+command -v python3 >/dev/null 2>&1 || die 'python3 is required'
+
+mem_bytes=$(sysctl -n hw.memsize 2>/dev/null || free -b 2>/dev/null | awk '/Mem:/ {print $2}' || echo 0)
+if [ "$mem_bytes" -gt 0 ] && [ "$mem_bytes" -lt 3750000000 ]; then
+  die 'at least 4 GB RAM is required'
 fi
-if [[ "${STORAGE_DRIVER:-local}" == "s3" ]]; then
+
+"$ROOT/scripts/validate-production-env" "$ENV_FILE"
+
+for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}"; do
+  [ -n "$image" ] || die 'API_IMAGE, WEB_IMAGE, and POSTGIS_IMAGE must be defined'
+  case "$image" in
+    *@sha256:[0-9a-f]*);;
+    *) die "image $image must be an immutable @sha256 digest reference" ;;
+  esac
+
+  inspect_output=$(docker buildx imagetools inspect "$image" 2>&1) || die "failed to inspect image $image: $inspect_output"
+  if ! printf '%s\n' "$inspect_output" | grep -q "$host_platform"; then
+    die "image $image does not provide the specified platform ($host_platform)"
+  fi
+done
+
+cf_token_file="${CLOUDFLARE_TUNNEL_TOKEN_FILE:-/etc/familyplaces/cloudflared-token}"
+if [ ! -r "$cf_token_file" ]; then
+  die "Missing Cloudflare tunnel token: PATH=$cf_token_file"
+fi
+
+if [ "${STORAGE_DRIVER:-local}" = "s3" ]; then
+  command -v aws >/dev/null 2>&1 || die 'AWS CLI is required when STORAGE_DRIVER=s3'
   AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3api head-bucket --bucket "$STORAGE_S3_BUCKET" >/dev/null
 fi
-if [[ "${BACKUP_ENABLED:-true}" == "true" ]]; then
+
+if [ "${BACKUP_ENABLED:-false}" = "true" ]; then
+  command -v aws >/dev/null 2>&1 || die 'AWS CLI is required when BACKUP_ENABLED=true'
   AWS_ACCESS_KEY_ID="$BACKUP_S3_KEY" AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET" aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-bucket --bucket "$BACKUP_S3_BUCKET" >/dev/null
 fi
+
 compose config --quiet
-print 'preflight passed (credentials and values redacted)'
+printf 'preflight passed (credentials and values redacted)\n'

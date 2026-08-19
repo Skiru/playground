@@ -1,17 +1,46 @@
-#!/usr/bin/env zsh
-set -Eeuo pipefail
-source "${0:A:h}/lib.zsh"
-dry_run=${1:-}; [[ -z $dry_run || $dry_run == --dry-run ]] || die 'usage: backup-retention [--dry-run]'
-require_env; source "$ENV_FILE"; command -v jq >/dev/null || die 'jq is required'
-work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib.sh"
+
+dry_run="${1:-}"
+case "$dry_run" in
+  ""|--dry-run) ;;
+  *) die 'usage: backup-retention [--dry-run]' ;;
+esac
+
+require_env
+command -v jq >/dev/null 2>&1 || die 'jq is required'
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
 backup_aws s3api list-objects-v2 --bucket "$BACKUP_S3_BUCKET" --prefix "$(backup_prefix)/" --output json > "$work/list.json"
-[[ $(jq -r '.IsTruncated // false' "$work/list.json") == false ]] || die 'refusing retention on partial object listing'
+if [ "$(jq -r '.IsTruncated // false' "$work/list.json")" != "false" ]; then
+  die 'refusing retention on partial object listing'
+fi
+
 for kind in daily weekly pre-deploy; do
-  keep=7; [[ $kind == weekly ]] && keep=4; [[ $kind == pre-deploy ]] && keep=3
-  manifests=(${(f)"$(jq -r --arg prefix "$(backup_prefix)/$kind/" '.Contents[]?.Key | select(startswith($prefix) and test("^familyplaces/postgres/(daily|weekly|pre-deploy)/familyplaces-(daily|weekly|pre-deploy)-[0-9]{8}T[0-9]{6}Z\\.manifest\\.json$"))' "$work/list.json" | sort -r)"})
-  (( ${#manifests} > keep )) || continue
-  for manifest in "${manifests[@]:$keep}"; do
-    base=${manifest%.manifest.json}
-    for key in "$base.dump.age" "$base.dump.age.sha256" "$manifest"; do [[ $dry_run == --dry-run ]] && print "would delete $key" || backup_aws s3api delete-object --bucket "$BACKUP_S3_BUCKET" --key "$key" >/dev/null; done
+  keep=7
+  [ "$kind" = "weekly" ] && keep=4
+  [ "$kind" = "pre-deploy" ] && keep=3
+
+  mapfile -t manifests < <(jq -r --arg prefix "$(backup_prefix)/$kind/" '.Contents[]?.Key | select(startswith($prefix) and test("^familyplaces/postgres/(daily|weekly|pre-deploy)/familyplaces-(daily|weekly|pre-deploy)-[0-9]{8}T[0-9]{6}Z\\.manifest\\.json$"))' "$work/list.json" | sort -r)
+
+  if [ "${#manifests[@]}" -le "$keep" ]; then
+    continue
+  fi
+
+  for manifest in "${manifests[@]:keep}"; do
+    [ -n "$manifest" ] || continue
+    base="${manifest%.manifest.json}"
+    for key in "$base.dump.age" "$base.dump.age.sha256" "$manifest"; do
+      if [ "$dry_run" = "--dry-run" ]; then
+        printf 'would delete %s\n' "$key"
+      else
+        backup_aws s3api delete-object --bucket "$BACKUP_S3_BUCKET" --key "$key" >/dev/null
+      fi
+    done
   done
 done
