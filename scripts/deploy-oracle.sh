@@ -16,6 +16,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
+if [[ ! -f "${ROOT_DIR}/.env" ]] && [[ -f "${ROOT_DIR}/.env.production" ]]; then
+  ln -sf .env.production "${ROOT_DIR}/.env"
+fi
+
 set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"

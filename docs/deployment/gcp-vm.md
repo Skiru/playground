@@ -115,6 +115,7 @@ git checkout main
 # Utworzenie produkcyjnego pliku środowiskowego
 cp .env.production.example .env.production
 chmod 600 .env.production
+ln -sf .env.production .env
 ```
 
 Edytuj plik `.env.production` (`nano .env.production`) i uzupełnij kluczowe parametry:
