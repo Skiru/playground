@@ -32,7 +32,8 @@ final class MediaSmokeCommand extends Command
         $this
             ->addOption('write-sentinel', null, InputOption::VALUE_NONE, 'API writes the sentinel to private source')
             ->addOption('process-sentinel', null, InputOption::VALUE_NONE, 'Worker reads the sentinel and writes public variant')
-            ->addOption('verify-sentinel', null, InputOption::VALUE_NONE, 'API reads the public variant');
+            ->addOption('verify-sentinel', null, InputOption::VALUE_NONE, 'API reads the public variant')
+            ->addOption('cleanup', null, InputOption::VALUE_NONE, 'Deletes sentinel files from storage');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -69,6 +70,15 @@ final class MediaSmokeCommand extends Command
                 return Command::FAILURE;
             }
             $output->writeln('Public variant content verified successfully.');
+
+            return Command::SUCCESS;
+        }
+
+        if ($input->getOption('cleanup')) {
+            $output->writeln('Cleaning up sentinel files...');
+            $this->storage->delete(self::SOURCE_PATH);
+            $this->storage->delete(self::VARIANT_PATH);
+            $output->writeln('Sentinel files cleaned up.');
 
             return Command::SUCCESS;
         }

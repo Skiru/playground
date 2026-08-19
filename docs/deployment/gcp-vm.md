@@ -142,15 +142,19 @@ GOOGLE_IDENTITY_ENABLED=true
 PUBLIC_GOOGLE_CLIENT_ID=TWOJ_GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_ID=TWOJ_GOOGLE_CLIENT_ID
 
-# Konfiguracja Obiektowej Pamięci Masowej (S3 / Cloudflare R2)
-STORAGE_DRIVER=s3
-STORAGE_S3_ENDPOINT=https://TWOJ_ACCOUNT_ID.r2.cloudflarestorage.com
-STORAGE_S3_KEY=TWOJ_R2_ACCESS_KEY
-STORAGE_S3_SECRET=TWOJ_R2_SECRET_KEY
-STORAGE_S3_BUCKET=familyplaces-media-prod
-STORAGE_S3_REGION=auto
-STORAGE_S3_PUBLIC_URL=https://media.playground.com.pl
-MEDIA_PUBLIC_BASE_URL=https://media.playground.com.pl
+# Konfiguracja Obiektowej / Lokalnej Pamięci Masowej (Media)
+# Użyj STORAGE_DRIVER=local dla lokalnego wolumenu VM (/data/familyplaces-media)
+# lub STORAGE_DRIVER=s3 dla Cloudflare R2 / S3
+STORAGE_DRIVER=local
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+
+# Wymagane tylko gdy STORAGE_DRIVER=s3:
+# STORAGE_S3_ENDPOINT=https://TWOJ_ACCOUNT_ID.r2.cloudflarestorage.com
+# STORAGE_S3_KEY=TWOJ_R2_ACCESS_KEY
+# STORAGE_S3_SECRET=TWOJ_R2_SECRET_KEY
+# STORAGE_S3_BUCKET=familyplaces-media-prod
+# STORAGE_S3_REGION=auto
+# STORAGE_S3_PUBLIC_URL=https://media.playground.com.pl
 
 # Przechowywanie szyfrowanych kopii zapasowych (S3 + Age Key)
 BACKUP_S3_ENDPOINT=https://TWOJ_ACCOUNT_ID.r2.cloudflarestorage.com

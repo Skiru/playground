@@ -16,6 +16,9 @@
     handle /api/* {
         reverse_proxy api:80
     }
+    handle /media/* {
+        reverse_proxy api:80
+    }
     handle {
         reverse_proxy web:3000
     }

@@ -13,8 +13,14 @@ source "$ENV_FILE"
 host_platform="linux/$([[ $arch == aarch64 || $arch == arm64 ]] && print arm64 || print amd64)"
 for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do docker buildx imagetools inspect "$image" | grep -q "$host_platform" || die "missing $host_platform manifest: ${image%%@*}"; docker pull "$image" >/dev/null; done
 [[ -r ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-} ]] || die 'missing readable Cloudflare Tunnel token file'
-command -v aws >/dev/null || die 'AWS CLI is required for R2 verification and backup'
-AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3api head-bucket --bucket "$STORAGE_S3_BUCKET" >/dev/null
-AWS_ACCESS_KEY_ID="$BACKUP_S3_KEY" AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET" aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-bucket --bucket "$BACKUP_S3_BUCKET" >/dev/null
+if [[ "${BACKUP_ENABLED:-true}" == "true" || "${STORAGE_DRIVER:-local}" == "s3" ]]; then
+  command -v aws >/dev/null || die 'AWS CLI is required for S3 verification'
+fi
+if [[ "${STORAGE_DRIVER:-local}" == "s3" ]]; then
+  AWS_ACCESS_KEY_ID="$STORAGE_S3_KEY" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET" aws --endpoint-url "$STORAGE_S3_ENDPOINT" s3api head-bucket --bucket "$STORAGE_S3_BUCKET" >/dev/null
+fi
+if [[ "${BACKUP_ENABLED:-true}" == "true" ]]; then
+  AWS_ACCESS_KEY_ID="$BACKUP_S3_KEY" AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET" aws --endpoint-url "$BACKUP_S3_ENDPOINT" s3api head-bucket --bucket "$BACKUP_S3_BUCKET" >/dev/null
+fi
 compose config --quiet
 print 'preflight passed (credentials and values redacted)'

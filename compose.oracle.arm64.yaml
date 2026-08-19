@@ -27,7 +27,7 @@ services:
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
       GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: "false"
-      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/data/familyplaces-media}
       MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?MEDIA_PUBLIC_BASE_URL is required in production}
       STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
@@ -78,7 +78,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
-      STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/data/familyplaces-media}
       STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
       STORAGE_S3_KEY: ${STORAGE_S3_KEY:-}

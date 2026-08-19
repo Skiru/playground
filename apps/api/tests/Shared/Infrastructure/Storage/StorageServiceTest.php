@@ -113,4 +113,35 @@ final class StorageServiceTest extends TestCase
 
         self::assertInstanceOf(StorageService::class, $service);
     }
+
+    public function testProdWithS3DriverAndHttpsPublicUrlPasses(): void
+    {
+        $service = new StorageService(
+            $this->localAdapter,
+            $this->s3Adapter,
+            's3',
+            null,
+            'https://media.familyplaces.pl',
+            'prod',
+            'false'
+        );
+
+        self::assertInstanceOf(StorageService::class, $service);
+    }
+
+    public function testProdWithS3DriverAndMissingPublicUrlFails(): void
+    {
+        $this->expectException(StorageConfigurationException::class);
+        $this->expectExceptionMessage('STORAGE_S3_PUBLIC_URL is required.');
+
+        new StorageService(
+            $this->localAdapter,
+            $this->s3Adapter,
+            's3',
+            'https://media.familyplaces.pl/media',
+            null,
+            'prod',
+            'false'
+        );
+    }
 }

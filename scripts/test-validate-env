@@ -1,0 +1,146 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+root_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
+validator="$root_dir/scripts/validate-production-env"
+
+temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"' EXIT
+
+cat > "$temp_dir/token" <<'EOF'
+dummy-token
+EOF
+
+valid_base() {
+  cat <<EOF
+APP_ENV=prod
+APP_DEBUG=0
+APP_SECRET=0123456789abcdef0123456789abcdef
+POSTGRES_DB=family_places
+POSTGRES_USER=family_places
+POSTGRES_PASSWORD=fedcba9876543210fedcba9876543210
+DATABASE_URL="postgresql://family_places:fedcba9876543210@database:5432/family_places?serverVersion=18&charset=utf8"
+RELEASE_SHA=2334f92a01a1ad23d0ced7fa16aa4fa3e9499b23
+RELEASE_VERSION=1.0.0
+API_IMAGE=ghcr.io/skiru/family-places-api@sha256:caaf14f3dd4c885dcf0fc3d54817b5c89c82b07fecb563591eb914a2279a30b8
+WEB_IMAGE=ghcr.io/skiru/family-places-web@sha256:dd7f9c70a06500b44058f826767326105f860e15be8cfc564f3de838c92d51a6
+POSTGIS_IMAGE=ghcr.io/skiru/family-places-postgis@sha256:0ce4396e2ec0312ff4c2dff4911f935da07888bcf9fa3c26fe73803be14809a1
+MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_TUNNEL_TOKEN_FILE=$temp_dir/token
+APP_PUBLIC_ORIGIN=https://playground.com.pl
+TRUSTED_AUTH_ORIGINS=https://playground.com.pl
+DEV_AUTH_ENABLED=false
+PLACE_DISCOVERY_ENABLED=false
+EOF
+}
+
+echo "--- Test A: STORAGE_DRIVER=local, BACKUP_ENABLED=false => PASS ---"
+valid_base > "$temp_dir/env.A"
+cat >> "$temp_dir/env.A" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+EOF
+"$validator" "$temp_dir/env.A"
+
+echo "--- Test B1: STORAGE_DRIVER=local, BACKUP_ENABLED=true without backup creds => FAIL ---"
+valid_base > "$temp_dir/env.B1"
+cat >> "$temp_dir/env.B1" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=true
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+EOF
+if "$validator" "$temp_dir/env.B1" >/dev/null 2>&1; then
+  echo "FAIL: expected missing backup credentials to fail" >&2
+  exit 1
+fi
+
+echo "--- Test B2: STORAGE_DRIVER=local, BACKUP_ENABLED=true with backup creds => PASS ---"
+valid_base > "$temp_dir/env.B2"
+cat >> "$temp_dir/env.B2" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=true
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+BACKUP_S3_ENDPOINT=https://account1.r2.cloudflarestorage.com
+BACKUP_S3_KEY=backup_key_123
+BACKUP_S3_SECRET=backup_secret_123
+BACKUP_S3_BUCKET=familyplaces-backups-prod
+AGE_RECIPIENT=age1dummyrecipient
+EOF
+"$validator" "$temp_dir/env.B2"
+
+echo "--- Test C1: STORAGE_DRIVER=s3, BACKUP_ENABLED=false without media creds => FAIL ---"
+valid_base > "$temp_dir/env.C1"
+cat >> "$temp_dir/env.C1" <<'EOF'
+STORAGE_DRIVER=s3
+BACKUP_ENABLED=false
+EOF
+if "$validator" "$temp_dir/env.C1" >/dev/null 2>&1; then
+  echo "FAIL: expected missing media credentials to fail" >&2
+  exit 1
+fi
+
+echo "--- Test C2: STORAGE_DRIVER=s3, BACKUP_ENABLED=false with media creds => PASS ---"
+valid_base > "$temp_dir/env.C2"
+cat >> "$temp_dir/env.C2" <<'EOF'
+STORAGE_DRIVER=s3
+BACKUP_ENABLED=false
+STORAGE_S3_ENDPOINT=https://account1.r2.cloudflarestorage.com
+STORAGE_S3_KEY=media_key_123
+STORAGE_S3_SECRET=media_secret_123
+STORAGE_S3_BUCKET=familyplaces-media-prod
+STORAGE_S3_PUBLIC_URL=https://media.playground.com.pl
+EOF
+"$validator" "$temp_dir/env.C2"
+
+echo "--- Test D: STORAGE_DRIVER=s3, BACKUP_ENABLED=true with media and backup creds => PASS ---"
+valid_base > "$temp_dir/env.D"
+cat >> "$temp_dir/env.D" <<'EOF'
+STORAGE_DRIVER=s3
+BACKUP_ENABLED=true
+STORAGE_S3_ENDPOINT=https://account1.r2.cloudflarestorage.com
+STORAGE_S3_KEY=media_key_123
+STORAGE_S3_SECRET=media_secret_123
+STORAGE_S3_BUCKET=familyplaces-media-prod
+STORAGE_S3_PUBLIC_URL=https://media.playground.com.pl
+BACKUP_S3_ENDPOINT=https://account2.r2.cloudflarestorage.com
+BACKUP_S3_KEY=backup_key_123
+BACKUP_S3_SECRET=backup_secret_123
+BACKUP_S3_BUCKET=familyplaces-backups-prod
+AGE_RECIPIENT=age1dummyrecipient
+EOF
+"$validator" "$temp_dir/env.D"
+
+echo "--- Test E: Invalid STORAGE_DRIVER => FAIL ---"
+valid_base > "$temp_dir/env.E"
+cat >> "$temp_dir/env.E" <<'EOF'
+STORAGE_DRIVER=invalid
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+EOF
+if "$validator" "$temp_dir/env.E" >/dev/null 2>&1; then
+  echo "FAIL: expected invalid STORAGE_DRIVER to fail" >&2
+  exit 1
+fi
+
+echo "--- Test F: Invalid BACKUP_ENABLED => FAIL ---"
+valid_base > "$temp_dir/env.F"
+cat >> "$temp_dir/env.F" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=invalid
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+EOF
+if "$validator" "$temp_dir/env.F" >/dev/null 2>&1; then
+  echo "FAIL: expected invalid BACKUP_ENABLED to fail" >&2
+  exit 1
+fi
+
+echo "--- Test G: Discovery services profile check ---"
+services=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config --services)
+if echo "$services" | grep -q 'place-discovery'; then
+  echo "FAIL: place-discovery services should not be in default profile" >&2
+  exit 1
+fi
+
+echo "ALL VALIDATOR AND MATRIX TESTS PASSED!"
