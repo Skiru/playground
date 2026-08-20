@@ -1,0 +1,13 @@
+# Dozzle authentication user configuration (production template)
+# Store actual production file at /etc/familyplaces/dozzle-users.yml (chmod 600)
+#
+# Roles:
+# Use least privilege. 'roles: [none]' grants read-only log access without
+# container management, actions, or terminal execution privileges.
+users:
+  operator:
+    name: "Log Operator"
+    email: "operator@playground.com.pl"
+    password: "$2y$12$REPLACE_WITH_YOUR_BCRYPT_HASH"
+    roles:
+      - none

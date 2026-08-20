@@ -89,4 +89,62 @@ final class GoogleApiClientIdentityVerifierTest extends TestCase
         $this->expectException(GoogleTokenEmailUnverifiedException::class);
         $verifier->verify($token);
     }
+
+    public function testRejectsInvalidIssuer(): void
+    {
+        $mockClient = $this->createMock(\Google\Client::class);
+        $mockClient->method('verifyIdToken')->willReturn([
+            'iss' => 'https://evil.issuer.com',
+            'aud' => 'expected-client-id',
+            'exp' => time() + 3600,
+            'email_verified' => true,
+            'sub' => '12345',
+            'email' => 'user@example.test',
+        ]);
+
+        $verifier = new GoogleApiClientIdentityVerifier('expected-client-id', $mockClient);
+        $token = $this->createJwtToken([
+            'iss' => 'https://evil.issuer.com',
+            'aud' => 'expected-client-id',
+            'exp' => time() + 3600,
+            'email_verified' => true,
+            'sub' => '12345',
+            'email' => 'user@example.test',
+        ]);
+
+        $this->expectException(GoogleTokenInvalidException::class);
+        $this->expectExceptionMessage('Google ID token issuer is invalid.');
+        $verifier->verify($token);
+    }
+
+    public function testVerifiesValidGoogleToken(): void
+    {
+        $mockClient = $this->createMock(\Google\Client::class);
+        $mockClient->method('verifyIdToken')->willReturn([
+            'iss' => 'https://accounts.google.com',
+            'aud' => 'expected-client-id',
+            'exp' => time() + 3600,
+            'iat' => time(),
+            'email_verified' => true,
+            'sub' => 'google-sub-123',
+            'email' => 'user@example.test',
+            'name' => 'John Doe',
+        ]);
+
+        $verifier = new GoogleApiClientIdentityVerifier('expected-client-id', $mockClient);
+        $token = $this->createJwtToken([
+            'iss' => 'https://accounts.google.com',
+            'aud' => 'expected-client-id',
+            'exp' => time() + 3600,
+            'email_verified' => true,
+            'sub' => 'google-sub-123',
+            'email' => 'user@example.test',
+        ]);
+
+        $identity = $verifier->verify($token);
+        $this->assertSame('google-sub-123', $identity->subject);
+        $this->assertSame('user@example.test', $identity->email);
+        $this->assertTrue($identity->emailVerified);
+        $this->assertSame('John Doe', $identity->displayName);
+    }
 }

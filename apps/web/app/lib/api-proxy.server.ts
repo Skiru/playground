@@ -1,3 +1,5 @@
+import { isApiEndpointAllowed } from "./api-allowlist"
+
 const ALLOWED_REQUEST_HEADERS = new Set([
   "accept",
   "content-type",
@@ -40,8 +42,7 @@ function buildUpstreamUrl(request: Request, apiPath: string): string {
 
   const candidate = new URL(apiPath, configured.origin)
   const normalizedPath = candidate.pathname
-  if (candidate.protocol !== configured.protocol || candidate.host !== configured.host ||
-      !(normalizedPath === '/api/v1' || normalizedPath.startsWith('/api/v1/'))) {
+  if (candidate.protocol !== configured.protocol || candidate.host !== configured.host || !isApiEndpointAllowed(normalizedPath)) {
     throw new Error('Destination path is not allowed.')
   }
 

@@ -30,6 +30,22 @@ describe("hardenedFetch and typed body policy", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  test.each([
+    "/api/v1/admin/users",
+    "/api/v1/internal/config",
+    "/api/v1/nonexistent",
+    "/api/v2/forum",
+    "/api/../admin",
+    "/api/v1/../admin",
+    "/api/v1/%2e%2e/admin",
+    "/api/v1//admin",
+  ])("blocks unallowed or malicious endpoint %s with 403", async (unallowedPath) => {
+    const incoming = new Request("http://localhost/")
+    const response = await hardenedFetch(incoming, unallowedPath)
+    expect(response.status).toBe(403)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   test("allows allowlisted endpoint and calls fetch with correlation id and cookies", async () => {
     const incoming = new Request("http://localhost/", {
       headers: {

@@ -1,21 +1,4 @@
-function isAllowlisted(path: string): boolean {
-  const cleanPath = path.split("?")[0]
-
-  if (!cleanPath.startsWith("/api/v1/")) {
-    return false
-  }
-
-  // Disallow path traversal or encoded attempts
-  if (
-    cleanPath.includes("..") ||
-    cleanPath.includes("//") ||
-    /%\w{2}/i.test(cleanPath)
-  ) {
-    return false
-  }
-
-  return true
-}
+import { isApiEndpointAllowed } from "./api-allowlist"
 
 function isBodyJson(body: unknown): boolean {
   if (!body) return false
@@ -76,7 +59,7 @@ export async function hardenedFetch(
 ): Promise<Response> {
   const incomingCorrId = incomingRequest.headers.get("x-correlation-id") || incomingRequest.headers.get("x-request-id")
 
-  if (!isAllowlisted(path)) {
+  if (!isApiEndpointAllowed(path)) {
     return Response.json(
       {
         title: "Forbidden Endpoint",
@@ -135,16 +118,30 @@ export async function hardenedFetch(
 
     const responseHeaders = new Headers()
     
-    // Always preserve Cache-Control: no-store and Vary: Cookie for private endpoints
-    responseHeaders.set("Cache-Control", "no-store, private")
-    responseHeaders.set("Vary", "Cookie")
-
-    const ALLOWED_FORWARD_HEADERS = ["set-cookie", "retry-after", "location", "www-authenticate", "content-disposition"]
+    const ALLOWED_FORWARD_HEADERS = [
+      "set-cookie",
+      "retry-after",
+      "location",
+      "www-authenticate",
+      "content-disposition",
+      "cache-control",
+      "vary",
+      "etag",
+      "last-modified",
+      "content-type",
+    ]
     for (const [key, value] of res.headers.entries()) {
       const lower = key.toLowerCase()
       if (ALLOWED_FORWARD_HEADERS.includes(lower) || lower.startsWith("ratelimit-")) {
         responseHeaders.set(key, value)
       }
+    }
+
+    if (!responseHeaders.has("Cache-Control")) {
+      responseHeaders.set("Cache-Control", "no-store, private")
+    }
+    if (!responseHeaders.has("Vary")) {
+      responseHeaders.set("Vary", "Cookie")
     }
 
     if (res.status === 204) {

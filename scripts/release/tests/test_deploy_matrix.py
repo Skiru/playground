@@ -142,6 +142,10 @@ class TestDeployMatrix(unittest.TestCase):
             with open(token_file, "w") as f:
                 f.write("dummy-token\n")
 
+            dozzle_file = os.path.join(tmpdir, "dozzle-users.yml")
+            with open(dozzle_file, "w") as f:
+                f.write("users:\n  operator:\n    password: dummy\n")
+
             env_file = os.path.join(tmpdir, ".env.production")
             with open(env_file, "w") as f:
                 f.write(f"""
@@ -167,9 +171,10 @@ MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
+DOZZLE_USERS_FILE={dozzle_file}
 """)
 
-            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_file)
+            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_file, DOZZLE_USERS_FILE=dozzle_file)
             cmd = [str(root / "scripts/production/deploy"), "--release", "0.1.5", "--dry-run"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertEqual(res.returncode, 0, f"deploy --dry-run failed: {res.stderr}")
@@ -226,6 +231,10 @@ CLOUDFLARE_TUNNEL_TOKEN_FILE={token_path}
             with open(token_file, "w") as f:
                 f.write("dummy-token\n")
 
+            dozzle_file = os.path.join(tmpdir, "dozzle-users.yml")
+            with open(dozzle_file, "w") as f:
+                f.write("users:\n  operator:\n    password: dummy\n")
+
             env_file = os.path.join(tmpdir, ".env.production")
             with open(env_file, "w") as f:
                 f.write(f"""
@@ -251,9 +260,10 @@ MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
+DOZZLE_USERS_FILE={dozzle_file}
 """)
 
-            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_file)
+            env = dict(os.environ, ENV_FILE=env_file, CLOUDFLARE_TUNNEL_TOKEN_FILE=token_file, DOZZLE_USERS_FILE=dozzle_file)
             cmd = [str(root / "scripts/production/deploy"), "--release", "999.999.999", "--dry-run"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertNotEqual(res.returncode, 0)

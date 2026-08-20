@@ -244,22 +244,44 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
             return false;
         }
 
-        $allowedOrigins = [$this->publicOrigin];
-        if ('' !== trim($this->trustedOrigins)) {
-            $allowedOrigins = array_merge(
-                $allowedOrigins,
-                array_map('trim', explode(',', $this->trustedOrigins))
-            );
+        if ('' === trim($this->trustedOrigins)) {
+            return false;
         }
 
-        foreach ($allowedOrigins as $allowed) {
-            $normAllowed = $this->normalizeOrigin($allowed);
-            if (null !== $normAllowed) {
-                if ($normOrigin['scheme'] === $normAllowed['scheme']
-                    && $normOrigin['host'] === $normAllowed['host']
-                    && $normOrigin['port'] === $normAllowed['port']) {
-                    return true;
+        $trustedList = array_map('trim', explode(',', $this->trustedOrigins));
+        $normalizedTrusted = [];
+        foreach ($trustedList as $t) {
+            $norm = $this->normalizeOrigin($t);
+            if (null !== $norm) {
+                $normalizedTrusted[] = $norm;
+            }
+        }
+
+        // Invariant: APP_PUBLIC_ORIGIN must be included in TRUSTED_AUTH_ORIGINS
+        if ('' !== trim($this->publicOrigin)) {
+            $normPublic = $this->normalizeOrigin(trim($this->publicOrigin));
+            if (null === $normPublic) {
+                return false;
+            }
+            $publicInTrusted = false;
+            foreach ($normalizedTrusted as $norm) {
+                if ($normPublic['scheme'] === $norm['scheme']
+                    && $normPublic['host'] === $norm['host']
+                    && $normPublic['port'] === $norm['port']) {
+                    $publicInTrusted = true;
+                    break;
                 }
+            }
+            if (!$publicInTrusted) {
+                return false;
+            }
+        }
+
+        foreach ($normalizedTrusted as $normAllowed) {
+            if ($normOrigin['scheme'] === $normAllowed['scheme']
+                && $normOrigin['host'] === $normAllowed['host']
+                && $normOrigin['port'] === $normAllowed['port']) {
+                return true;
             }
         }
 

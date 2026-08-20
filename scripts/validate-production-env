@@ -16,7 +16,7 @@ case "$backup_enabled" in
   *) fail 'BACKUP_ENABLED must be either true or false';;
 esac
 
-common_required='APP_SECRET POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD DATABASE_URL RELEASE_SHA RELEASE_VERSION API_IMAGE WEB_IMAGE POSTGIS_IMAGE MAP_ATTRIBUTION CLOUDFLARE_TUNNEL_TOKEN_FILE APP_PUBLIC_ORIGIN TRUSTED_AUTH_ORIGINS STORAGE_DRIVER'
+common_required='APP_SECRET POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD DATABASE_URL RELEASE_SHA RELEASE_VERSION API_IMAGE WEB_IMAGE POSTGIS_IMAGE MAP_ATTRIBUTION CLOUDFLARE_TUNNEL_TOKEN_FILE DOZZLE_USERS_FILE APP_PUBLIC_ORIGIN TRUSTED_AUTH_ORIGINS STORAGE_DRIVER'
 
 if [ "$driver" = s3 ]; then
   media_required='STORAGE_S3_ENDPOINT STORAGE_S3_KEY STORAGE_S3_SECRET STORAGE_S3_BUCKET STORAGE_S3_PUBLIC_URL'
@@ -33,7 +33,45 @@ fi
 required="$common_required $media_required $backup_required"
 for key in $required; do eval "value=\\\"\${$key:-}\\\""; [ -n "$value" ] || fail "missing $key"; case "$value" in *REPLACE*|*replace-with*|*your-*|*example*) fail "placeholder $key";; esac; done
 [ "${APP_ENV:-}" = prod ] || fail 'APP_ENV must be prod'; [ "${APP_DEBUG:-}" = 0 ] || fail 'APP_DEBUG must be 0'; [ "${DEV_AUTH_ENABLED:-}" = false ] || fail 'DEV_AUTH_ENABLED must be false'; [ "${PLACE_DISCOVERY_ENABLED:-}" = false ] || fail 'PLACE_DISCOVERY_ENABLED must be false for first deployment'
-case "$APP_PUBLIC_ORIGIN" in https://*) ;; *) fail 'APP_PUBLIC_ORIGIN must start with https://';; esac
+validate_origin() {
+  origin_val=$1
+  label=$2
+  case "$origin_val" in
+    https://*) ;;
+    *) fail "$label must start with https://";;
+  esac
+  case "$origin_val" in
+    *@*|*\?*|*\#*) fail "$label contains invalid characters (userinfo, query, or fragment not allowed)";;
+  esac
+  stripped=$(printf '%s' "$origin_val" | sed -E 's#^https://[^/]+(/?)##')
+  if [ -n "$stripped" ]; then
+    fail "$label must not contain a path component ($origin_val)"
+  fi
+}
+
+validate_origin "$APP_PUBLIC_ORIGIN" "APP_PUBLIC_ORIGIN"
+
+norm_public_origin=$(printf '%s' "$APP_PUBLIC_ORIGIN" | sed 's#/$##')
+found_public_origin=false
+
+old_ifs=$IFS
+IFS=','
+for origin_entry in $TRUSTED_AUTH_ORIGINS; do
+  origin_entry_trimmed=$(printf '%s' "$origin_entry" | tr -d ' ')
+  if [ -n "$origin_entry_trimmed" ]; then
+    validate_origin "$origin_entry_trimmed" "TRUSTED_AUTH_ORIGINS item '$origin_entry_trimmed'"
+    norm_entry=$(printf '%s' "$origin_entry_trimmed" | sed 's#/$##')
+    if [ "$norm_entry" = "$norm_public_origin" ]; then
+      found_public_origin=true
+    fi
+  fi
+done
+IFS=$old_ifs
+
+if [ "$found_public_origin" = false ]; then
+  fail "APP_PUBLIC_ORIGIN ($APP_PUBLIC_ORIGIN) must be included in TRUSTED_AUTH_ORIGINS ($TRUSTED_AUTH_ORIGINS)"
+fi
+
 [ "$MAP_ATTRIBUTION" = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap' ] || fail 'MAP_ATTRIBUTION must provide the required OpenFreeMap attribution'
 for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do printf %s "$image" | grep -Eq '@sha256:[0-9a-f]{64}$' || fail 'deployment images must use exact sha256 digest references'; done
 if [ "$backup_enabled" = true ]; then
@@ -50,7 +88,7 @@ else
 fi
 case "$DATABASE_URL" in postgresql://*@database:5432/*'serverVersion=18'*) ;; *) fail 'DATABASE_URL must target database:5432 and PostgreSQL 18';; esac
 case "$DATABASE_URL" in *'@'*'@'*|*' '*) fail 'DATABASE_URL credentials must be percent encoded';; esac
-[ -r "$CLOUDFLARE_TUNNEL_TOKEN_FILE" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable'; [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN must not be set directly'
+[ -r "$CLOUDFLARE_TUNNEL_TOKEN_FILE" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable'; [ -r "$DOZZLE_USERS_FILE" ] || fail 'DOZZLE_USERS_FILE must be readable'; [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN must not be set directly'
 [ ${#APP_SECRET} -ge 32 ] || fail 'APP_SECRET must be at least 32 characters'; [ ${#POSTGRES_PASSWORD} -ge 32 ] || fail 'POSTGRES_PASSWORD must be at least 32 characters'; [ "$APP_SECRET" != "$POSTGRES_PASSWORD" ] || fail 'application and database secrets must differ'
 
 google_enabled=${GOOGLE_IDENTITY_ENABLED:-false}

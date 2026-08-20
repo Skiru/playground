@@ -18,10 +18,12 @@ use Google\Client;
 final class GoogleApiClientIdentityVerifier implements GoogleIdentityVerifier
 {
     private string $clientId;
+    private ?Client $client;
 
-    public function __construct(string $clientId)
+    public function __construct(string $clientId, ?Client $client = null)
     {
         $this->clientId = $clientId;
+        $this->client = $client;
     }
 
     public function verify(string $idToken): VerifiedGoogleIdentity
@@ -34,53 +36,73 @@ final class GoogleApiClientIdentityVerifier implements GoogleIdentityVerifier
             throw new GoogleCredentialMissingException('Google ID token cannot be empty.');
         }
 
-        // Parse JWT payload safely before cryptographic verification to identify specific failure causes
         $parts = explode('.', $idToken);
         if (3 !== \count($parts)) {
             throw new GoogleTokenInvalidException('Google ID token is malformed.');
         }
 
-        $decodedPayload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-        if (!\is_array($decodedPayload)) {
-            throw new GoogleTokenInvalidException('Google ID token payload is invalid JSON.');
-        }
+        // Perform cryptographic signature verification via Google Client SDK FIRST
+        $googleClient = $this->client ?? new Client(['client_id' => $this->clientId]);
 
-        $aud = $decodedPayload['aud'] ?? null;
-        if ($aud !== $this->clientId) {
-            throw new GoogleTokenAudienceInvalidException('Google ID token audience does not match configured client ID.');
-        }
-
-        $exp = (int) ($decodedPayload['exp'] ?? 0);
-        if ($exp > 0 && $exp < time()) {
-            throw new GoogleTokenExpiredException('Google ID token is expired.');
-        }
-
-        $emailVerified = $decodedPayload['email_verified'] ?? false;
-        if (true !== $emailVerified && 'true' !== $emailVerified) {
-            throw new GoogleTokenEmailUnverifiedException('Google account email is not verified.');
-        }
-
-        $subject = (string) ($decodedPayload['sub'] ?? '');
-        if ('' === trim($subject)) {
-            throw new GoogleTokenInvalidException('Google ID token is missing subject claim.');
-        }
-
-        $email = (string) ($decodedPayload['email'] ?? '');
-        if ('' === trim($email)) {
-            throw new GoogleTokenInvalidException('Google ID token is missing email claim.');
-        }
-
-        // Perform cryptographic signature verification via Google Client SDK
-        $client = new Client(['client_id' => $this->clientId]);
-
+        $payload = false;
         try {
-            $payload = $client->verifyIdToken($idToken);
+            $payload = $googleClient->verifyIdToken($idToken);
+        } catch (\InvalidArgumentException|\UnexpectedValueException|\DomainException $e) {
+            // Local JWT decoding / signature verification failed
+            $payload = false;
         } catch (\Throwable $e) {
+            // Network/provider transport error
             throw new GoogleProviderUnavailableException('Google token verification failed due to provider error.', 0, $e);
         }
 
         if (false === $payload) {
+            $decodedPayload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+            if (\is_array($decodedPayload)) {
+                $aud = $decodedPayload['aud'] ?? null;
+                if ($aud !== $this->clientId) {
+                    throw new GoogleTokenAudienceInvalidException('Google ID token audience does not match configured client ID.');
+                }
+                $exp = (int) ($decodedPayload['exp'] ?? 0);
+                if ($exp > 0 && $exp < time()) {
+                    throw new GoogleTokenExpiredException('Google ID token is expired.');
+                }
+                $emailVerified = $decodedPayload['email_verified'] ?? false;
+                if (true !== $emailVerified && 'true' !== $emailVerified) {
+                    throw new GoogleTokenEmailUnverifiedException('Google account email is not verified.');
+                }
+            }
             throw new GoogleTokenInvalidException('Google ID token signature verification failed.');
+        }
+
+        // Business checks on cryptographically verified payload
+        $iss = (string) ($payload['iss'] ?? '');
+        if ('accounts.google.com' !== $iss && 'https://accounts.google.com' !== $iss) {
+            throw new GoogleTokenInvalidException('Google ID token issuer is invalid.');
+        }
+
+        $aud = $payload['aud'] ?? null;
+        if ($aud !== $this->clientId) {
+            throw new GoogleTokenAudienceInvalidException('Google ID token audience does not match configured client ID.');
+        }
+
+        $exp = (int) ($payload['exp'] ?? 0);
+        if ($exp > 0 && $exp < time()) {
+            throw new GoogleTokenExpiredException('Google ID token is expired.');
+        }
+
+        $emailVerified = $payload['email_verified'] ?? false;
+        if (true !== $emailVerified && 'true' !== $emailVerified) {
+            throw new GoogleTokenEmailUnverifiedException('Google account email is not verified.');
+        }
+
+        $subject = (string) ($payload['sub'] ?? '');
+        if ('' === trim($subject)) {
+            throw new GoogleTokenInvalidException('Google ID token is missing subject claim.');
+        }
+
+        $email = (string) ($payload['email'] ?? '');
+        if ('' === trim($email)) {
+            throw new GoogleTokenInvalidException('Google ID token is missing email claim.');
         }
 
         $displayName = $payload['name'] ?? $email;

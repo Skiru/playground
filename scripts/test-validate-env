@@ -12,6 +12,10 @@ cat > "$temp_dir/token" <<'EOF'
 dummy-token
 EOF
 
+cat > "$temp_dir/dozzle_users" <<'EOF'
+dummy-dozzle-users
+EOF
+
 valid_base() {
   cat <<EOF
 APP_ENV=prod
@@ -28,6 +32,7 @@ WEB_IMAGE=ghcr.io/skiru/family-places-web@sha256:dd7f9c70a06500b44058f8267673261
 POSTGIS_IMAGE=ghcr.io/skiru/family-places-postgis@sha256:0ce4396e2ec0312ff4c2dff4911f935da07888bcf9fa3c26fe73803be14809a1
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE=$temp_dir/token
+DOZZLE_USERS_FILE=$temp_dir/dozzle_users
 APP_PUBLIC_ORIGIN=https://playground.com.pl
 TRUSTED_AUTH_ORIGINS=https://playground.com.pl
 DEV_AUTH_ENABLED=false
@@ -140,6 +145,48 @@ echo "--- Test G: Discovery services profile check ---"
 services=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config --services)
 if echo "$services" | grep -q 'place-discovery'; then
   echo "FAIL: place-discovery services should not be in default profile" >&2
+  exit 1
+fi
+
+echo "--- Test H1: APP_PUBLIC_ORIGIN missing from TRUSTED_AUTH_ORIGINS => FAIL ---"
+valid_base > "$temp_dir/env.H1"
+cat >> "$temp_dir/env.H1" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+APP_PUBLIC_ORIGIN=https://playground.com.pl
+TRUSTED_AUTH_ORIGINS=https://other.example.com
+EOF
+if "$validator" "$temp_dir/env.H1" >/dev/null 2>&1; then
+  echo "FAIL: expected missing APP_PUBLIC_ORIGIN in TRUSTED_AUTH_ORIGINS to fail" >&2
+  exit 1
+fi
+
+echo "--- Test H2: HTTP APP_PUBLIC_ORIGIN in prod => FAIL ---"
+valid_base > "$temp_dir/env.H2"
+cat >> "$temp_dir/env.H2" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+APP_PUBLIC_ORIGIN=http://playground.com.pl
+TRUSTED_AUTH_ORIGINS=http://playground.com.pl
+EOF
+if "$validator" "$temp_dir/env.H2" >/dev/null 2>&1; then
+  echo "FAIL: expected HTTP APP_PUBLIC_ORIGIN in prod to fail" >&2
+  exit 1
+fi
+
+echo "--- Test H3: Origin with path in prod => FAIL ---"
+valid_base > "$temp_dir/env.H3"
+cat >> "$temp_dir/env.H3" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+APP_PUBLIC_ORIGIN=https://playground.com.pl/path
+TRUSTED_AUTH_ORIGINS=https://playground.com.pl/path
+EOF
+if "$validator" "$temp_dir/env.H3" >/dev/null 2>&1; then
+  echo "FAIL: expected origin with path component to fail" >&2
   exit 1
 fi
 

@@ -1,6 +1,0 @@
-# Dozzle authentication user file
-users:
-  admin:
-    name: "Log Admin"
-    email: "admin@playground.com.pl"
-    password: "$2y$12$uucK6rymHyu6zcnIpDz3sOLW3Nd37L1M.978HpDzkjPfyj/sJdUqu"

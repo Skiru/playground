@@ -31,13 +31,16 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $csrfManager = $container->get(CsrfTokenManagerInterface::class);
         $limiterFactory = $container->get('limiter.google_login');
 
+        // If trustedOrigins is omitted in test helper, set trustedOrigins = publicOrigin to satisfy invariant
+        $effectiveTrusted = '' === trim($trustedOrigins) ? $publicOrigin : $trustedOrigins;
+
         return new GoogleCredentialAuthenticator(
             $authService,
             $csrfManager,
             new NullLogger(),
             $limiterFactory,
             $publicOrigin,
-            $trustedOrigins
+            $effectiveTrusted
         );
     }
 
@@ -196,7 +199,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
 
     public function testAcceptsSecondaryTrustedOrigin(): void
     {
-        $authenticator = $this->createAuthenticator('http://localhost:3000', 'https://app.familyplaces.pl, http://127.0.0.1:3000');
+        $authenticator = $this->createAuthenticator('http://localhost:3000', 'http://localhost:3000, https://app.familyplaces.pl, http://127.0.0.1:3000');
         $request = $this->createRequest('https://app.familyplaces.pl', '10.0.0.8');
 
         try {
@@ -205,5 +208,16 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         } catch (BadCredentialsException $e) {
             $this->assertSame('GOOGLE_TOKEN_INVALID', $e->getMessage());
         }
+    }
+
+    public function testRejectsPublicOriginMissingFromTrustedAuthOrigins(): void
+    {
+        $authenticator = $this->createAuthenticator('https://playground.com.pl', 'https://other.example.com');
+        $request = $this->createRequest('https://playground.com.pl', '10.0.0.9');
+
+        $this->expectException(BadCredentialsException::class);
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
+
+        $authenticator->authenticate($request);
     }
 }
