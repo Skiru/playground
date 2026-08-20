@@ -143,7 +143,7 @@ if "$validator" "$temp_dir/env.F" >/dev/null 2>&1; then
 fi
 
 echo "--- Test G: Discovery services profile check ---"
-services=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config --services)
+services=$(docker compose --env-file "$root_dir/.env.example" -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config --services)
 if echo "$services" | grep -q 'place-discovery'; then
   echo "FAIL: place-discovery services should not be in default profile" >&2
   exit 1
@@ -241,7 +241,7 @@ if ! grep -q 'reverse_proxy api:80' "$root_dir/infra/deployment/Caddyfile"; then
 fi
 
 echo "--- Test K: Network topology least privilege check ---"
-compose_config=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config)
+compose_config=$(docker compose --env-file "$root_dir/.env.example" -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config)
 if ! echo "$compose_config" | grep -A 50 'api:' | grep -q 'api-egress'; then
   echo "FAIL: API service must be connected to api-egress network" >&2
   exit 1
