@@ -1874,6 +1874,7 @@ export type GetModerationCaseResponses = {
         reporterId: string;
         claimedBy: string | null;
         claimedAt: string | null;
+        isClaimExpired?: boolean;
         resolvedBy?: string | null;
         resolvedAt?: string | null;
         allowedActions: Array<'HIDE' | 'REMOVE' | 'RESTORE' | 'LOCK' | 'UNLOCK' | 'PIN' | 'UNPIN' | 'DISMISS_REPORT' | 'RESOLVE_REPORT'>;

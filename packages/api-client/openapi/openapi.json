@@ -5659,6 +5659,9 @@
                                             ],
                                             "format": "date-time"
                                         },
+                                        "isClaimExpired": {
+                                            "type": "boolean"
+                                        },
                                         "resolvedBy": {
                                             "type": [
                                                 "string",
