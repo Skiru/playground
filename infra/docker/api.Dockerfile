@@ -1,6 +1,8 @@
 FROM dunglas/frankenphp:builder@sha256:dd9d093f74005fb9a7c22c0c4edca9424015c0f3e28f720d76ff79c2b8f084e7 AS frankenphp-builder
 COPY --from=golang:1.26-bookworm@sha256:116d58cbd88c1297624acc6e967a060012422bacf9930927e23fb719189c6f36 /usr/local/go /usr/local/go
 COPY --from=caddy:builder@sha256:198d47eaee306d4d0c38a9960c89ff2c959aa29ad51d3e2dafa3e93ac961782a /usr/bin/xcaddy /usr/bin/xcaddy
+ENV GODEBUG=http2client=0 \
+    GOPROXY=https://proxy.golang.org,direct
 RUN CGO_ENABLED=1 \
     XCADDY_SETCAP=1 \
     XCADDY_GO_BUILD_FLAGS="-ldflags='-w -s' -tags=nobadger,nomysql,nopgx" \
