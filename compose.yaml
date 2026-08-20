@@ -18,6 +18,7 @@ services:
     networks: [edge, internal]
 
   api:
+    image: ${API_IMAGE:-family-places-api:local}
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
@@ -46,6 +47,7 @@ services:
       - media-data:/data/familyplaces-media
 
   worker:
+    image: ${API_IMAGE:-family-places-api:local}
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
@@ -68,6 +70,7 @@ services:
       - media-data:/data/familyplaces-media
 
   place-discovery-scheduler:
+    image: ${API_IMAGE:-family-places-api:local}
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
@@ -88,6 +91,7 @@ services:
     networks: [internal, discovery-egress]
 
   place-discovery-worker:
+    image: ${API_IMAGE:-family-places-api:local}
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
@@ -109,6 +113,7 @@ services:
     networks: [internal, discovery-egress]
 
   web:
+    image: ${WEB_IMAGE:-family-places-web:local}
     build:
       context: .
       dockerfile: infra/docker/web.Dockerfile

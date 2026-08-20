@@ -29,7 +29,7 @@ jobs:
       - name: Validate production topology
         run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml config --quiet
       - name: Build immutable candidates
-        run: docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml build api worker web
+        run: docker compose --env-file .env.example -f compose.yaml build api worker web
       - name: Verify Docker context exclusions
         run: ./scripts/verify-docker-context
       - name: Verify production runtimes
