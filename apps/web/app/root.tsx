@@ -32,7 +32,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const appEnv = process.env.APP_ENV || "dev"
   const isProd = appEnv === "prod" || appEnv === "production"
 
-  const devAuthEnabled = (!isProd || process.env.E2E === "true" || process.env.E2E === "1") && (process.env.DEV_AUTH_ENABLED === "true" || process.env.DEV_AUTH_ENABLED === "1")
+  if (isProd && (process.env.DEV_AUTH_ENABLED === "true" || process.env.DEV_AUTH_ENABLED === "1")) {
+    throw new Error("CRITICAL SECURITY CONFIGURATION FAILURE: DEV_AUTH_ENABLED cannot be enabled in production environment.")
+  }
+
+  const devAuthEnabled = !isProd && (process.env.DEV_AUTH_ENABLED === "true" || process.env.DEV_AUTH_ENABLED === "1")
 
   if (googleIdentityEnabled && !googleClientId) {
     throw new Error("Configuration error: GOOGLE_IDENTITY_ENABLED is true but PUBLIC_GOOGLE_CLIENT_ID is not configured.")

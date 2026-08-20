@@ -52,4 +52,17 @@ case "$DATABASE_URL" in postgresql://*@database:5432/*'serverVersion=18'*) ;; *)
 case "$DATABASE_URL" in *'@'*'@'*|*' '*) fail 'DATABASE_URL credentials must be percent encoded';; esac
 [ -r "$CLOUDFLARE_TUNNEL_TOKEN_FILE" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable'; [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN must not be set directly'
 [ ${#APP_SECRET} -ge 32 ] || fail 'APP_SECRET must be at least 32 characters'; [ ${#POSTGRES_PASSWORD} -ge 32 ] || fail 'POSTGRES_PASSWORD must be at least 32 characters'; [ "$APP_SECRET" != "$POSTGRES_PASSWORD" ] || fail 'application and database secrets must differ'
+
+google_enabled=${GOOGLE_IDENTITY_ENABLED:-false}
+case "$google_enabled" in
+  true|false) ;;
+  *) fail 'GOOGLE_IDENTITY_ENABLED must be either true or false';;
+esac
+if [ "$google_enabled" = true ]; then
+  pub_client_id=${PUBLIC_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}
+  backend_client_id=${GOOGLE_CLIENT_ID:-${PUBLIC_GOOGLE_CLIENT_ID:-}}
+  [ -n "$pub_client_id" ] || fail 'PUBLIC_GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID is required when GOOGLE_IDENTITY_ENABLED is true'
+  case "$pub_client_id" in *REPLACE*|*replace-with*|*your-*|*example*) fail 'placeholder Google Client ID';; esac
+  [ "$pub_client_id" = "$backend_client_id" ] || fail 'PUBLIC_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID must match'
+fi
 echo 'production environment validation passed (values redacted)'

@@ -67,10 +67,14 @@ final class GoogleConcurrentFirstLoginTest extends KernelTestCase
         $this->assertSame($email, (string) $userA->email());
 
         // Concurrent/second login attempt for Subject B with SAME email address
-        $this->expectException(AccountLinkRequiredException::class);
-        $this->expectExceptionMessage('An account with this email address already exists. Manual linking is required.');
-
-        $this->authenticateWithGoogle->authenticate($tokenB);
+        $caught = false;
+        try {
+            $this->authenticateWithGoogle->authenticate($tokenB);
+        } catch (AccountLinkRequiredException $e) {
+            $caught = true;
+            $this->assertStringContainsString('An account with this email address already exists. Manual linking is required.', $e->getMessage());
+        }
+        $this->assertTrue($caught, 'Expected AccountLinkRequiredException was not thrown');
 
         // Verify DB invariants
         $userCount = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM users WHERE email = :email', ['email' => $email]);

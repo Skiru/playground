@@ -1,9 +1,3 @@
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function isUuid(val: string): boolean {
-  return uuidRegex.test(val)
-}
-
 function isAllowlisted(path: string): boolean {
   const cleanPath = path.split("?")[0]
 
@@ -145,10 +139,12 @@ export async function hardenedFetch(
     responseHeaders.set("Cache-Control", "no-store, private")
     responseHeaders.set("Vary", "Cookie")
 
-    // Forward Set-Cookie if any
-    const setCookie = res.headers.get("set-cookie")
-    if (setCookie) {
-      responseHeaders.set("Set-Cookie", setCookie)
+    const ALLOWED_FORWARD_HEADERS = ["set-cookie", "retry-after", "location", "www-authenticate", "content-disposition"]
+    for (const [key, value] of res.headers.entries()) {
+      const lower = key.toLowerCase()
+      if (ALLOWED_FORWARD_HEADERS.includes(lower) || lower.startsWith("ratelimit-")) {
+        responseHeaders.set(key, value)
+      }
     }
 
     if (res.status === 204) {

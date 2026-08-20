@@ -15,7 +15,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
             'REMOTE_ADDR' => '10.0.0.1',
             'HTTP_ORIGIN' => 'http://localhost:5173',
             'CONTENT_TYPE' => 'application/json',
-        ], json_encode(['credential' => 'sample-invalid-google-token']));
+        ], json_encode(['credential' => 'invalid-sample-google-token']));
 
         $response = $client->getResponse();
         self::assertNotEquals(404, $response->getStatusCode(), 'POST /api/v1/auth/google returned 404 Not Found');
@@ -23,7 +23,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
 
         $data = json_decode($response->getContent(), true);
         self::assertIsArray($data);
-        self::assertSame('GOOGLE_CREDENTIAL_INVALID', $data['code'] ?? null);
+        self::assertSame('GOOGLE_TOKEN_INVALID', $data['code'] ?? null);
     }
 
     public function testGoogleAuthRejectsUntrustedOrigin(): void
@@ -39,7 +39,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
         self::assertSame(401, $response->getStatusCode());
 
         $data = json_decode($response->getContent(), true);
-        self::assertSame('GOOGLE_CREDENTIAL_INVALID', $data['code'] ?? null);
+        self::assertSame('GOOGLE_ORIGIN_INVALID', $data['code'] ?? null);
     }
 
     public function testGoogleAuthRejectsInvalidContentType(): void
@@ -55,7 +55,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
         self::assertSame(401, $response->getStatusCode());
 
         $data = json_decode($response->getContent(), true);
-        self::assertSame('GOOGLE_CREDENTIAL_INVALID', $data['code'] ?? null);
+        self::assertSame('GOOGLE_REQUEST_INVALID', $data['code'] ?? null);
     }
 
     public function testGoogleAuthRejectsOversizedPayload(): void
@@ -72,7 +72,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
         self::assertSame(401, $response->getStatusCode());
 
         $data = json_decode($response->getContent(), true);
-        self::assertSame('GOOGLE_CREDENTIAL_INVALID', $data['code'] ?? null);
+        self::assertSame('GOOGLE_CREDENTIAL_TOO_LARGE', $data['code'] ?? null);
     }
 
     public function testGoogleAuthRejectsMissingCredential(): void
@@ -88,7 +88,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
         self::assertSame(401, $response->getStatusCode());
 
         $data = json_decode($response->getContent(), true);
-        self::assertSame('GOOGLE_CREDENTIAL_INVALID', $data['code'] ?? null);
+        self::assertSame('GOOGLE_CREDENTIAL_MISSING', $data['code'] ?? null);
     }
 
     public function testGoogleAuthRateThrottling(): void
@@ -102,7 +102,7 @@ final class GoogleAuthRegressionTest extends WebTestCase
                 'REMOTE_ADDR' => $ip,
                 'HTTP_ORIGIN' => 'http://localhost:5173',
                 'CONTENT_TYPE' => 'application/json',
-            ], json_encode(['credential' => 'token-'.$i]));
+            ], json_encode(['credential' => 'invalid-token-'.$i]));
             self::assertSame(401, $client->getResponse()->getStatusCode());
         }
 

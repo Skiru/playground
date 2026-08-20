@@ -25,7 +25,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $txManager = $this->createMock(\App\Shared\Application\TransactionManager::class);
         $clock = $this->createMock(\App\Shared\Application\Clock::class);
 
-        $verifier->method('verify')->willThrowException(new \App\Identity\Application\Exception\GoogleCredentialInvalidException('Invalid token'));
+        $verifier->method('verify')->willThrowException(new \App\Identity\Application\Exception\GoogleTokenInvalidException('Invalid token'));
 
         $authService = new AuthenticateWithGoogle($verifier, $extRepo, $userRepo, $txManager, $clock);
         $csrfManager = $container->get(CsrfTokenManagerInterface::class);
@@ -44,6 +44,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
     private function createRequest(?string $origin, string $clientIp = '127.0.0.1'): Request
     {
         $headers = [
+            'CONTENT_TYPE' => 'application/json',
             'HTTP_CONTENT_TYPE' => 'application/json',
             'REMOTE_ADDR' => $clientIp,
         ];
@@ -68,7 +69,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $request = $this->createRequest(null, '10.0.0.1');
 
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('GOOGLE_CREDENTIAL_INVALID');
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
 
         $authenticator->authenticate($request);
     }
@@ -79,7 +80,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $request = $this->createRequest('   ', '10.0.0.2');
 
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('GOOGLE_CREDENTIAL_INVALID');
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
 
         $authenticator->authenticate($request);
     }
@@ -90,7 +91,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $request = $this->createRequest('http://evil-attacker.test', '10.0.0.3');
 
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('GOOGLE_CREDENTIAL_INVALID');
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
 
         $authenticator->authenticate($request);
     }
@@ -101,9 +102,61 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $request = $this->createRequest('http://localhost:3000/stolen-path', '10.0.0.4');
 
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('GOOGLE_CREDENTIAL_INVALID');
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
 
         $authenticator->authenticate($request);
+    }
+
+    public function testRejectsOriginWithQuery(): void
+    {
+        $authenticator = $this->createAuthenticator('http://localhost:3000');
+        $request = $this->createRequest('http://localhost:3000?x=1', '10.0.0.41');
+
+        $this->expectException(BadCredentialsException::class);
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
+
+        $authenticator->authenticate($request);
+    }
+
+    public function testRejectsOriginWithFragment(): void
+    {
+        $authenticator = $this->createAuthenticator('http://localhost:3000');
+        $request = $this->createRequest('http://localhost:3000/#fragment', '10.0.0.42');
+
+        $this->expectException(BadCredentialsException::class);
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
+
+        $authenticator->authenticate($request);
+    }
+
+    public function testRejectsUserInfoInOrigin(): void
+    {
+        $authenticator = $this->createAuthenticator('http://localhost:3000');
+        $request = $this->createRequest('http://user:pass@localhost:3000', '10.0.0.43');
+
+        $this->expectException(BadCredentialsException::class);
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
+
+        $authenticator->authenticate($request);
+    }
+
+    public function testRejectsInvalidSchemes(): void
+    {
+        $authenticator = $this->createAuthenticator('http://localhost:3000');
+
+        try {
+            $authenticator->authenticate($this->createRequest('javascript:alert(1)', '10.0.0.44'));
+            $this->fail('Expected GOOGLE_ORIGIN_INVALID for javascript scheme');
+        } catch (BadCredentialsException $e) {
+            $this->assertSame('GOOGLE_ORIGIN_INVALID', $e->getMessage());
+        }
+
+        try {
+            $authenticator->authenticate($this->createRequest('ftp://localhost:3000', '10.0.0.45'));
+            $this->fail('Expected GOOGLE_ORIGIN_INVALID for ftp scheme');
+        } catch (BadCredentialsException $e) {
+            $this->assertSame('GOOGLE_ORIGIN_INVALID', $e->getMessage());
+        }
     }
 
     public function testRejectsSchemeMismatch(): void
@@ -112,7 +165,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $request = $this->createRequest('https://localhost:3000', '10.0.0.5');
 
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('GOOGLE_CREDENTIAL_INVALID');
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
 
         $authenticator->authenticate($request);
     }
@@ -123,7 +176,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
         $request = $this->createRequest('http://localhost:8080', '10.0.1.6');
 
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('GOOGLE_CREDENTIAL_INVALID');
+        $this->expectExceptionMessage('GOOGLE_ORIGIN_INVALID');
 
         $authenticator->authenticate($request);
     }
@@ -137,7 +190,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
             $authenticator->authenticate($request);
             $this->fail('Expected exception during token validation, not origin failure.');
         } catch (BadCredentialsException $e) {
-            $this->assertSame('GOOGLE_CREDENTIAL_INVALID', $e->getMessage());
+            $this->assertSame('GOOGLE_TOKEN_INVALID', $e->getMessage());
         }
     }
 
@@ -150,7 +203,7 @@ final class GoogleAuthOriginSecurityTest extends KernelTestCase
             $authenticator->authenticate($request);
             $this->fail('Expected exception during token validation.');
         } catch (BadCredentialsException $e) {
-            $this->assertSame('GOOGLE_CREDENTIAL_INVALID', $e->getMessage());
+            $this->assertSame('GOOGLE_TOKEN_INVALID', $e->getMessage());
         }
     }
 }

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react"
 import * as React from "react"
 import { MemoryRouter } from "react-router"
 import { PlaceCard } from "~/components/places/PlaceCard"
+import type { SearchPlacesResponse } from "@family-places/api-client"
 
 const XSS_PAYLOADS = [
   "<script>alert(1)</script>",
@@ -13,19 +14,29 @@ const XSS_PAYLOADS = [
 
 describe("XSS Payload Escaping and Safe Text Rendering", () => {
   test.each(XSS_PAYLOADS)("renders XSS payload %s as plain text without HTML execution", (payload) => {
-    const mockPlace = {
+    const mockPlace: SearchPlacesResponse["items"][number] = {
       id: "place-1",
       slug: "place-slug",
       name: payload,
-      shortDescription: payload,
+      short_description: payload,
       city: "Warszawa",
       categories: [{ slug: "cat", name: "Cat" }],
+      min_age_months: 0,
+      max_age_months: 120,
+      indoor: true,
+      outdoor: false,
+      free_entry: false,
+      verification_status: "verified",
       amenities: [],
-      freeEntry: false,
-      verificationStatus: "unverified" as const,
-      mainPhotoVariants: null,
-      averageRating: 4.5,
-      totalReviews: 1,
+      distance_meters: null,
+      longitude: 21.0122,
+      latitude: 52.2297,
+      is_open_now: true,
+      complete: true,
+      relevance_score: 1.0,
+      main_photo: null,
+      average_rating: 4.5,
+      total_reviews: 1,
     }
 
     const { container } = render(

@@ -25,11 +25,12 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     healthcheck:
-      test: ["CMD", "caddy", "version"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
     networks: [edge, internal]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   api:
     image: ${API_IMAGE:?API_IMAGE is required in production}
@@ -41,7 +42,7 @@ services:
       APP_SECRET: ${APP_SECRET:?APP_SECRET is required in production}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       LOCK_DSN: ${LOCK_DSN:-${DATABASE_URL}}
-      GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}
       APP_PUBLIC_ORIGIN: ${APP_PUBLIC_ORIGIN:-https://playground.com.pl}
       TRUSTED_AUTH_ORIGINS: ${TRUSTED_AUTH_ORIGINS:-https://playground.com.pl,https://www.playground.com.pl}
       DEV_AUTH_ENABLED: "false"
@@ -63,6 +64,7 @@ services:
       timeout: 3s
       retries: 10
     networks: [internal]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   worker:
     image: ${API_IMAGE:?API_IMAGE is required in production}
@@ -89,6 +91,7 @@ services:
     healthcheck:
       disable: true
     networks: [internal]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   place-discovery-scheduler:
     profiles: [discovery]
@@ -137,7 +140,7 @@ services:
       MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:?MAP_ATTRIBUTION is required in production}
       MAP_PROVIDER_NAME: ${MAP_PROVIDER_NAME:?MAP_PROVIDER_NAME is required in production}
       GOOGLE_IDENTITY_ENABLED: ${GOOGLE_IDENTITY_ENABLED:-false}
-      PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
+      PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}
       DEV_AUTH_ENABLED: false
       APP_ENV: prod
     healthcheck:
@@ -146,6 +149,7 @@ services:
       timeout: 3s
       retries: 10
     networks: [internal]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   database:
     image: ${POSTGIS_IMAGE:?POSTGIS_IMAGE is required in production}
@@ -164,6 +168,7 @@ services:
       retries: 20
       start_period: 15s
     networks: [internal]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   cloudflared:
     image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
@@ -181,6 +186,24 @@ services:
     networks: [edge]
     logging: {driver: local, options: {max-size: 5m, max-file: "3"}}
 
+  observability-logs:
+    image: ${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:716a4f940b5406bd8f88d9be7e4f9b8089bcce868e4c7d0d02462bfef693e5db}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      DOZZLE_AUTH_PROVIDER: simple
+      DOZZLE_AUTH_TTL: 24h
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - dozzle-data:/data
+      - ./infra/observability/users.yml:/data/users.yml:ro
+    mem_limit: 128m
+    cpus: 0.15
+    security_opt: [no-new-privileges:true]
+    networks: [internal]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+
 secrets:
   cloudflare_tunnel_token:
     file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-/etc/familyplaces/cloudflared-token}
@@ -190,6 +213,7 @@ volumes:
   media-data:
   caddy-data:
   caddy-config:
+  dozzle-data:
 
 networks:
   edge:

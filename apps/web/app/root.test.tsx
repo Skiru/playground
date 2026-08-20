@@ -73,10 +73,24 @@ describe("root loader", () => {
     })
   })
 
-  it("disables dev auth under production environment even if DEV_AUTH_ENABLED is true", async () => {
+  it("fails fast under production environment if DEV_AUTH_ENABLED is true", async () => {
     process.env.GOOGLE_IDENTITY_ENABLED = "true"
     process.env.PUBLIC_GOOGLE_CLIENT_ID = "some-client-id"
     process.env.DEV_AUTH_ENABLED = "true"
+    process.env.APP_ENV = "prod"
+
+    await expect(
+      loader({
+        request: new Request("http://localhost/"),
+        params: {},
+      } as Parameters<typeof loader>[0])
+    ).rejects.toThrow("CRITICAL SECURITY CONFIGURATION FAILURE: DEV_AUTH_ENABLED cannot be enabled in production environment.")
+  })
+
+  it("disables dev auth under production environment when DEV_AUTH_ENABLED is false", async () => {
+    process.env.GOOGLE_IDENTITY_ENABLED = "true"
+    process.env.PUBLIC_GOOGLE_CLIENT_ID = "some-client-id"
+    process.env.DEV_AUTH_ENABLED = "false"
     process.env.APP_ENV = "prod"
 
     const result = await loader({

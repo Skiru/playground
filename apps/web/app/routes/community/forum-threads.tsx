@@ -32,7 +32,7 @@ function withAuthor(thread: ListCategoryThreadsResponses[200]["items"][number]):
 
 function useOptionalLoaderData<T>(): T | undefined {
   try {
-    return useLoaderData<T>()
+    return useLoaderData() as T
   } catch {
     return undefined
   }
@@ -53,7 +53,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export default function ForumThreadsPage() {
-  const loaderData = useOptionalLoaderData<typeof loader>()
+  const loaderData = useOptionalLoaderData<Awaited<ReturnType<typeof loader>>>()
   const initialCategory = loaderData?.data?.category as Category | null
   const initialThreads = (loaderData?.data?.items || []).map(withAuthor)
   const initialPagination = loaderData?.data?.pagination as CursorPagination | undefined
@@ -77,7 +77,9 @@ export default function ForumThreadsPage() {
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
 
-  React.useEffect(() => {
+  const [prevLoaderData, setPrevLoaderData] = React.useState(loaderData)
+  if (loaderData !== prevLoaderData) {
+    setPrevLoaderData(loaderData)
     if (loaderData?.data) {
       setCategory(loaderData.data.category)
       const fetchedItems = loaderData.data.items.map(withAuthor)
@@ -86,7 +88,7 @@ export default function ForumThreadsPage() {
       setNextCursor(pagination?.nextCursor || null)
       setHasNextPage(pagination?.hasNextPage || false)
     }
-  }, [loaderData])
+  }
 
   const loadThreads = React.useCallback(async (cursor: string | null = null, append = false) => {
     if (!categorySlug) return

@@ -29,7 +29,7 @@ interface CursorPagination {
 
 function useOptionalLoaderData<T>(): T | undefined {
   try {
-    return useLoaderData<T>()
+    return useLoaderData() as T
   } catch {
     return undefined
   }
@@ -45,7 +45,7 @@ export async function loader() {
 }
 
 export default function CommunityFeedPage() {
-  const loaderData = useOptionalLoaderData<typeof loader>()
+  const loaderData = useOptionalLoaderData<Awaited<ReturnType<typeof loader>>>()
   const initialItems = (loaderData?.feedData?.items || []) as FeedItem[]
   const initialPagination = loaderData?.feedData?.pagination as CursorPagination | undefined
 
@@ -57,7 +57,9 @@ export default function CommunityFeedPage() {
   const [typeFilter, setTypeFilter] = React.useState<string>("ALL")
   const [error, setError] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
+  const [prevLoaderData, setPrevLoaderData] = React.useState(loaderData)
+  if (loaderData !== prevLoaderData) {
+    setPrevLoaderData(loaderData)
     if (loaderData?.feedData) {
       const fetchedItems = (loaderData.feedData.items || []) as FeedItem[]
       setItems(fetchedItems)
@@ -65,7 +67,7 @@ export default function CommunityFeedPage() {
       setNextCursor(pagination?.nextCursor || null)
       setHasNextPage(pagination?.hasNextPage || false)
     }
-  }, [loaderData])
+  }
 
   const getSourceLink = (item: FeedItem) => {
     switch (item.type) {

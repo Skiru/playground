@@ -14,7 +14,7 @@ interface Category {
 
 function useOptionalLoaderData<T>(): T | undefined {
   try {
-    return useLoaderData<T>()
+    return useLoaderData() as T
   } catch {
     return undefined
   }
@@ -26,7 +26,7 @@ export async function loader() {
 }
 
 export default function ForumCategoriesPage() {
-  const loaderData = useOptionalLoaderData<typeof loader>()
+  const loaderData = useOptionalLoaderData<Awaited<ReturnType<typeof loader>>>()
   const categories: Category[] = (loaderData?.categoriesData || []).map((category) => ({
     id: String(category.id),
     slug: String(category.slug),

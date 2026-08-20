@@ -53,7 +53,7 @@ function withAuthor<T extends { author?: { id: string | null; displayName: strin
 
 function useOptionalLoaderData<T>(): T | undefined {
   try {
-    return useLoaderData<T>()
+    return useLoaderData() as T
   } catch {
     return undefined
   }
@@ -74,7 +74,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export default function ForumThreadDetailPage() {
-  const loaderData = useOptionalLoaderData<typeof loader>()
+  const loaderData = useOptionalLoaderData<Awaited<ReturnType<typeof loader>>>()
   const initialThread = loaderData?.data?.thread ? withAuthor(loaderData.data.thread) : null
   const initialPosts = (loaderData?.data?.posts?.items || []).map(withAuthor)
   const initialPagination = loaderData?.data?.posts?.pagination as CursorPagination | undefined
@@ -114,7 +114,9 @@ export default function ForumThreadDetailPage() {
   const [postsHasNextPage, setPostsHasNextPage] = React.useState<boolean>(initialPagination?.hasNextPage || false)
   const [loadingMorePosts, setLoadingMorePosts] = React.useState(false)
 
-  React.useEffect(() => {
+  const [prevLoaderData, setPrevLoaderData] = React.useState(loaderData)
+  if (loaderData !== prevLoaderData) {
+    setPrevLoaderData(loaderData)
     if (loaderData?.data) {
       const nextThread = withAuthor(loaderData.data.thread)
       const pagination: CursorPagination = loaderData.data.posts?.pagination
@@ -124,7 +126,7 @@ export default function ForumThreadDetailPage() {
       setPostsNextCursor(pagination?.nextCursor || null)
       setPostsHasNextPage(pagination?.hasNextPage || false)
     }
-  }, [loaderData])
+  }
 
   const loadThreadAndPosts = React.useCallback(async () => {
     if (!threadId) return

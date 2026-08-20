@@ -49,45 +49,60 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         // 2. Validate Origin exactly
         $origin = $request->headers->get('Origin');
         if (!$this->isValidOrigin($origin)) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
+            throw new BadCredentialsException('GOOGLE_ORIGIN_INVALID');
         }
 
         // 3. Request verification (content type, size, format)
-        if ('application/json' !== $request->getContentTypeFormat()) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
+        $contentType = (string) $request->headers->get('Content-Type');
+        if ('' === $contentType || !str_contains(strtolower($contentType), 'application/json')) {
+            throw new BadCredentialsException('GOOGLE_REQUEST_INVALID');
         }
 
         $content = $request->getContent();
         if (\strlen($content) > 8192) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
+            throw new BadCredentialsException('GOOGLE_CREDENTIAL_TOO_LARGE');
         }
 
         $data = json_decode($content, true);
         if (!\is_array($data)) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
+            throw new BadCredentialsException('GOOGLE_REQUEST_INVALID');
         }
 
         $credential = $data['credential'] ?? null;
-        if (null === $credential || '' === trim($credential)) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
+        if (null === $credential || '' === trim((string) $credential)) {
+            throw new BadCredentialsException('GOOGLE_CREDENTIAL_MISSING');
         }
 
-        if (\strlen($credential) > 4096) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID');
+        if (\strlen((string) $credential) > 4096) {
+            throw new BadCredentialsException('GOOGLE_CREDENTIAL_TOO_LARGE');
         }
 
         try {
-            $user = $this->authenticateWithGoogle->authenticate($credential);
-        } catch (\App\Identity\Application\Exception\AccountLinkRequiredException $e) {
-            throw new BadCredentialsException('ACCOUNT_LINK_REQUIRED', 0, $e);
-        } catch (\App\Identity\Application\Exception\AccountInactiveException $e) {
-            throw new BadCredentialsException('ACCOUNT_INACTIVE', 0, $e);
+            $user = $this->authenticateWithGoogle->authenticate((string) $credential);
+        } catch (\App\Identity\Application\Exception\GoogleOriginInvalidException $e) {
+            throw new BadCredentialsException('GOOGLE_ORIGIN_INVALID', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleRequestInvalidException $e) {
+            throw new BadCredentialsException('GOOGLE_REQUEST_INVALID', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleCredentialMissingException $e) {
+            throw new BadCredentialsException('GOOGLE_CREDENTIAL_MISSING', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleCredentialTooLargeException $e) {
+            throw new BadCredentialsException('GOOGLE_CREDENTIAL_TOO_LARGE', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleTokenAudienceInvalidException $e) {
+            throw new BadCredentialsException('GOOGLE_TOKEN_AUDIENCE_INVALID', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleTokenExpiredException $e) {
+            throw new BadCredentialsException('GOOGLE_TOKEN_EXPIRED', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleTokenEmailUnverifiedException $e) {
+            throw new BadCredentialsException('GOOGLE_TOKEN_EMAIL_UNVERIFIED', 0, $e);
+        } catch (\App\Identity\Application\Exception\GoogleTokenInvalidException $e) {
+            throw new BadCredentialsException('GOOGLE_TOKEN_INVALID', 0, $e);
         } catch (\App\Identity\Application\Exception\GoogleConfigurationException $e) {
             throw new BadCredentialsException('GOOGLE_CONFIGURATION_INVALID', 0, $e);
         } catch (\App\Identity\Application\Exception\GoogleProviderUnavailableException $e) {
             throw new BadCredentialsException('GOOGLE_PROVIDER_UNAVAILABLE', 0, $e);
-        } catch (\App\Identity\Application\Exception\GoogleCredentialInvalidException $e) {
-            throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID', 0, $e);
+        } catch (\App\Identity\Application\Exception\AccountLinkRequiredException $e) {
+            throw new BadCredentialsException('ACCOUNT_LINK_REQUIRED', 0, $e);
+        } catch (\App\Identity\Application\Exception\AccountInactiveException $e) {
+            throw new BadCredentialsException('ACCOUNT_INACTIVE', 0, $e);
         } catch (\Throwable $e) {
             throw new BadCredentialsException('GOOGLE_CREDENTIAL_INVALID', 0, $e);
         }
@@ -138,31 +153,48 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         $status = Response::HTTP_UNAUTHORIZED;
         $detail = 'Invalid Google credential.';
 
-        if ('AUTH_RATE_LIMITED' === $message) {
-            $code = 'AUTH_RATE_LIMITED';
+        $knownCodes = [
+            'AUTH_RATE_LIMITED',
+            'GOOGLE_ORIGIN_INVALID',
+            'GOOGLE_REQUEST_INVALID',
+            'GOOGLE_CREDENTIAL_MISSING',
+            'GOOGLE_CREDENTIAL_TOO_LARGE',
+            'GOOGLE_TOKEN_INVALID',
+            'GOOGLE_TOKEN_AUDIENCE_INVALID',
+            'GOOGLE_TOKEN_EXPIRED',
+            'GOOGLE_TOKEN_EMAIL_UNVERIFIED',
+            'GOOGLE_PROVIDER_UNAVAILABLE',
+            'GOOGLE_CONFIGURATION_INVALID',
+            'ACCOUNT_LINK_REQUIRED',
+            'ACCOUNT_INACTIVE',
+        ];
+
+        if (\in_array($message, $knownCodes, true)) {
+            $code = $message;
+        }
+
+        if ('AUTH_RATE_LIMITED' === $code) {
             $status = Response::HTTP_TOO_MANY_REQUESTS;
             $detail = 'Too many login attempts. Please try again later.';
-        } elseif ('ACCOUNT_LINK_REQUIRED' === $message) {
-            $code = 'ACCOUNT_LINK_REQUIRED';
+        } elseif ('ACCOUNT_LINK_REQUIRED' === $code) {
             $status = Response::HTTP_CONFLICT;
             $detail = 'An account with this email address already exists. Manual linking is required.';
-        } elseif ('ACCOUNT_INACTIVE' === $message) {
-            $code = 'ACCOUNT_INACTIVE';
+        } elseif ('ACCOUNT_INACTIVE' === $code) {
             $status = Response::HTTP_FORBIDDEN;
             $detail = 'User account is not active.';
-        } elseif ('GOOGLE_CONFIGURATION_INVALID' === $message) {
-            $code = 'GOOGLE_CONFIGURATION_INVALID';
+        } elseif ('GOOGLE_CONFIGURATION_INVALID' === $code) {
             $status = Response::HTTP_INTERNAL_SERVER_ERROR;
             $detail = 'Google integration is misconfigured.';
-        } elseif ('GOOGLE_PROVIDER_UNAVAILABLE' === $message) {
-            $code = 'GOOGLE_PROVIDER_UNAVAILABLE';
+        } elseif ('GOOGLE_PROVIDER_UNAVAILABLE' === $code) {
             $status = Response::HTTP_SERVICE_UNAVAILABLE;
             $detail = 'Google identity provider is currently unavailable.';
         }
 
         // Log internally without sensitive data like full credentials, claims, cookie, session ID or raw SDK messages
-        $this->logger->error('Google login failure', [
+        $this->logger->error('Google login failure: '.$code, [
             'correlationId' => $correlationId,
+            'reason_code' => $code,
+            'client_ip' => $request->getClientIp(),
             'exception_class' => $previous::class,
         ]);
 

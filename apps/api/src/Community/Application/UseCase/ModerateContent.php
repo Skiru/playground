@@ -112,7 +112,7 @@ final class ModerateContent
                 }
 
                 $reportRow = $this->connection->fetchAssociative(
-                    'SELECT status, target_id, target_type, claimed_by FROM content_reports WHERE id = :id FOR UPDATE',
+                    'SELECT status, target_id, target_type, claimed_by, claimed_at FROM content_reports WHERE id = :id FOR UPDATE',
                     ['id' => $reportId->toRfc4122()]
                 );
 
@@ -124,8 +124,16 @@ final class ModerateContent
                 if ('RESOLVED' === $reportStatus || 'DISMISSED' === $reportStatus) {
                     throw new ApiException(409, 'This report has already been resolved or dismissed.', 'MODERATION_CONFLICT');
                 }
-                if ('IN_REVIEW' !== $reportStatus || $moderatorId->toRfc4122() !== (string) $reportRow['claimed_by']) {
+                $claimedBy = null === $reportRow['claimed_by'] ? null : (string) $reportRow['claimed_by'];
+                if ('IN_REVIEW' !== $reportStatus || $moderatorId->toRfc4122() !== $claimedBy) {
                     throw new ApiException(409, 'Only the moderator who claimed this case can process it.', 'MODERATION_OWNERSHIP_CONFLICT');
+                }
+
+                $claimedAtRaw = null === $reportRow['claimed_at'] ? null : (string) $reportRow['claimed_at'];
+                $claimedAt = null !== $claimedAtRaw ? new \DateTimeImmutable($claimedAtRaw) : null;
+                $isExpired = null !== $claimedAt && ($now->getTimestamp() - $claimedAt->getTimestamp() >= \App\Community\Domain\Moderation\ContentReport::CLAIM_LEASE_SECONDS);
+                if ($isExpired) {
+                    throw new ApiException(409, 'Your claim lease on this case has expired.', 'MODERATION_CLAIM_EXPIRED');
                 }
 
                 $targetId = Uuid::fromString((string) $reportRow['target_id']);

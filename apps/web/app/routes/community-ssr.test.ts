@@ -75,7 +75,7 @@ describe("Community SSR loaders and HTML content", () => {
       )
     )
 
-    const result = await threadsLoader({ params: { categorySlug: "bawialnie" }, request: new Request("http://localhost/forum/bawialnie") } as any)
+    const result = await threadsLoader({ params: { categorySlug: "bawialnie" }, request: new Request("http://localhost/forum/bawialnie") } as unknown as Parameters<typeof threadsLoader>[0])
     expect(result.data.category.name).toBe("Bawialnie")
     expect(result.data.items[0].title).toBe("Najlepsza bawialnia w Warszawie")
 
@@ -110,7 +110,7 @@ describe("Community SSR loaders and HTML content", () => {
       )
     })
 
-    const result = await threadDetailLoader({ params: { threadId: "thr-1" }, request: new Request("http://localhost/forum/watek/thr-1") } as any)
+    const result = await threadDetailLoader({ params: { threadId: "thr-1" }, request: new Request("http://localhost/forum/watek/thr-1") } as unknown as Parameters<typeof threadDetailLoader>[0])
     expect(result.data.thread.title).toBe("Wątek szczegółowy SSR")
     expect(result.data.posts.items[0].body).toBe("Pierwszy post w wątku.")
   })
