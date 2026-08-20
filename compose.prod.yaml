@@ -25,7 +25,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/healthz || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -63,7 +63,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    networks: [internal]
+    networks: [internal, api-egress]
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   worker:
@@ -91,7 +91,7 @@ services:
       - media-data:/data/familyplaces-media
     healthcheck:
       disable: true
-    networks: [internal]
+    networks: [internal, api-egress]
     logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
 
   place-discovery-scheduler:
@@ -188,7 +188,7 @@ services:
     logging: {driver: local, options: {max-size: 5m, max-file: "3"}}
 
   observability-logs:
-    image: ${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:716a4f940b5406bd8f88d9be7e4f9b8089bcce868e4c7d0d02462bfef693e5db}
+    image: ${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee36aab01a1a1fae7f83b2b8db63c1ee3b5ef61781cb947967bc9b}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8081:8080"
@@ -218,6 +218,7 @@ volumes:
 
 networks:
   edge:
+  api-egress:
   discovery-egress:
   internal:
     internal: true

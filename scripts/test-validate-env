@@ -190,4 +190,47 @@ if "$validator" "$temp_dir/env.H3" >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "--- Test I1: Missing DOZZLE_USERS_FILE => FAIL ---"
+valid_base > "$temp_dir/env.I1"
+cat >> "$temp_dir/env.I1" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+DOZZLE_USERS_FILE=$temp_dir/non_existent_file
+EOF
+if "$validator" "$temp_dir/env.I1" >/dev/null 2>&1; then
+  echo "FAIL: expected non-existent DOZZLE_USERS_FILE to fail" >&2
+  exit 1
+fi
+
+echo "--- Test I2: Invalid DOZZLE_IMAGE digest => FAIL ---"
+valid_base > "$temp_dir/env.I2"
+cat >> "$temp_dir/env.I2" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+DOZZLE_IMAGE=amir20/dozzle:v8.11.8@sha256:invalid_digest
+EOF
+if "$validator" "$temp_dir/env.I2" >/dev/null 2>&1; then
+  echo "FAIL: expected invalid DOZZLE_IMAGE digest to fail" >&2
+  exit 1
+fi
+
+echo "--- Test J: Caddyfile admin routing check ---"
+if ! grep -q 'handle /admin\*' "$root_dir/infra/deployment/Caddyfile"; then
+  echo "FAIL: Caddyfile must contain handle /admin* route" >&2
+  exit 1
+fi
+if ! grep -q 'reverse_proxy api:80' "$root_dir/infra/deployment/Caddyfile"; then
+  echo "FAIL: Caddyfile /admin* handle must reverse_proxy to api:80" >&2
+  exit 1
+fi
+
+echo "--- Test K: Network topology least privilege check ---"
+compose_config=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f "$root_dir/compose.yaml" -f "$root_dir/compose.prod.yaml" config)
+if ! echo "$compose_config" | grep -A 50 'api:' | grep -q 'api-egress'; then
+  echo "FAIL: API service must be connected to api-egress network" >&2
+  exit 1
+fi
+
 echo "ALL VALIDATOR AND MATRIX TESTS PASSED!"

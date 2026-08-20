@@ -47,6 +47,7 @@ services:
       retries: 10
     networks:
       - internal
+      - api-egress
     volumes:
       - media-data:/data/familyplaces-media
     logging:
@@ -91,6 +92,7 @@ services:
         condition: service_healthy
     networks:
       - internal
+      - api-egress
     volumes:
       - media-data:/data/familyplaces-media
     logging:
@@ -281,6 +283,7 @@ volumes:
   media-data:
 
 networks:
+  api-egress:
   discovery-egress:
   internal:
     internal: true

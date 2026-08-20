@@ -25,7 +25,11 @@ fi
 
 "$ROOT/scripts/validate-production-env" "$ENV_FILE"
 
-for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}"; do
+resolved_dozzle_image=${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee36aab01a1a1fae7f83b2b8db63c1ee3b5ef61781cb947967bc9b}
+resolved_gateway_image=${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
+resolved_cloudflared_image=${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
+
+for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "$resolved_dozzle_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do
   [ -n "$image" ] || die 'API_IMAGE, WEB_IMAGE, and POSTGIS_IMAGE must be defined'
   case "$image" in
     *@sha256:[0-9a-f]*);;
@@ -37,6 +41,12 @@ for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}"; do
     die "image $image does not provide the specified platform ($host_platform)"
   fi
 done
+
+legacy_containers=$(docker ps --filter "label=com.docker.compose.project=familyplaces" --format '{{.Names}}' 2>/dev/null || true)
+if [ -n "$legacy_containers" ]; then
+  printf 'WARNING: Legacy Compose project "familyplaces" containers are currently running on host: %s\n' "$legacy_containers" >&2
+  printf 'WARNING: Stop the legacy stack by running: docker compose -p familyplaces down\n' >&2
+fi
 
 cf_token_file="${CLOUDFLARE_TUNNEL_TOKEN_FILE:-/etc/familyplaces/cloudflared-token}"
 if [ ! -r "$cf_token_file" ]; then

@@ -43,6 +43,7 @@ when@test:
                 memory:
                     users:
                         admin@example.test: { password: '$2y$04$1gdB2/YIo.5sVRE7JpMdR.AL2c9cef8DPnEm/4fDHp/syvn/zOTBK', roles: [ROLE_ADMIN] }
+                        user@example.test: { password: '$2y$04$1gdB2/YIo.5sVRE7JpMdR.AL2c9cef8DPnEm/4fDHp/syvn/zOTBK', roles: [ROLE_USER] }
             chain_provider:
                 chain:
                     providers: [test_users, admin_users]

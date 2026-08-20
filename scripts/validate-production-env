@@ -73,7 +73,10 @@ if [ "$found_public_origin" = false ]; then
 fi
 
 [ "$MAP_ATTRIBUTION" = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap' ] || fail 'MAP_ATTRIBUTION must provide the required OpenFreeMap attribution'
-for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE"; do printf %s "$image" | grep -Eq '@sha256:[0-9a-f]{64}$' || fail 'deployment images must use exact sha256 digest references'; done
+resolved_dozzle_image=${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee36aab01a1a1fae7f83b2b8db63c1ee3b5ef61781cb947967bc9b}
+resolved_gateway_image=${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
+resolved_cloudflared_image=${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
+for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE" "$resolved_dozzle_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do printf %s "$image" | grep -Eq '@sha256:[0-9a-f]{64}$' || fail "deployment image '$image' must use exact sha256 digest reference"; done
 if [ "$backup_enabled" = true ]; then
   case "$BACKUP_S3_ENDPOINT" in https://*.r2.cloudflarestorage.com) ;; *) fail 'BACKUP_S3_ENDPOINT must be an HTTPS Cloudflare R2 endpoint';; esac
 fi
@@ -88,7 +91,9 @@ else
 fi
 case "$DATABASE_URL" in postgresql://*@database:5432/*'serverVersion=18'*) ;; *) fail 'DATABASE_URL must target database:5432 and PostgreSQL 18';; esac
 case "$DATABASE_URL" in *'@'*'@'*|*' '*) fail 'DATABASE_URL credentials must be percent encoded';; esac
-[ -r "$CLOUDFLARE_TUNNEL_TOKEN_FILE" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable'; [ -r "$DOZZLE_USERS_FILE" ] || fail 'DOZZLE_USERS_FILE must be readable'; [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN must not be set directly'
+[ -r "$CLOUDFLARE_TUNNEL_TOKEN_FILE" ] || fail "CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable at path: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-not set}"
+[ -r "$DOZZLE_USERS_FILE" ] || fail "DOZZLE_USERS_FILE must be readable at path '${DOZZLE_USERS_FILE:-not set}'. Ensure DOZZLE_USERS_FILE=/etc/familyplaces/dozzle-users.yml is set in .env.production and the target file exists (created from infra/observability/users.yml.example)."
+[ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN must not be set directly'
 [ ${#APP_SECRET} -ge 32 ] || fail 'APP_SECRET must be at least 32 characters'; [ ${#POSTGRES_PASSWORD} -ge 32 ] || fail 'POSTGRES_PASSWORD must be at least 32 characters'; [ "$APP_SECRET" != "$POSTGRES_PASSWORD" ] || fail 'application and database secrets must differ'
 
 google_enabled=${GOOGLE_IDENTITY_ENABLED:-false}

@@ -12,11 +12,17 @@
         Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
         -Server
     }
+    handle /healthz {
+        respond "OK" 200
+    }
     # `handle`, unlike `handle_path`, keeps the original /api prefix for Symfony.
     handle /api/* {
         reverse_proxy api:80
     }
     handle /media/* {
+        reverse_proxy api:80
+    }
+    handle /admin* {
         reverse_proxy api:80
     }
     handle {

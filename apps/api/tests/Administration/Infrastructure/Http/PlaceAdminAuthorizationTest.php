@@ -15,6 +15,16 @@ final class PlaceAdminAuthorizationTest extends WebTestCase
         self::assertResponseRedirects('/admin/login');
     }
 
+    public function testRegularUserIsDeniedAccessToAdmin(): void
+    {
+        $client = self::createClient();
+        $user = new \Symfony\Component\Security\Core\User\InMemoryUser('user@example.test', 'password', ['ROLE_USER']);
+        $client->loginUser($user);
+
+        $client->request('GET', '/admin');
+        self::assertResponseRedirects('/admin/login');
+    }
+
     public function testAdministratorCanOpenPlaceWorkflow(): void
     {
         $client = self::createClient();

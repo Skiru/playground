@@ -41,7 +41,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    networks: [internal]
+    networks: [internal, api-egress]
     volumes:
       - media-data:/data/familyplaces-media
 
@@ -63,7 +63,7 @@ services:
         condition: service_healthy
     healthcheck:
       disable: true
-    networks: [internal]
+    networks: [internal, api-egress]
     volumes:
       - media-data:/data/familyplaces-media
 
@@ -170,6 +170,7 @@ volumes:
 
 networks:
   edge:
+  api-egress:
   discovery-egress:
   internal:
     internal: true

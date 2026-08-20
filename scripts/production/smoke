@@ -22,7 +22,14 @@ gateway() {
 }
 
 retry gateway / >/dev/null || { compose logs --no-color gateway api web >&2; die 'gateway root failed'; }
+retry gateway /healthz | grep -q 'OK' || { compose logs --no-color gateway >&2; die 'gateway healthz failed'; }
 retry gateway /api/v1/health/live | grep -q . || { compose logs --no-color gateway api >&2; die 'gateway API liveness failed'; }
+retry gateway /admin/login | grep -q '_csrf_token' || { compose logs --no-color gateway api >&2; die 'gateway admin login routing failed'; }
+
+admin_redirect_check() {
+  (compose exec -T gateway wget -S -O /dev/null 'http://localhost:80/admin' 2>&1 || true) | grep -Eq ' 302 | 301 '
+}
+retry admin_redirect_check || die 'gateway /admin route was not proxied to backend redirect'
 
 unknown_api_miss() {
   (compose exec -T gateway wget -S -O /dev/null 'http://localhost:80/api/v1/does-not-exist?probe=path-preservation' 2>&1 || true) | grep -q ' 404 '
