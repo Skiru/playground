@@ -29,7 +29,7 @@ fi
 echo "--- CNAME & Caddy Header Rules PASSED ---"
 
 echo "=== 2. Testing Production Compose Dozzle Topology & Port Exposure ==="
-prod_config=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f compose.yaml -f compose.prod.yaml config)
+prod_config=$(docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml config)
 
 # Verify Dozzle and Socket Proxy have NO published ports on host
 if echo "$prod_config" | grep -A 20 'observability-logs:' | grep -q 'ports:'; then
