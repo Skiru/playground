@@ -62,7 +62,7 @@ docker compose -f compose.yaml -f compose.e2e.yaml up --wait -d database api web
 docker compose -f compose.yaml -f compose.e2e.yaml up -d worker
 
 echo "=== Step 9: Running Playwright tests ==="
-export WEB_BASE_URL="http://127.0.0.1:${WEB_PORT:-3001}"
+export WEB_BASE_URL="http://127.0.0.1:${WEB_PORT:-3000}"
 export API_BASE_URL_BROWSER="http://127.0.0.1:8080"
 
 EXIT_CODE=0

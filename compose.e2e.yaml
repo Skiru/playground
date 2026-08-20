@@ -58,7 +58,7 @@ services:
       E2E: "true"
       APP_ENV: dev
     ports:
-      - "127.0.0.1:${WEB_PORT:-3001}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     networks: [internal, edge]
   database:
     environment:
