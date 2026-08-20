@@ -18,17 +18,22 @@ retry() {
 }
 
 gateway() {
-  compose exec -T gateway wget -qO- "http://localhost:8080$1"
+  compose exec -T gateway wget -qO- "http://localhost:80$1"
 }
 
 retry gateway / >/dev/null || { compose logs --no-color gateway api web >&2; die 'gateway root failed'; }
 retry gateway /api/v1/health/live | grep -q . || { compose logs --no-color gateway api >&2; die 'gateway API liveness failed'; }
 
+unknown_api_miss() {
+  (compose exec -T gateway wget -S -O /dev/null 'http://localhost:80/api/v1/does-not-exist?probe=path-preservation' 2>&1 || true) | grep -q ' 404 '
+}
+
 # An API miss must be produced by the backend, never by the frontend SSR fallback.
-compose exec -T gateway wget -S -O /dev/null 'http://localhost:8080/api/v1/does-not-exist?probe=path-preservation' 2>&1 | grep -q ' 404 ' || die 'unknown API route was not a backend 404'
+retry unknown_api_miss || die 'unknown API route was not a backend 404'
 
 compose exec -T api curl --fail --silent http://localhost/api/v1/health/live >/dev/null
-compose exec -T api curl -s -X POST http://localhost/api/v1/auth/google -H "Content-Type: application/json" -d '{"credential":"smoke-test"}' | grep -q 'GOOGLE_CREDENTIAL_INVALID' || die 'Google auth endpoint failed or returned unexpected response'
+compose exec -T api curl -s -X POST http://localhost/api/v1/auth/google -H "Origin: ${APP_PUBLIC_ORIGIN:-https://playground.com.pl}" -H "Content-Type: application/json" -d '{"credential":"smoke-test"}' | grep -q 'GOOGLE_TOKEN_INVALID' || die 'Google auth endpoint failed or returned unexpected response for invalid token'
+compose exec -T api curl -s -X POST http://localhost/api/v1/auth/google -H "Origin: https://invalid-origin.untrusted.test" -H "Content-Type: application/json" -d '{"credential":"smoke-test"}' | grep -q 'GOOGLE_ORIGIN_INVALID' || die 'Google auth origin rejection failed'
 compose exec -T api curl -s -f http://localhost/api/v1/session | grep -q '"authenticated"' || die 'Session endpoint failed'
 compose exec -T api curl -s -f http://localhost/admin/login | grep -q '_csrf_token' || die 'Admin login endpoint failed'
 compose exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"

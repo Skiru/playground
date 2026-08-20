@@ -141,19 +141,19 @@ gateway_startup() { "${compose[@]}" up -d gateway; }
 worker_startup() { "${compose[@]}" up -d worker; }
 
 gateway_api_path_preservation() {
-  tools bash -lc 'for attempt in {1..30}; do curl --fail --silent http://gateway:8080/api/v1/health/live >/dev/null && exit 0; sleep 2; done; exit 1'
+  tools bash -lc 'for attempt in {1..30}; do curl --fail --silent http://gateway:80/api/v1/health/live >/dev/null && exit 0; sleep 2; done; exit 1'
 }
 
 gateway_query_string_preservation() {
-  tools bash -lc 'http_code=$(curl --silent --output /tmp/query.json --write-out "%{http_code}" "http://gateway:8080/api/v1/places?page=0&pageSize=1"); [[ $http_code == 400 ]]; jq -e '\''(.code // .type) != null'\'' /tmp/query.json >/dev/null'
+  tools bash -lc 'http_code=$(curl --silent --output /tmp/query.json --write-out "%{http_code}" "http://gateway:80/api/v1/places?page=0&pageSize=1"); [[ $http_code == 400 ]]; jq -e '\''(.code // .type) != null'\'' /tmp/query.json >/dev/null'
 }
 
 unknown_api_route_isolation() {
-  tools bash -lc 'http_code=$(curl --silent --output /tmp/not-found.html --write-out "%{http_code}" http://gateway:8080/api/v1/does-not-exist); [[ $http_code == 404 ]]; ! grep -q "window.__reactRouterContext" /tmp/not-found.html'
+  tools bash -lc 'http_code=$(curl --silent --output /tmp/not-found.html --write-out "%{http_code}" http://gateway:80/api/v1/does-not-exist); [[ $http_code == 404 ]]; ! grep -q "window.__reactRouterContext" /tmp/not-found.html'
 }
 
 frontend_ssr() {
-  tools bash -lc 'curl --fail --silent http://gateway:8080/ | grep -qi "<html"'
+  tools bash -lc 'curl --fail --silent http://gateway:80/ | grep -qi "<html"'
 }
 
 minio_media_round_trip() {
@@ -235,7 +235,7 @@ STORAGE_S3_SECRET=minioadmin
 STORAGE_S3_BUCKET=familyplaces-media
 STORAGE_S3_REGION=us-east-1
 STORAGE_S3_PUBLIC_URL=https://media.certification.invalid
-MEDIA_PUBLIC_BASE_URL=http://gateway:8080/media
+MEDIA_PUBLIC_BASE_URL=http://gateway:80/media
 BACKUP_S3_ENDPOINT=http://minio:9000
 BACKUP_S3_KEY=minioadmin
 BACKUP_S3_SECRET=minioadmin
@@ -243,7 +243,7 @@ BACKUP_S3_BUCKET=familyplaces-backups
 AGE_RECIPIENT=$age_recipient
 AGE_IDENTITY_FILE=/certification/age.key
 MAP_ATTRIBUTION='FamilyPlaces certification map'
-MAP_STYLE_URL=http://gateway:8080/fixtures/map-style.json
+MAP_STYLE_URL=http://gateway:80/fixtures/map-style.json
 MAP_PROVIDER_NAME='FamilyPlaces'
 DEV_AUTH_ENABLED=false
 PLACE_DISCOVERY_ENABLED=false

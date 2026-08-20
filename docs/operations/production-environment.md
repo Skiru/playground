@@ -8,4 +8,4 @@ Production media supports two drivers:
 
 Database backups always use dedicated Cloudflare R2 / S3 storage (`BACKUP_S3_*`), independent of media storage driver. `PLACE_DISCOVERY_ENABLED=false` is required for the deployment; discovery services are additionally hidden behind the `discovery` Compose profile.
 
-The application has no public host ports. Cloudflare Tunnel routes the public application hostname to `http://gateway:8080`; gateway routes `/api/*` and `/media/*` to `api` and all other requests to `web`.
+The application has no public host ports. Cloudflare Tunnel routes the public application hostname to `http://gateway:80`; gateway routes `/api/*` and `/media/*` to `api` and all other requests to `web`.

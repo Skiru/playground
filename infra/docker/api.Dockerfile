@@ -67,7 +67,9 @@ LABEL org.opencontainers.image.source=$OCI_SOURCE \
 COPY --from=production-build --chown=www-data:www-data /app /app
 RUN chown -R www-data:www-data /app \
     && chmod -R u=rwX,g=rX,o= /app \
-    && chmod -R u=rwX,g=rwX /app/var
+    && chmod -R u=rwX,g=rwX /app/var \
+    && mkdir -p /data/familyplaces-media \
+    && chown -R www-data:www-data /data/familyplaces-media
 USER www-data
 
 FROM production AS discovery
