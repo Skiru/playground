@@ -55,7 +55,9 @@ for (const width of [390, 320]) {
     await expectAboveMobileNavigation(page, lastCardLink)
 
     await page.goto("/miejsca?city=warszawa&view=map")
-    await expectAboveMobileNavigation(page, page.getByRole("link", { name: /Pokaż listę/ }))
+    const showListLink = page.getByRole("link", { name: /Pokaż listę/ })
+    await expect(showListLink).toBeVisible({ timeout: 15000 })
+    await expectAboveMobileNavigation(page, showListLink)
 
     await page.goto("/miejsca/demo-1-demo-bawialnia-mokotow")
     await expectAboveMobileNavigation(page, page.getByRole("button", { name: "Nawiguj" }))

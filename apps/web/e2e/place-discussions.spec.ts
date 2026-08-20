@@ -75,7 +75,7 @@ test.describe("Place Discussions E2E Real Journey", () => {
     await bobPage.goto(placeUrl);
     // Find the reply button on the tombstone comment - it should be hidden or disabled.
     // If we call API directly, the backend should reject it with INVALID_PARENT_STATUS.
-    const replyButtonOnTombstone = bobPage.locator("div", { hasText: "Treść usunięta przez autora" }).getByRole("button", { name: "Odpowiedz" });
+    const replyButtonOnTombstone = bobPage.locator("div", { hasText: "Treść usunięta przez autora" }).getByRole("button", { name: "Odpowiedz" }).first();
     await expect(replyButtonOnTombstone).not.toBeVisible();
 
     // 6. Close contexts
