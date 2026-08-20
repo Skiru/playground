@@ -29,3 +29,27 @@
         reverse_proxy web:3000
     }
 }
+
+logs.{$GATEWAY_DOMAIN:playground.com.pl} {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        -Server
+    }
+
+    # Require Cloudflare Access authentication header from authenticated Access proxy.
+    # Reject direct origin requests missing the required assertion header.
+    @missing_cf_auth {
+        not header Cf-Access-Authenticated-User-Email *
+    }
+    respond @missing_cf_auth "Access Denied: Cloudflare Access Authentication Required" 403
+
+    reverse_proxy observability-logs:8080 {
+        header_up -Remote-User
+        header_up -Remote-Email
+        header_up -Remote-Name
+        header_up -Remote-Roles
+    }
+}

@@ -16,7 +16,7 @@ case "$backup_enabled" in
   *) fail 'BACKUP_ENABLED must be either true or false';;
 esac
 
-common_required='APP_SECRET POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD DATABASE_URL RELEASE_SHA RELEASE_VERSION API_IMAGE WEB_IMAGE POSTGIS_IMAGE MAP_ATTRIBUTION CLOUDFLARE_TUNNEL_TOKEN_FILE DOZZLE_USERS_FILE APP_PUBLIC_ORIGIN TRUSTED_AUTH_ORIGINS STORAGE_DRIVER'
+common_required='APP_SECRET POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD DATABASE_URL RELEASE_SHA RELEASE_VERSION API_IMAGE WEB_IMAGE POSTGIS_IMAGE MAP_ATTRIBUTION CLOUDFLARE_TUNNEL_TOKEN_FILE APP_PUBLIC_ORIGIN TRUSTED_AUTH_ORIGINS STORAGE_DRIVER'
 
 if [ "$driver" = s3 ]; then
   media_required='STORAGE_S3_ENDPOINT STORAGE_S3_KEY STORAGE_S3_SECRET STORAGE_S3_BUCKET STORAGE_S3_PUBLIC_URL'
@@ -74,9 +74,15 @@ fi
 
 [ "$MAP_ATTRIBUTION" = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap' ] || fail 'MAP_ATTRIBUTION must provide the required OpenFreeMap attribution'
 resolved_dozzle_image=${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee36aab01a1a1fae7f83b2b8db63c1ee3b5ef61781cb947967bc9b}
+resolved_dozzle_socket_proxy_image=${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}
 resolved_gateway_image=${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
 resolved_cloudflared_image=${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
-for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE" "$resolved_dozzle_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do printf %s "$image" | grep -Eq '@sha256:[0-9a-f]{64}$' || fail "deployment image '$image' must use exact sha256 digest reference"; done
+for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE" "$resolved_dozzle_image" "$resolved_dozzle_socket_proxy_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do printf %s "$image" | grep -Eq '@sha256:[0-9a-f]{64}$' || fail "deployment image '$image' must use exact sha256 digest reference"; done
+dozzle_provider=${DOZZLE_AUTH_PROVIDER:-forward-proxy}
+[ "$dozzle_provider" = forward-proxy ] || fail 'DOZZLE_AUTH_PROVIDER must be forward-proxy'
+dozzle_header=${DOZZLE_AUTH_HEADER_USER:-Cf-Access-Authenticated-User-Email}
+[ "$dozzle_header" = Cf-Access-Authenticated-User-Email ] || fail 'DOZZLE_AUTH_HEADER_USER must be Cf-Access-Authenticated-User-Email'
+if [ -n "${DOZZLE_USERS_FILE:-}" ]; then fail 'DOZZLE_USERS_FILE is obsolete after migration to Cloudflare Access forward-proxy auth'; fi
 if [ "$backup_enabled" = true ]; then
   case "$BACKUP_S3_ENDPOINT" in https://*.r2.cloudflarestorage.com) ;; *) fail 'BACKUP_S3_ENDPOINT must be an HTTPS Cloudflare R2 endpoint';; esac
 fi
@@ -92,7 +98,6 @@ fi
 case "$DATABASE_URL" in postgresql://*@database:5432/*'serverVersion=18'*) ;; *) fail 'DATABASE_URL must target database:5432 and PostgreSQL 18';; esac
 case "$DATABASE_URL" in *'@'*'@'*|*' '*) fail 'DATABASE_URL credentials must be percent encoded';; esac
 [ -r "$CLOUDFLARE_TUNNEL_TOKEN_FILE" ] || fail "CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable at path: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-not set}"
-[ -r "$DOZZLE_USERS_FILE" ] || fail "DOZZLE_USERS_FILE must be readable at path '${DOZZLE_USERS_FILE:-not set}'. Ensure DOZZLE_USERS_FILE=/etc/familyplaces/dozzle-users.yml is set in .env.production and the target file exists (created from infra/observability/users.yml.example)."
 [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || fail 'CLOUDFLARE_TUNNEL_TOKEN must not be set directly'
 [ ${#APP_SECRET} -ge 32 ] || fail 'APP_SECRET must be at least 32 characters'; [ ${#POSTGRES_PASSWORD} -ge 32 ] || fail 'POSTGRES_PASSWORD must be at least 32 characters'; [ "$APP_SECRET" != "$POSTGRES_PASSWORD" ] || fail 'application and database secrets must differ'
 

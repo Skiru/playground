@@ -46,6 +46,13 @@ compose exec -T api curl -s -f http://localhost/admin/login | grep -q '_csrf_tok
 compose exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
 compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT PostGIS_Version()' | grep -q '^3\.6'
 
+# Dozzle and Docker Socket Proxy smoke checks
+dozzle_unauth=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" 'http://localhost:80/' 2>&1 || true)
+printf '%s\n' "$dozzle_unauth" | grep -q '403' || die 'Dozzle direct unauthenticated access failed to return 403'
+
+dozzle_auth=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" --header="Cf-Access-Authenticated-User-Email: admin@playground.com.pl" 'http://localhost:80/' 2>&1 || true)
+printf '%s\n' "$dozzle_auth" | grep -q '200' || die 'Dozzle authenticated access with Cloudflare header failed'
+
 if [ "${STORAGE_DRIVER:-local}" = "s3" ]; then
   key="release-smoke/$(date -u +%s)-$$"
   payload=$(mktemp)

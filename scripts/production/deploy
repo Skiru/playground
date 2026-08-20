@@ -150,9 +150,9 @@ after=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc
 
 printf '[7/7] Starting services and running smoke tests\n'
 if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
-  compose up --wait -d worker api web gateway cloudflared
+  compose up --wait -d worker api web gateway dozzle-socket-proxy observability-logs cloudflared
 else
-  compose up --wait -d worker api web gateway
+  compose up --wait -d worker api web gateway dozzle-socket-proxy observability-logs
 fi
 
 "$SCRIPT_DIR/smoke"

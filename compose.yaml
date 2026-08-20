@@ -166,6 +166,49 @@ services:
       retries: 5
     networks: [internal]
 
+  dozzle-socket-proxy:
+    image: ${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}
+    environment:
+      CONTAINERS: 1
+      EVENTS: 1
+      LOGS: 1
+      PING: 1
+      VERSION: 1
+      INFO: 1
+      POST: 0
+      PUT: 0
+      DELETE: 0
+      EXEC: 0
+      BUILD: 0
+      AUTH: 0
+      SECRETS: 0
+      SWARM: 0
+      SERVICES: 0
+      TASKS: 0
+      VOLUMES: 0
+      NETWORKS: 0
+      PLUGINS: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [observability-internal]
+
+  observability-logs:
+    image: ${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee36aab01a1a1fae7f83b2b8db63c1ee3b5ef61781cb947967bc9b}
+    expose:
+      - "8080"
+    environment:
+      DOCKER_HOST: tcp://dozzle-socket-proxy:2375
+      DOZZLE_AUTH_PROVIDER: forward-proxy
+      DOZZLE_AUTH_HEADER_USER: ${DOZZLE_AUTH_HEADER_USER:-Cf-Access-Authenticated-User-Email}
+      DOZZLE_AUTH_HEADER_EMAIL: ${DOZZLE_AUTH_HEADER_EMAIL:-Cf-Access-Authenticated-User-Email}
+      DOZZLE_AUTH_HEADER_NAME: ${DOZZLE_AUTH_HEADER_NAME:-Cf-Access-Authenticated-User-Email}
+      DOZZLE_ENABLE_ACTIONS: "false"
+      DOZZLE_NO_SENSITIVE: "true"
+    depends_on:
+      dozzle-socket-proxy:
+        condition: service_started
+    networks: [internal, observability-internal]
+
 volumes:
   database-data:
   pnpm-store:
@@ -178,4 +221,6 @@ networks:
   api-egress:
   discovery-egress:
   internal:
+    internal: true
+  observability-internal:
     internal: true

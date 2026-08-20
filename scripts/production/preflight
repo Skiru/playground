@@ -26,10 +26,11 @@ fi
 "$ROOT/scripts/validate-production-env" "$ENV_FILE"
 
 resolved_dozzle_image=${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee36aab01a1a1fae7f83b2b8db63c1ee3b5ef61781cb947967bc9b}
+resolved_dozzle_socket_proxy_image=${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}
 resolved_gateway_image=${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
 resolved_cloudflared_image=${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
 
-for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "$resolved_dozzle_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do
+for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "$resolved_dozzle_image" "$resolved_dozzle_socket_proxy_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do
   [ -n "$image" ] || die 'API_IMAGE, WEB_IMAGE, and POSTGIS_IMAGE must be defined'
   case "$image" in
     *@sha256:[0-9a-f]*);;

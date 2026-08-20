@@ -1,0 +1,59 @@
+#!/bin/sh
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_dir"
+
+echo "=== 1. Testing Caddyfile Dozzle Route & Header Protection ==="
+caddyfile="infra/deployment/Caddyfile"
+if ! grep -Fq 'logs.{$GATEWAY_DOMAIN:playground.com.pl}' "$caddyfile"; then
+  echo "ERROR: Caddyfile missing logs.{$GATEWAY_DOMAIN:playground.com.pl} domain block." >&2
+  exit 1
+fi
+
+if ! grep -q 'header_up -Remote-User' "$caddyfile"; then
+  echo "ERROR: Caddyfile must strip spoofable Remote-User header." >&2
+  exit 1
+fi
+
+if ! grep -q 'header_up -Remote-Email' "$caddyfile"; then
+  echo "ERROR: Caddyfile must strip spoofable Remote-Email header." >&2
+  exit 1
+fi
+
+if ! grep -q 'Cf-Access-Authenticated-User-Email' "$caddyfile"; then
+  echo "ERROR: Caddyfile must enforce Cf-Access-Authenticated-User-Email header." >&2
+  exit 1
+fi
+
+echo "--- CNAME & Caddy Header Rules PASSED ---"
+
+echo "=== 2. Testing Production Compose Dozzle Topology & Port Exposure ==="
+prod_config=$(API_IMAGE=dummy WEB_IMAGE=dummy POSTGIS_IMAGE=dummy APP_SECRET=dummy DATABASE_URL=dummy MEDIA_PUBLIC_BASE_URL=dummy MAP_STYLE_URL=dummy MAP_ATTRIBUTION=dummy MAP_PROVIDER_NAME=dummy docker compose -f compose.yaml -f compose.prod.yaml config)
+
+# Verify Dozzle and Socket Proxy have NO published ports on host
+if echo "$prod_config" | grep -A 20 'observability-logs:' | grep -q 'ports:'; then
+  echo "ERROR: observability-logs (Dozzle) must NOT have published ports in production compose." >&2
+  exit 1
+fi
+
+if echo "$prod_config" | grep -A 20 'dozzle-socket-proxy:' | grep -q 'ports:'; then
+  echo "ERROR: dozzle-socket-proxy must NOT have published ports in production compose." >&2
+  exit 1
+fi
+
+# Verify Socket Proxy environment permissions
+socket_proxy_block=$(echo "$prod_config" | grep -A 35 'dozzle-socket-proxy:')
+for disabled_permission in "POST: \"0\"" "DELETE: \"0\"" "EXEC: \"0\"" "BUILD: \"0\"" "VOLUMES: \"0\""; do
+  if ! echo "$socket_proxy_block" | grep -q "$disabled_permission"; then
+    echo "ERROR: dozzle-socket-proxy must explicitly disable $disabled_permission." >&2
+    exit 1
+  fi
+done
+
+echo "--- Production Compose Security Rules PASSED ---"
+
+echo "=== 3. Testing Environment Validator Dozzle Rules ==="
+./scripts/test-validate-env
+
+echo "=== ALL DOZZLE & SOCKET PROXY SECURITY REGRESSION TESTS PASSED! ==="

@@ -32,11 +32,12 @@ WEB_IMAGE=ghcr.io/skiru/family-places-web@sha256:dd7f9c70a06500b44058f8267673261
 POSTGIS_IMAGE=ghcr.io/skiru/family-places-postgis@sha256:0ce4396e2ec0312ff4c2dff4911f935da07888bcf9fa3c26fe73803be14809a1
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE=$temp_dir/token
-DOZZLE_USERS_FILE=$temp_dir/dozzle_users
 APP_PUBLIC_ORIGIN=https://playground.com.pl
 TRUSTED_AUTH_ORIGINS=https://playground.com.pl
 DEV_AUTH_ENABLED=false
 PLACE_DISCOVERY_ENABLED=false
+DOZZLE_AUTH_PROVIDER=forward-proxy
+DOZZLE_AUTH_HEADER_USER=Cf-Access-Authenticated-User-Email
 EOF
 }
 
@@ -190,16 +191,16 @@ if "$validator" "$temp_dir/env.H3" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "--- Test I1: Missing DOZZLE_USERS_FILE => FAIL ---"
+echo "--- Test I1: Obsolete DOZZLE_USERS_FILE => FAIL ---"
 valid_base > "$temp_dir/env.I1"
 cat >> "$temp_dir/env.I1" <<'EOF'
 STORAGE_DRIVER=local
 BACKUP_ENABLED=false
 MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
-DOZZLE_USERS_FILE=$temp_dir/non_existent_file
+DOZZLE_USERS_FILE=/some/path
 EOF
 if "$validator" "$temp_dir/env.I1" >/dev/null 2>&1; then
-  echo "FAIL: expected non-existent DOZZLE_USERS_FILE to fail" >&2
+  echo "FAIL: expected obsolete DOZZLE_USERS_FILE to fail" >&2
   exit 1
 fi
 
@@ -213,6 +214,19 @@ DOZZLE_IMAGE=amir20/dozzle:v8.11.8@sha256:invalid_digest
 EOF
 if "$validator" "$temp_dir/env.I2" >/dev/null 2>&1; then
   echo "FAIL: expected invalid DOZZLE_IMAGE digest to fail" >&2
+  exit 1
+fi
+
+echo "--- Test I3: Invalid DOZZLE_AUTH_PROVIDER => FAIL ---"
+valid_base > "$temp_dir/env.I3"
+cat >> "$temp_dir/env.I3" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+DOZZLE_AUTH_PROVIDER=simple
+EOF
+if "$validator" "$temp_dir/env.I3" >/dev/null 2>&1; then
+  echo "FAIL: expected non-forward-proxy DOZZLE_AUTH_PROVIDER to fail" >&2
   exit 1
 fi
 
