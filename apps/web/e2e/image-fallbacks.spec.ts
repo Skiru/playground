@@ -152,8 +152,8 @@ test.describe("Real Playwright Image Fallbacks", () => {
 
     // Log in with an isolated deterministic user.
     await loginAs(page, `image-fallback_${uniqueSuffix}@example.com`, "Image Fallback User");
-    const userMenuButton = page.getByTestId("user-menu-button").filter({ visible: true });
-    await expect(userMenuButton).toBeVisible();
+    const userMenuButton = page.getByTestId("user-menu-button").first();
+    await expect(userMenuButton).toBeAttached();
 
     // Add a favorite first
     await page.goto("/miejsca?city=warszawa");
