@@ -1,7 +1,7 @@
 services:
   api:
     environment:
-      APP_ENV: prod
+      APP_ENV: dev
       APP_DEBUG: 0
       APP_SECRET: deterministic-e2e-secret
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
@@ -17,7 +17,7 @@ services:
       - media-data:/data/familyplaces-media
   worker:
     environment:
-      APP_ENV: prod
+      APP_ENV: dev
       APP_DEBUG: 0
       APP_SECRET: deterministic-e2e-secret
       DATABASE_URL: postgresql://family_places_test:family_places_test@database:5432/family_places_test?serverVersion=18&charset=utf8
@@ -56,9 +56,9 @@ services:
       PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
       E2E: "true"
-      APP_ENV: prod
+      APP_ENV: dev
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${WEB_PORT:-3001}:3000"
     networks: [internal, edge]
   database:
     environment:

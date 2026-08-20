@@ -1,4 +1,5 @@
 import { hardenedFetch } from "../../lib/hardened-fetch.server"
+import { parseJsonBodyGuarded } from "../../lib/request-body-guard.server"
 import type { Route } from "./+types/auth-dev-login"
 
 export async function action({ request }: Route.ActionArgs) {
@@ -6,18 +7,13 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ detail: "Method not allowed" }, { status: 405 })
   }
 
-  let body: string | undefined = undefined
-  try {
-    const text = await request.text()
-    if (text) {
-      body = text
-    }
-  } catch {
-    // Ignored fallback
+  const parsed = await parseJsonBodyGuarded<{ email?: string; displayName?: string; roles?: string[] }>(request, 8192)
+  if (!parsed.ok) {
+    return parsed.response
   }
 
   return hardenedFetch(request, "/api/v1/dev-auth/login", {
     method: "POST",
-    body,
+    body: JSON.stringify(parsed.data),
   })
 }

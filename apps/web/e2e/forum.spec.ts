@@ -68,11 +68,15 @@ test.describe("Forum E2E Real Journey", () => {
     await expect(bobsPostCard).toBeVisible();
 
     // 5. Alice attempts to edit Bob's post (Edit button must NOT be visible)
-    await alicePage.goto(`/forum/watek/${threadId}`);
-    await expect(alicePage.locator('[data-slot="card"]', { hasText: replyText }).getByRole("button", { name: "Edytuj" })).not.toBeVisible();
+    await alicePage.goto("/forum");
+    await alicePage.goto(threadUrl);
+    const bobsCard = alicePage.locator('[data-slot="card"]', { hasText: replyText }).first();
+    await expect(bobsCard).toBeVisible();
+    await expect(bobsCard.getByRole("button", { name: "Edytuj" })).not.toBeVisible();
 
     // Alice reports Bob's post
-    const reportBtn = alicePage.locator('[data-slot="card"]', { hasText: replyText }).getByRole("button", { name: "Zgłoś" });
+    const reportBtn = bobsCard.getByRole("button", { name: "Zgłoś" });
+    await expect(reportBtn).toBeVisible();
     await reportBtn.click();
     await expect(alicePage.getByRole("heading", { name: "Zgłoś naruszenie regulaminu" })).toBeVisible();
     await alicePage.locator("#reason-select").click();

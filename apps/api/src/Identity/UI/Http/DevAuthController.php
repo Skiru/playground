@@ -30,10 +30,10 @@ final class DevAuthController
     #[Route('/api/v1/dev-auth/login', name: 'api_dev_auth_login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
-        $appEnv = $this->environment;
-        $devAuthEnabled = '1' === $this->devAuthEnabled || 'true' === $this->devAuthEnabled;
+        $appEnv = strtolower($this->environment);
+        $devAuthEnabled = '1' === $this->devAuthEnabled || 'true' === strtolower($this->devAuthEnabled);
 
-        if (!$devAuthEnabled) {
+        if (\in_array($appEnv, ['prod', 'production'], true) || !$devAuthEnabled) {
             throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Route not found.');
         }
 

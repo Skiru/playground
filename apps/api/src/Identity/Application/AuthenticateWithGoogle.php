@@ -36,7 +36,7 @@ final class AuthenticateWithGoogle
                 return $this->doAuthenticate($verifiedIdentity);
             });
         } catch (UniqueConstraintViolationException $e) {
-            // Concurrent first login race happened. Let's read the identity in a fresh connection/query.
+            // Concurrent first login race happened. Check if identity exists or email was created concurrently.
             $identity = $this->externalIdentityRepository->findByProviderAndSubject(
                 ExternalIdentityProvider::GOOGLE,
                 $verifiedIdentity->subject
@@ -49,6 +49,12 @@ final class AuthenticateWithGoogle
                 }
 
                 return $user;
+            }
+
+            $emailAddress = new EmailAddress($verifiedIdentity->email);
+            $existingUser = $this->userRepository->findByEmail($emailAddress);
+            if (null !== $existingUser) {
+                throw new AccountLinkRequiredException('An account with this email address already exists. Manual linking is required.');
             }
 
             throw $e;

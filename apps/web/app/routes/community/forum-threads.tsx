@@ -1,6 +1,7 @@
 import * as React from "react"
-import { useParams, Link } from "react-router"
+import { useParams, Link, useLoaderData } from "react-router"
 import { listCategoryThreads, createForumThread, type ListCategoryThreadsResponses } from "@family-places/api-client"
+import { loadCategoryThreads } from "~/lib/api.server"
 import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
@@ -12,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { MessageSquare, Pin, Lock, Plus, Calendar, AlertTriangle } from "lucide-react"
+import type { Route } from "./+types/forum-threads"
 
 type Thread = ListCategoryThreadsResponses[200]["items"][number] & { author: NonNullable<ListCategoryThreadsResponses[200]["items"][number]["author"]> }
 type Category = ListCategoryThreadsResponses[200]["category"]
@@ -28,18 +30,45 @@ function withAuthor(thread: ListCategoryThreadsResponses[200]["items"][number]):
   }
 }
 
+function useOptionalLoaderData<T>(): T | undefined {
+  try {
+    return useLoaderData<T>()
+  } catch {
+    return undefined
+  }
+}
+
+export function shouldRevalidate() {
+  return true
+}
+
+export async function loader({ params }: Route.LoaderArgs) {
+  const categorySlug = params.categorySlug
+  if (!categorySlug) {
+    throw new Response("Category not found", { status: 404 })
+  }
+
+  const data = await loadCategoryThreads(categorySlug, { limit: 10 })
+  return { data }
+}
+
 export default function ForumThreadsPage() {
+  const loaderData = useOptionalLoaderData<typeof loader>()
+  const initialCategory = loaderData?.data?.category as Category | null
+  const initialThreads = (loaderData?.data?.items || []).map(withAuthor)
+  const initialPagination = loaderData?.data?.pagination as CursorPagination | undefined
+
   const { categorySlug } = useParams()
   const { session } = useSession()
-  const [category, setCategory] = React.useState<Category | null>(null)
-  const [threads, setThreads] = React.useState<Thread[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [category, setCategory] = React.useState<Category | null>(initialCategory)
+  const [threads, setThreads] = React.useState<Thread[]>(initialThreads)
+  const [loading, setLoading] = React.useState(false)
   const [loadingMore, setLoadingMore] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   // Pagination states
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
-  const [hasNextPage, setHasNextPage] = React.useState(false)
+  const [nextCursor, setNextCursor] = React.useState<string | null>(initialPagination?.nextCursor || null)
+  const [hasNextPage, setHasNextPage] = React.useState<boolean>(initialPagination?.hasNextPage || false)
 
   // Creation State
   const [isCreateOpen, setIsOpen] = React.useState(false)
@@ -47,6 +76,17 @@ export default function ForumThreadsPage() {
   const [newBody, setNewBody] = React.useState("")
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (loaderData?.data) {
+      setCategory(loaderData.data.category)
+      const fetchedItems = loaderData.data.items.map(withAuthor)
+      setThreads(fetchedItems)
+      const pagination: CursorPagination = loaderData.data.pagination
+      setNextCursor(pagination?.nextCursor || null)
+      setHasNextPage(pagination?.hasNextPage || false)
+    }
+  }, [loaderData])
 
   const loadThreads = React.useCallback(async (cursor: string | null = null, append = false) => {
     if (!categorySlug) return
@@ -90,42 +130,44 @@ export default function ForumThreadsPage() {
   }, [categorySlug])
 
   React.useEffect(() => {
-    if (!categorySlug) return
-    let ignore = false
-    async function init() {
-      setError(null)
-      try {
-        const res = await listCategoryThreads({
-          path: { slug: categorySlug! },
-          query: {
-            limit: 10,
+    if (loaderData === undefined && categorySlug) {
+      let ignore = false
+      async function clientFetch() {
+        setLoading(true)
+        setError(null)
+        try {
+          const res = await listCategoryThreads({
+            path: { slug: categorySlug! },
+            query: {
+              limit: 10,
+            }
+          })
+          if (!ignore && res.data) {
+            setCategory(res.data.category)
+            const fetchedItems = res.data.items.map(withAuthor)
+            setThreads(fetchedItems)
+            const pagination: CursorPagination = res.data.pagination
+            setNextCursor(pagination.nextCursor || null)
+            setHasNextPage(pagination.hasNextPage || false)
+          } else if (!ignore) {
+            setError("Nie znaleziono podanej kategorii forum.")
           }
-        })
-        if (!ignore && res.data) {
-          setCategory(res.data.category)
-          const fetchedItems = res.data.items.map(withAuthor)
-          setThreads(fetchedItems)
-          const pagination: CursorPagination = res.data.pagination
-          setNextCursor(pagination?.nextCursor || null)
-          setHasNextPage(pagination?.hasNextPage || false)
-        } else if (!ignore) {
-          setError("Nie znaleziono podanej kategorii forum.")
-        }
-      } catch (err: unknown) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false)
+        } catch (err: unknown) {
+          if (!ignore) {
+            setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false)
+          }
         }
       }
+      void clientFetch()
+      return () => {
+        ignore = true
+      }
     }
-    init()
-    return () => {
-      ignore = true
-    }
-  }, [categorySlug])
+  }, [categorySlug, loaderData])
 
   const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault()

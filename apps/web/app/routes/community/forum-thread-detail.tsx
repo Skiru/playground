@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useParams, Link, useNavigate } from "react-router"
+import { useParams, Link, useNavigate, useLoaderData } from "react-router"
 import {
   getForumThread,
   listForumPosts,
@@ -11,6 +11,7 @@ import {
   type GetForumThreadResponses,
   type ListForumPostsResponses,
 } from "@family-places/api-client"
+import { loadForumThreadAndPosts } from "~/lib/api.server"
 import { useSession } from "~/lib/session-context"
 import { mapApiError } from "~/utils/error-mapper"
 import { AppShell } from "~/components/layout/AppShell"
@@ -33,6 +34,7 @@ import {
   CornerDownRight,
   Flag,
 } from "lucide-react"
+import type { Route } from "./+types/forum-thread-detail"
 
 type Thread = GetForumThreadResponses[200] & { author: NonNullable<GetForumThreadResponses[200]["author"]> }
 type Post = ListForumPostsResponses[200]["items"][number] & { author: NonNullable<ListForumPostsResponses[200]["items"][number]["author"]> }
@@ -49,13 +51,40 @@ function withAuthor<T extends { author?: { id: string | null; displayName: strin
   }
 }
 
+function useOptionalLoaderData<T>(): T | undefined {
+  try {
+    return useLoaderData<T>()
+  } catch {
+    return undefined
+  }
+}
+
+export function shouldRevalidate() {
+  return true
+}
+
+export async function loader({ params }: Route.LoaderArgs) {
+  const threadId = params.threadId
+  if (!threadId) {
+    throw new Response("Thread not found", { status: 404 })
+  }
+
+  const data = await loadForumThreadAndPosts(threadId)
+  return { data }
+}
+
 export default function ForumThreadDetailPage() {
+  const loaderData = useOptionalLoaderData<typeof loader>()
+  const initialThread = loaderData?.data?.thread ? withAuthor(loaderData.data.thread) : null
+  const initialPosts = (loaderData?.data?.posts?.items || []).map(withAuthor)
+  const initialPagination = loaderData?.data?.posts?.pagination as CursorPagination | undefined
+
   const { threadId } = useParams()
   const navigate = useNavigate()
   const { session } = useSession()
-  const [thread, setThread] = React.useState<Thread | null>(null)
-  const [posts, setPosts] = React.useState<Post[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [thread, setThread] = React.useState<Thread | null>(initialThread)
+  const [posts, setPosts] = React.useState<Post[]>(initialPosts)
+  const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   // Delete confirmation states
@@ -70,7 +99,7 @@ export default function ForumThreadDetailPage() {
 
   // Edit Thread state
   const [isEditThreadOpen, setIsEditThreadOpen] = React.useState(false)
-  const [editTitle, setEditTitle] = React.useState("")
+  const [editTitle, setEditTitle] = React.useState(initialThread?.title || "")
   const [editThreadError, setEditThreadError] = React.useState<string | null>(null)
   const [editingThread, setEditingThread] = React.useState(false)
 
@@ -81,9 +110,21 @@ export default function ForumThreadDetailPage() {
   const [editingPost, setEditingPost] = React.useState(false)
 
   // Posts Pagination states
-  const [postsNextCursor, setPostsNextCursor] = React.useState<string | null>(null)
-  const [postsHasNextPage, setPostsHasNextPage] = React.useState(false)
+  const [postsNextCursor, setPostsNextCursor] = React.useState<string | null>(initialPagination?.nextCursor || null)
+  const [postsHasNextPage, setPostsHasNextPage] = React.useState<boolean>(initialPagination?.hasNextPage || false)
   const [loadingMorePosts, setLoadingMorePosts] = React.useState(false)
+
+  React.useEffect(() => {
+    if (loaderData?.data) {
+      const nextThread = withAuthor(loaderData.data.thread)
+      const pagination: CursorPagination = loaderData.data.posts?.pagination
+      setThread(nextThread)
+      setPosts((loaderData.data.posts?.items || []).map(withAuthor))
+      setEditTitle(nextThread.title)
+      setPostsNextCursor(pagination?.nextCursor || null)
+      setPostsHasNextPage(pagination?.hasNextPage || false)
+    }
+  }, [loaderData])
 
   const loadThreadAndPosts = React.useCallback(async () => {
     if (!threadId) return
@@ -146,43 +187,44 @@ export default function ForumThreadDetailPage() {
   }
 
   React.useEffect(() => {
-    if (!threadId) return
-    let ignore = false
+    if (loaderData === undefined && threadId) {
+      let ignore = false
 
-    async function init() {
-      setError(null)
-      try {
-        const [threadRes, postsRes] = await Promise.all([
-          getForumThread({ path: { threadId: threadId! } }),
-          listForumPosts({ path: { threadId: threadId! }, query: { limit: 20 } }),
-        ])
-        if (!ignore && threadRes.data && postsRes.data) {
-          const nextThread = withAuthor(threadRes.data)
-          const pagination: CursorPagination = postsRes.data.pagination
-          setThread(nextThread)
-          setPosts(postsRes.data.items.map(withAuthor))
-          setEditTitle(nextThread.title)
-          setPostsNextCursor(pagination.nextCursor || null)
-          setPostsHasNextPage(pagination.hasNextPage || false)
-        } else if (!ignore) {
-          setError("Wątek nie istnieje lub został usunięty.")
-        }
-      } catch (err: unknown) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Wystąpił błąd.")
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false)
+      async function init() {
+        setError(null)
+        try {
+          const [threadRes, postsRes] = await Promise.all([
+            getForumThread({ path: { threadId: threadId! } }),
+            listForumPosts({ path: { threadId: threadId! }, query: { limit: 20 } }),
+          ])
+          if (!ignore && threadRes.data && postsRes.data) {
+            const nextThread = withAuthor(threadRes.data)
+            const pagination: CursorPagination = postsRes.data.pagination
+            setThread(nextThread)
+            setPosts(postsRes.data.items.map(withAuthor))
+            setEditTitle(nextThread.title)
+            setPostsNextCursor(pagination.nextCursor || null)
+            setPostsHasNextPage(pagination.hasNextPage || false)
+          } else if (!ignore) {
+            setError("Wątek nie istnieje lub został usunięty.")
+          }
+        } catch (err: unknown) {
+          if (!ignore) {
+            setError(err instanceof Error ? err.message : "Wystąpił błąd.")
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false)
+          }
         }
       }
-    }
 
-    void init()
-    return () => {
-      ignore = true
+      void init()
+      return () => {
+        ignore = true
+      }
     }
-  }, [threadId])
+  }, [threadId, loaderData])
 
   const handleCreateReply = async (e: React.FormEvent) => {
     e.preventDefault()

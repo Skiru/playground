@@ -8,6 +8,8 @@ use Symfony\Component\Uid\Uuid;
 
 final class ContentReport
 {
+    public const CLAIM_LEASE_SECONDS = 900;
+
     private Uuid $id;
     private Uuid $reporterId;
     private TargetType $targetType;
@@ -49,14 +51,42 @@ final class ContentReport
         $this->claimedAt = $claimedAt;
     }
 
+    public function isClaimExpired(\DateTimeImmutable $now): bool
+    {
+        if (ReportStatus::IN_REVIEW !== $this->status) {
+            return false;
+        }
+
+        if (null === $this->claimedAt) {
+            return true;
+        }
+
+        return ($now->getTimestamp() - $this->claimedAt->getTimestamp()) >= self::CLAIM_LEASE_SECONDS;
+    }
+
     public function claim(Uuid $moderatorId, \DateTimeImmutable $now): void
     {
-        if (ReportStatus::IN_REVIEW === $this->status && null !== $this->claimedBy && $this->claimedBy->equals($moderatorId)) {
-            return;
+        if (ReportStatus::IN_REVIEW === $this->status) {
+            if (null !== $this->claimedBy && $this->claimedBy->equals($moderatorId) && !$this->isClaimExpired($now)) {
+                $this->claimedAt = $now;
+
+                return;
+            }
+
+            if ($this->isClaimExpired($now)) {
+                $this->claimedBy = $moderatorId;
+                $this->claimedAt = $now;
+
+                return;
+            }
+
+            throw new \LogicException('Case is currently claimed by another moderator.');
         }
+
         if (ReportStatus::OPEN !== $this->status) {
-            throw new \LogicException('Only OPEN reports can be claimed for review.');
+            throw new \LogicException('Only OPEN or expired IN_REVIEW reports can be claimed for review.');
         }
+
         $this->status = ReportStatus::IN_REVIEW;
         $this->claimedBy = $moderatorId;
         $this->claimedAt = $now;
@@ -70,6 +100,8 @@ final class ContentReport
         $this->status = ReportStatus::RESOLVED;
         $this->resolvedAt = $now;
         $this->resolvedBy = $moderatorId;
+        $this->claimedBy = null;
+        $this->claimedAt = null;
     }
 
     public function dismiss(Uuid $moderatorId, \DateTimeImmutable $now): void
@@ -80,6 +112,8 @@ final class ContentReport
         $this->status = ReportStatus::DISMISSED;
         $this->resolvedAt = $now;
         $this->resolvedBy = $moderatorId;
+        $this->claimedBy = null;
+        $this->claimedAt = null;
     }
 
     public function id(): Uuid

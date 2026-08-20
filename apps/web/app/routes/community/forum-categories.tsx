@@ -1,10 +1,9 @@
-import * as React from "react"
-import { listForumCategories } from "@family-places/api-client"
+import { useLoaderData, Link } from "react-router"
+import { loadForumCategories } from "~/lib/api.server"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { MessageSquare, ArrowRight } from "lucide-react"
-import { Link } from "react-router"
 
 interface Category {
   id: string
@@ -13,33 +12,27 @@ interface Category {
   description: string
 }
 
-export default function ForumCategoriesPage() {
-  const [categories, setCategories] = React.useState<Category[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+function useOptionalLoaderData<T>(): T | undefined {
+  try {
+    return useLoaderData<T>()
+  } catch {
+    return undefined
+  }
+}
 
-  React.useEffect(() => {
-    async function load() {
-      try {
-        const res = await listForumCategories()
-        if (res.data) {
-          setCategories(res.data.map((category) => ({
-            id: String(category.id),
-            slug: String(category.slug),
-            name: String(category.name),
-            description: String(category.description),
-          })))
-        } else {
-          setError("Nie udało się pobrać kategorii forum.")
-        }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Wystąpił błąd.")
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [])
+export async function loader() {
+  const categoriesData = await loadForumCategories()
+  return { categoriesData }
+}
+
+export default function ForumCategoriesPage() {
+  const loaderData = useOptionalLoaderData<typeof loader>()
+  const categories: Category[] = (loaderData?.categoriesData || []).map((category) => ({
+    id: String(category.id),
+    slug: String(category.slug),
+    name: String(category.name),
+    description: String(category.description),
+  }))
 
   return (
     <AppShell>
@@ -50,24 +43,7 @@ export default function ForumCategoriesPage() {
             <p className="text-muted-foreground mt-1">Dyskutuj, zadawaj pytania i dziel się doświadczeniami z innymi rodzicami.</p>
           </div>
 
-          {error && (
-            <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6 text-sm" role="alert">
-              {error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="grid gap-6 sm:grid-cols-2">
-              {[1, 2, 3].map((n) => (
-                <Card key={n} className="animate-pulse">
-                  <CardHeader>
-                    <div className="h-6 w-1/3 bg-muted rounded mb-2" />
-                    <div className="h-4 w-5/6 bg-muted rounded" />
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : categories.length === 0 ? (
+          {categories.length === 0 ? (
             <Card className="text-center py-12">
               <CardContent className="space-y-4">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />

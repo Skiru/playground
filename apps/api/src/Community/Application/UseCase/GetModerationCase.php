@@ -9,6 +9,7 @@ use App\Community\Domain\Forum\ForumThreadRepository;
 use App\Community\Domain\Moderation\ContentReportRepository;
 use App\Community\Domain\PlaceDiscussion\PlaceCommentRepository;
 use App\Community\Domain\Review\ReviewRepository;
+use App\Shared\Application\Clock;
 use App\Shared\Application\Exception\ApiException;
 use Symfony\Component\Uid\Uuid;
 
@@ -20,6 +21,7 @@ final class GetModerationCase
         private readonly PlaceCommentRepository $commentRepository,
         private readonly ForumThreadRepository $threadRepository,
         private readonly ForumPostRepository $postRepository,
+        private readonly Clock $clock,
     ) {
     }
 
@@ -128,6 +130,7 @@ final class GetModerationCase
             'resolvedBy' => $report->resolvedBy()?->toString(),
             'claimedBy' => $report->claimedBy()?->toString(),
             'claimedAt' => $report->claimedAt()?->format(\DateTimeInterface::ATOM),
+            'isClaimExpired' => $report->isClaimExpired($this->clock->now()),
             'allowedActions' => $allowedActions,
             'targetPreview' => $targetPreview,
         ];

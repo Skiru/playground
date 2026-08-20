@@ -11,5 +11,8 @@ return [
     Symfony\Bundle\SecurityBundle\SecurityBundle::class => ['all' => true],
     EasyCorp\Bundle\EasyAdminBundle\EasyAdminBundle::class => ['all' => true],
     Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
-    Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle::class => ['dev' => true, 'test' => true],
+    Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle::class => [
+        'dev' => class_exists(Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle::class),
+        'test' => class_exists(Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle::class),
+    ],
 ];

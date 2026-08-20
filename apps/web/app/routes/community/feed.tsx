@@ -1,6 +1,7 @@
 import * as React from "react"
-import { Link } from "react-router"
+import { Link, useLoaderData } from "react-router"
 import { getCommunityFeed } from "@family-places/api-client"
+import { loadCommunityFeed } from "~/lib/api.server"
 import { AppShell } from "~/components/layout/AppShell"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
@@ -26,14 +27,45 @@ interface CursorPagination {
   hasNextPage?: boolean
 }
 
+function useOptionalLoaderData<T>(): T | undefined {
+  try {
+    return useLoaderData<T>()
+  } catch {
+    return undefined
+  }
+}
+
+export function shouldRevalidate() {
+  return true
+}
+
+export async function loader() {
+  const feedData = await loadCommunityFeed({ limit: 10 })
+  return { feedData }
+}
+
 export default function CommunityFeedPage() {
-  const [items, setItems] = React.useState<FeedItem[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const loaderData = useOptionalLoaderData<typeof loader>()
+  const initialItems = (loaderData?.feedData?.items || []) as FeedItem[]
+  const initialPagination = loaderData?.feedData?.pagination as CursorPagination | undefined
+
+  const [items, setItems] = React.useState<FeedItem[]>(initialItems)
+  const [loading, setLoading] = React.useState(false)
   const [loadingMore, setLoadingMore] = React.useState(false)
-  const [nextCursor, setNextCursor] = React.useState<string | null>(null)
-  const [hasNextPage, setHasNextPage] = React.useState(false)
+  const [nextCursor, setNextCursor] = React.useState<string | null>(initialPagination?.nextCursor || null)
+  const [hasNextPage, setHasNextPage] = React.useState<boolean>(initialPagination?.hasNextPage || false)
   const [typeFilter, setTypeFilter] = React.useState<string>("ALL")
   const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (loaderData?.feedData) {
+      const fetchedItems = (loaderData.feedData.items || []) as FeedItem[]
+      setItems(fetchedItems)
+      const pagination = loaderData.feedData.pagination as CursorPagination | undefined
+      setNextCursor(pagination?.nextCursor || null)
+      setHasNextPage(pagination?.hasNextPage || false)
+    }
+  }, [loaderData])
 
   const getSourceLink = (item: FeedItem) => {
     switch (item.type) {
@@ -94,41 +126,44 @@ export default function CommunityFeedPage() {
   }, [typeFilter])
 
   React.useEffect(() => {
-    let ignore = false
-    async function init() {
-      setError(null)
-      try {
-        const res = await getCommunityFeed({
-          query: {
-            limit: 10,
-            type: typeFilter === "ALL" ? undefined : typeFilter,
-          },
-        })
+    if (loaderData === undefined) {
+      let ignore = false
+      async function clientFetch() {
+        setLoading(true)
+        setError(null)
+        try {
+          const res = await getCommunityFeed({
+            query: {
+              limit: 10,
+              type: typeFilter === "ALL" ? undefined : typeFilter,
+            },
+          })
 
-        if (!ignore && res.data) {
-          const fetchedItems = (res.data.items || []) as FeedItem[]
-          setItems(fetchedItems)
-          const pagination = res.data.pagination as CursorPagination | undefined
-          setNextCursor(pagination?.nextCursor || null)
-          setHasNextPage(pagination?.hasNextPage || false)
-        } else if (!ignore) {
-          setError("Wystąpił błąd podczas ładowania społeczności.")
-        }
-      } catch (err: unknown) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.")
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false)
+          if (!ignore && res.data) {
+            const fetchedItems = (res.data.items || []) as FeedItem[]
+            setItems(fetchedItems)
+            const pagination = res.data.pagination as CursorPagination | undefined
+            setNextCursor(pagination?.nextCursor || null)
+            setHasNextPage(pagination?.hasNextPage || false)
+          } else if (!ignore) {
+            setError("Wystąpił błąd podczas ładowania społeczności.")
+          }
+        } catch (err: unknown) {
+          if (!ignore) {
+            setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.")
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false)
+          }
         }
       }
+      void clientFetch()
+      return () => {
+        ignore = true
+      }
     }
-    init()
-    return () => {
-      ignore = true
-    }
-  }, [typeFilter])
+  }, [typeFilter, loaderData])
 
   const getTypeLabel = (type: string) => {
     switch (type) {

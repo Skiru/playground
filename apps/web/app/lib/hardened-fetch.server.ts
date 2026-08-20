@@ -7,37 +7,20 @@ function isUuid(val: string): boolean {
 function isAllowlisted(path: string): boolean {
   const cleanPath = path.split("?")[0]
 
+  if (!cleanPath.startsWith("/api/v1/")) {
+    return false
+  }
+
+  // Disallow path traversal or encoded attempts
   if (
-    cleanPath === "/api/v1/me/favorites" ||
-    cleanPath === "/api/v1/me/visits" ||
-    cleanPath === "/api/v1/me/place-state" ||
-    cleanPath === "/api/v1/auth/google" ||
-    cleanPath === "/api/v1/dev-auth/login" ||
-    cleanPath === "/api/v1/session" ||
-    cleanPath === "/api/v1/logout"
+    cleanPath.includes("..") ||
+    cleanPath.includes("//") ||
+    /%\w{2}/i.test(cleanPath)
   ) {
-    return true
+    return false
   }
 
-  // Matches /api/v1/places/{placeId}/favorite
-  const favMatch = cleanPath.match(/^\/api\/v1\/places\/([^/]+)\/favorite$/)
-  if (favMatch && isUuid(favMatch[1])) {
-    return true
-  }
-
-  // Matches /api/v1/places/{placeId}/visits
-  const visitMatch = cleanPath.match(/^\/api\/v1\/places\/([^/]+)\/visits$/)
-  if (visitMatch && isUuid(visitMatch[1])) {
-    return true
-  }
-
-  // Matches /api/v1/me/visits/{visitId}
-  const visitIdMatch = cleanPath.match(/^\/api\/v1\/me\/visits\/([^/]+)$/)
-  if (visitIdMatch && isUuid(visitIdMatch[1])) {
-    return true
-  }
-
-  return false
+  return true
 }
 
 function isBodyJson(body: unknown): boolean {

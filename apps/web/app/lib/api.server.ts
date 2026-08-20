@@ -5,8 +5,15 @@ import {
   getMapPlaces,
   getPlaceBySlug,
   searchPlaces,
+  getCommunityFeed,
+  listForumCategories,
+  listCategoryThreads,
+  getForumThread,
+  listForumPosts,
   type GetMapPlacesData,
   type SearchPlacesData,
+  type GetCommunityFeedData,
+  type ListCategoryThreadsData,
 } from "@family-places/api-client";
 
 const baseUrl = process.env.API_BASE_URL ?? "http://api";
@@ -54,4 +61,36 @@ export async function loadMapPlaces(query: GetMapPlacesData["query"]) {
   const result = await getMapPlaces({ baseUrl, query });
   if (!result.data) upstreamError(result, "Nie udało się pobrać danych mapy.");
   return result.data;
+}
+
+export async function loadCommunityFeed(query?: GetCommunityFeedData["query"]) {
+  const result = await getCommunityFeed({ baseUrl, query });
+  if (!result.data) upstreamError(result, "Wystąpił błąd podczas ładowania społeczności.");
+  return result.data;
+}
+
+export async function loadForumCategories() {
+  const result = await listForumCategories({ baseUrl });
+  if (!result.data) upstreamError(result, "Nie udało się pobrać kategorii forum.");
+  return result.data;
+}
+
+export async function loadCategoryThreads(slug: string, query?: ListCategoryThreadsData["query"]) {
+  const result = await listCategoryThreads({ baseUrl, path: { slug }, query });
+  if (!result.data) upstreamError(result, "Nie znaleziono podanej kategorii forum.");
+  return result.data;
+}
+
+export async function loadForumThreadAndPosts(threadId: string) {
+  const [threadRes, postsRes] = await Promise.all([
+    getForumThread({ baseUrl, path: { threadId } }),
+    listForumPosts({ baseUrl, path: { threadId }, query: { limit: 20 } }),
+  ]);
+  if (!threadRes.data || !postsRes.data) {
+    upstreamError(threadRes.data ? postsRes : threadRes, "Wątek nie istnieje lub został usunięty.");
+  }
+  return {
+    thread: threadRes.data,
+    posts: postsRes.data,
+  };
 }

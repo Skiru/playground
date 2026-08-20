@@ -4,6 +4,7 @@ set -eu
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_dir"
 docker compose config --quiet
+docker compose -f compose.yaml -f compose.dev.yaml build api
 docker compose -f compose.yaml -f compose.dev.yaml run --rm api composer validate --strict
 docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console lint:container
 docker compose -f compose.yaml -f compose.dev.yaml run --rm api php bin/console lint:yaml config

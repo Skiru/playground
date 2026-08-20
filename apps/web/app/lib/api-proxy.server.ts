@@ -1,3 +1,30 @@
+const ALLOWED_REQUEST_HEADERS = new Set([
+  "accept",
+  "content-type",
+  "cookie",
+  "idempotency-key",
+  "x-correlation-id",
+  "x-csrf-token",
+  "x-request-id",
+  "origin",
+  "referer",
+])
+
+const ALLOWED_RESPONSE_HEADERS = new Set([
+  "content-type",
+  "cache-control",
+  "vary",
+  "set-cookie",
+  "retry-after",
+  "etag",
+  "last-modified",
+  "location",
+  "www-authenticate",
+  "content-disposition",
+])
+
+const MAX_PROXY_BODY_BYTES = 1048576 // 1MB
+
 function buildUpstreamUrl(request: Request, apiPath: string): string {
   const configured = new URL(process.env.API_BASE_URL ?? "http://api")
   if (!['http:', 'https:'].includes(configured.protocol) || configured.username || configured.password) {
@@ -22,20 +49,17 @@ function buildUpstreamUrl(request: Request, apiPath: string): string {
   return candidate.toString()
 }
 
-function shouldForwardHeader(name: string): boolean {
-  switch (name.toLowerCase()) {
-    case "accept":
-    case "content-type":
-    case "cookie":
-    case "idempotency-key":
-    case "x-correlation-id":
-    case "x-csrf-token":
-    case "x-request-id":
-      return true
-    default:
-      return false
-  }
+function shouldForwardRequestHeader(name: string): boolean {
+  return ALLOWED_REQUEST_HEADERS.has(name.toLowerCase())
 }
+
+function shouldForwardResponseHeader(name: string): boolean {
+  const lower = name.toLowerCase()
+  if (ALLOWED_RESPONSE_HEADERS.has(lower)) return true
+  if (lower.startsWith("ratelimit-")) return true
+  return false
+}
+
 export async function proxyApiRequest(request: Request, apiPath: string): Promise<Response> {
   let upstreamUrl: string
   try {
@@ -46,7 +70,7 @@ export async function proxyApiRequest(request: Request, apiPath: string): Promis
 
   const headers = new Headers()
   for (const [name, value] of request.headers.entries()) {
-    if (shouldForwardHeader(name)) {
+    if (shouldForwardRequestHeader(name)) {
       headers.set(name, value)
     }
   }
@@ -58,30 +82,32 @@ export async function proxyApiRequest(request: Request, apiPath: string): Promis
   }
 
   if (method !== "GET" && method !== "HEAD") {
-    init.body = await request.arrayBuffer()
+    const contentLength = request.headers.get("content-length")
+    if (contentLength && parseInt(contentLength, 10) > MAX_PROXY_BODY_BYTES) {
+      return Response.json(
+        { title: "Payload Too Large", detail: "Request body exceeds allowed limit.", status: 413, code: "BODY_TOO_LARGE" },
+        { status: 413 }
+      )
+    }
+
+    const bodyBuffer = await request.arrayBuffer()
+    if (bodyBuffer.byteLength > MAX_PROXY_BODY_BYTES) {
+      return Response.json(
+        { title: "Payload Too Large", detail: "Request body exceeds allowed limit.", status: 413, code: "BODY_TOO_LARGE" },
+        { status: 413 }
+      )
+    }
+
+    init.body = bodyBuffer
   }
 
   const upstream = await fetch(upstreamUrl, init)
   const responseHeaders = new Headers()
 
-  const contentType = upstream.headers.get("content-type")
-  if (contentType) {
-    responseHeaders.set("Content-Type", contentType)
-  }
-
-  const cacheControl = upstream.headers.get("cache-control")
-  if (cacheControl) {
-    responseHeaders.set("Cache-Control", cacheControl)
-  }
-
-  const vary = upstream.headers.get("vary")
-  if (vary) {
-    responseHeaders.set("Vary", vary)
-  }
-
-  const setCookie = upstream.headers.get("set-cookie")
-  if (setCookie) {
-    responseHeaders.set("Set-Cookie", setCookie)
+  for (const [name, value] of upstream.headers.entries()) {
+    if (shouldForwardResponseHeader(name)) {
+      responseHeaders.set(name, value)
+    }
   }
 
   return new Response(upstream.body, {

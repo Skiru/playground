@@ -19,7 +19,12 @@ final class ModerationActionRecord
     private string $resultingStatus;
     private ?Uuid $reportId;
     private string $correlationId;
+    /** @var array<string, mixed> */
+    private array $metadata;
 
+    /**
+     * @param array<string, mixed> $metadata
+     */
     public function __construct(
         Uuid $id,
         Uuid $moderatorId,
@@ -32,6 +37,7 @@ final class ModerationActionRecord
         string $resultingStatus,
         ?Uuid $reportId = null,
         ?string $correlationId = null,
+        array $metadata = [],
     ) {
         $trimmedReason = trim($reason);
         if (empty($trimmedReason)) {
@@ -49,6 +55,7 @@ final class ModerationActionRecord
         $this->resultingStatus = $resultingStatus;
         $this->reportId = $reportId;
         $this->correlationId = $correlationId ?? Uuid::v7()->toString();
+        $this->metadata = $metadata;
     }
 
     public function id(): Uuid
@@ -104,5 +111,11 @@ final class ModerationActionRecord
     public function correlationId(): string
     {
         return $this->correlationId;
+    }
+
+    /** @return array<string, mixed> */
+    public function metadata(): array
+    {
+        return $this->metadata;
     }
 }

@@ -60,10 +60,11 @@ final class DbalModerationActionRepository implements ModerationActionRepository
         $resultingStatus = $record->resultingStatus();
         $reportId = $record->reportId()?->toRfc4122();
         $correlationId = $record->correlationId();
+        $metadataJson = json_encode($record->metadata(), \JSON_THROW_ON_ERROR);
 
         $this->connection->executeStatement(
-            'INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status, report_id, correlation_id)
-             VALUES (:id, :moderator_id, :target_type, :target_id, :action, :reason, :created_at, :previous_status, :resulting_status, :report_id, :correlation_id)',
+            'INSERT INTO moderation_actions (id, moderator_id, target_type, target_id, action, reason, created_at, previous_status, resulting_status, report_id, correlation_id, metadata)
+             VALUES (:id, :moderator_id, :target_type, :target_id, :action, :reason, :created_at, :previous_status, :resulting_status, :report_id, :correlation_id, :metadata)',
             [
                 'id' => $id,
                 'moderator_id' => $moderatorId,
@@ -76,6 +77,7 @@ final class DbalModerationActionRepository implements ModerationActionRepository
                 'resulting_status' => $resultingStatus,
                 'report_id' => $reportId,
                 'correlation_id' => $correlationId,
+                'metadata' => $metadataJson,
             ]
         );
     }
@@ -85,6 +87,15 @@ final class DbalModerationActionRepository implements ModerationActionRepository
      */
     private function reconstitute(array $row): ModerationActionRecord
     {
+        $metadata = [];
+        if (isset($row['metadata']) && \is_string($row['metadata'])) {
+            /** @var array<string, mixed> $decoded */
+            $decoded = json_decode($row['metadata'], true);
+            if (\is_array($decoded)) {
+                $metadata = $decoded;
+            }
+        }
+
         return new ModerationActionRecord(
             Uuid::fromString((string) $row['id']),
             Uuid::fromString((string) $row['moderator_id']),
@@ -96,7 +107,8 @@ final class DbalModerationActionRepository implements ModerationActionRepository
             null !== $row['previous_status'] ? (string) $row['previous_status'] : null,
             (string) $row['resulting_status'],
             null === $row['report_id'] ? null : Uuid::fromString((string) $row['report_id']),
-            null === $row['correlation_id'] ? null : (string) $row['correlation_id']
+            null === $row['correlation_id'] ? null : (string) $row['correlation_id'],
+            $metadata,
         );
     }
 }

@@ -3,5 +3,8 @@ set -eu
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_dir"
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:database:create --if-not-exists
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:migrations:migrate --no-interaction
+docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/console doctrine:fixtures:load --no-interaction
 docker compose -f compose.yaml -f compose.test.yaml run --rm api php bin/phpunit
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e CI=true -v "$repo_dir:/workspace" -w /workspace node:24-bookworm sh -c 'corepack pnpm --filter @family-places/api-client build && corepack pnpm --filter @family-places/web test'

@@ -133,6 +133,7 @@ final class ModerateContent
 
                 $previousStatus = null;
                 $resultingStatus = '';
+                $actionMetadata = [];
 
                 if (ModerationActionType::DISMISS_REPORT === $action || ModerationActionType::RESOLVE_REPORT === $action) {
                     $previousStatus = $this->lockAndReadTargetStatus($targetType, $targetId);
@@ -205,30 +206,28 @@ final class ModerateContent
 
                             if (ModerationActionType::HIDE === $action) {
                                 $target->hide($now);
-                                $resultingStatus = $target->status()->value;
                             } elseif (ModerationActionType::REMOVE === $action) {
                                 $target->removeByModerator($now);
-                                $resultingStatus = $target->status()->value;
                             } elseif (ModerationActionType::RESTORE === $action) {
                                 $target->publish($now);
-                                $resultingStatus = $target->status()->value;
                             } elseif (ModerationActionType::LOCK === $action) {
                                 $target->lock($now);
-                                $resultingStatus = 'LOCKED';
                             } elseif (ModerationActionType::UNLOCK === $action) {
                                 $target->unlock($now);
-                                $resultingStatus = 'UNLOCKED';
                             } elseif (ModerationActionType::PIN === $action) {
                                 $target->pin($now);
-                                $resultingStatus = 'PINNED';
                             } elseif (ModerationActionType::UNPIN === $action) {
                                 $target->unpin($now);
-                                $resultingStatus = 'UNPINNED';
                             } else {
                                 throw new ApiException(400, 'Action not supported for forum threads.', 'INVALID_MODERATION_ACTION');
                             }
 
                             $this->threadRepository->save($target);
+                            $resultingStatus = $target->status()->value;
+                            $actionMetadata = [
+                                'isLocked' => null !== $target->lockedAt(),
+                                'isPinned' => null !== $target->pinnedAt(),
+                            ];
                             break;
 
                         case TargetType::FORUM_POST:
@@ -273,7 +272,8 @@ final class ModerateContent
                     $previousStatus,
                     $resultingStatus,
                     $reportId,
-                    $correlationId
+                    $correlationId,
+                    $actionMetadata
                 );
                 $this->moderationActionRepository->save($record);
 

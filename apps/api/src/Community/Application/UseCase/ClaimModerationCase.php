@@ -24,9 +24,11 @@ final class ClaimModerationCase
     public function execute(Uuid $reportId, Uuid $moderatorId): void
     {
         $this->transactionManager->transactional(function () use ($reportId, $moderatorId): void {
+            $now = $this->clock->now();
+
             // Pessimistic lock on the report
             $row = $this->connection->fetchAssociative(
-                'SELECT status, claimed_by FROM content_reports WHERE id = :id FOR UPDATE',
+                'SELECT status, claimed_by, claimed_at FROM content_reports WHERE id = :id FOR UPDATE',
                 ['id' => $reportId->toRfc4122()]
             );
 
@@ -36,11 +38,29 @@ final class ClaimModerationCase
 
             $currentStatus = (string) $row['status'];
             $claimedBy = null === $row['claimed_by'] ? null : (string) $row['claimed_by'];
-            if ('IN_REVIEW' === $currentStatus && $moderatorId->toRfc4122() === $claimedBy) {
-                return;
-            }
-            if ('OPEN' !== $currentStatus) {
-                throw new ApiException(409, 'Only OPEN reports can be claimed.', 'MODERATION_CONFLICT');
+            $claimedAtRaw = null === $row['claimed_at'] ? null : (string) $row['claimed_at'];
+            $claimedAt = null !== $claimedAtRaw ? new \DateTimeImmutable($claimedAtRaw) : null;
+
+            $isExpired = null !== $claimedAt && ($now->getTimestamp() - $claimedAt->getTimestamp() >= \App\Community\Domain\Moderation\ContentReport::CLAIM_LEASE_SECONDS);
+
+            if ('IN_REVIEW' === $currentStatus) {
+                if ($moderatorId->toRfc4122() === $claimedBy && !$isExpired) {
+                    $this->connection->executeStatement(
+                        'UPDATE content_reports SET claimed_at = :claimed_at WHERE id = :id',
+                        [
+                            'claimed_at' => $now->format('Y-m-d H:i:s'),
+                            'id' => $reportId->toRfc4122(),
+                        ]
+                    );
+
+                    return;
+                }
+
+                if (!$isExpired && $moderatorId->toRfc4122() !== $claimedBy) {
+                    throw new ApiException(409, 'This moderation case is actively claimed by another moderator.', 'MODERATION_CLAIM_ACTIVE');
+                }
+            } elseif ('OPEN' !== $currentStatus) {
+                throw new ApiException(409, 'Only OPEN or expired IN_REVIEW reports can be claimed.', 'MODERATION_CONFLICT');
             }
 
             $report = $this->reportRepository->findById($reportId);
@@ -48,7 +68,7 @@ final class ClaimModerationCase
                 throw new ApiException(404, 'Moderation case not found.', 'MISSING_PUBLIC_RESOURCE');
             }
 
-            $report->claim($moderatorId, $this->clock->now());
+            $report->claim($moderatorId, $now);
             $this->reportRepository->save($report);
         });
     }

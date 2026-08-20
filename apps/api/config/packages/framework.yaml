@@ -2,6 +2,12 @@
 framework:
     secret: '%env(APP_SECRET)%'
     default_locale: pl
+    trusted_proxies: '%env(default::SYMFONY_TRUSTED_PROXIES)%'
+    trusted_headers:
+        - x-forwarded-for
+        - x-forwarded-proto
+        - x-forwarded-host
+        - x-forwarded-port
 
     # Note that the session will be started ONLY if you read or write from it.
     session:

@@ -32,7 +32,9 @@ test.describe("Community Moderation E2E", () => {
     await page.locator("#title").fill(threadTitle);
     await page.locator("#body").fill(`Treść sprawy moderacyjnej ${uniqueSuffix}`);
     await page.getByRole("button", { name: "Utwórz wątek" }).click();
-    await page.locator("a", { hasText: threadTitle }).click();
+    const threadLink1 = page.locator("a", { hasText: threadTitle });
+    await expect(threadLink1).toBeVisible();
+    await threadLink1.click();
     await expect(page).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
     const threadUrl = page.url();
 
@@ -84,7 +86,9 @@ test.describe("Community Moderation E2E", () => {
     await authorPage.locator("#title").fill(title);
     await authorPage.locator("#body").fill(`Claim race body ${suffix}`);
     await authorPage.getByRole("button", { name: "Utwórz wątek" }).click();
-    await authorPage.locator("a", { hasText: title }).click();
+    const threadLink2 = authorPage.locator("a", { hasText: title });
+    await expect(threadLink2).toBeVisible();
+    await threadLink2.click();
     await expect(authorPage).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
     const threadUrl = authorPage.url();
 
@@ -139,7 +143,9 @@ test.describe("Community Moderation E2E", () => {
     await page.locator("#title").fill(threadTitle);
     await page.locator("#body").fill(`Retry body ${uniqueSuffix}`);
     await page.getByRole("button", { name: "Utwórz wątek" }).click();
-    await page.locator("a", { hasText: threadTitle }).click();
+    const threadLink3 = page.locator("a", { hasText: threadTitle });
+    await expect(threadLink3).toBeVisible();
+    await threadLink3.click();
     await expect(page).toHaveURL(/\/forum\/watek\/[0-9a-f-]+$/);
     const threadUrl = page.url();
 

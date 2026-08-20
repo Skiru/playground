@@ -23,7 +23,7 @@ describe("hardenedFetch and typed body policy", () => {
 
   test("blocks non-allowlisted endpoint with 403", async () => {
     const incoming = new Request("http://localhost/")
-    const response = await hardenedFetch(incoming, "/api/v1/invalid-endpoint")
+    const response = await hardenedFetch(incoming, "/admin/secret")
     expect(response.status).toBe(403)
     const body = await response.json()
     expect(body.code).toBe("BFF_FORBIDDEN")

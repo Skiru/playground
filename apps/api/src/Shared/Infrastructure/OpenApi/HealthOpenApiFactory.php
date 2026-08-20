@@ -976,6 +976,7 @@ final class HealthOpenApiFactory implements OpenApiFactoryInterface
             'reporterId' => ['type' => 'string', 'format' => 'uuid'],
             'claimedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
             'claimedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'isClaimExpired' => ['type' => 'boolean'],
             'resolvedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
             'resolvedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
             'allowedActions' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['HIDE', 'REMOVE', 'RESTORE', 'LOCK', 'UNLOCK', 'PIN', 'UNPIN', 'DISMISS_REPORT', 'RESOLVE_REPORT']]],

@@ -204,11 +204,10 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
     private function isValidOrigin(?string $origin): bool
     {
         if (null === $origin || '' === trim($origin)) {
-            // allowed when absent
-            return true;
+            return false;
         }
 
-        $normOrigin = $this->normalizeOrigin($origin);
+        $normOrigin = $this->normalizeOrigin(trim($origin));
         if (null === $normOrigin) {
             return false;
         }
@@ -244,12 +243,23 @@ final class GoogleCredentialAuthenticator extends AbstractAuthenticator
         if (!$parsed || !isset($parsed['scheme'], $parsed['host'])) {
             return null;
         }
-        $scheme = strtolower($parsed['scheme']);
-        $host = strtolower($parsed['host']);
 
+        if (isset($parsed['path']) && '/' !== $parsed['path'] && '' !== $parsed['path']) {
+            return null;
+        }
+        if (isset($parsed['query']) || isset($parsed['fragment']) || isset($parsed['user']) || isset($parsed['pass'])) {
+            return null;
+        }
+
+        $scheme = strtolower($parsed['scheme']);
+        if ('http' !== $scheme && 'https' !== $scheme) {
+            return null;
+        }
+
+        $host = strtolower($parsed['host']);
         $port = $parsed['port'] ?? null;
         if (null === $port) {
-            $port = 'https' === $scheme ? 443 : ('http' === $scheme ? 80 : null);
+            $port = 'https' === $scheme ? 443 : 80;
         }
 
         return [
