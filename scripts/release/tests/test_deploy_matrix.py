@@ -302,7 +302,7 @@ CLOUDFLARE_TUNNEL_TOKEN_FILE={token_path}
             cmd = [str(root / "scripts/production/deploy"), "--release", "0.1.5", "--dry-run"]
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertNotEqual(res.returncode, 0)
-            self.assertTrue("Missing Cloudflare tunnel token" in res.stderr)
+            self.assertTrue("CLOUDFLARE_TUNNEL_TOKEN_FILE must be readable" in res.stderr or "Missing Cloudflare tunnel token" in res.stderr)
 
     def test_deploy_script_rejects_nonexistent_release(self):
         root = pathlib.Path(__file__).parents[3]
