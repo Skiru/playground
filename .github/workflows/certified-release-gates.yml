@@ -20,6 +20,9 @@ env:
   API_IMAGE: family-places-api:certification
   WEB_IMAGE: family-places-web:certification
   POSTGIS_IMAGE: family-places-postgis:certification
+  CF_ACCESS_VALIDATOR_IMAGE: family-places-cf-access-validator:certification
+  CLOUDFLARE_ACCESS_ISSUER: https://playground.cloudflareaccess.com
+  CLOUDFLARE_ACCESS_AUD: dummy_aud_value
   MEDIA_PUBLIC_BASE_URL: http://gateway:8080/media
   MAP_STYLE_URL: http://gateway:8080/fixtures/map-style.json
   MAP_ATTRIBUTION: FamilyPlaces certification map
