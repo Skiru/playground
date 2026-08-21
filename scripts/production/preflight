@@ -38,14 +38,7 @@ for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "${CF_ACCESS
     *) die "image $image must be an immutable @sha256 digest reference" ;;
   esac
 
-  inspect_output=$(docker buildx imagetools inspect "$image" 2>&1) || {
-    if printf '%s\n' "$image" | grep -q 'family-places-cf-access-validator'; then
-      fallback_ref=$(printf '%s\n' "$image" | sed 's#family-places-cf-access-validator#family-places-api#')
-      inspect_output=$(docker buildx imagetools inspect "$fallback_ref" 2>&1) || die "failed to inspect image $image: $inspect_output"
-    else
-      die "failed to inspect image $image: $inspect_output"
-    fi
-  }
+  inspect_output=$(docker buildx imagetools inspect "$image" 2>&1) || die "failed to inspect image $image: $inspect_output"
   if ! printf '%s\n' "$inspect_output" | grep -q "$host_platform"; then
     die "image $image does not provide the specified platform ($host_platform)"
   fi
