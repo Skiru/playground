@@ -35,7 +35,7 @@ untrusted_pem_private = untrusted_private_key.private_bytes(
 os.environ["CLOUDFLARE_ACCESS_TEST_MODE"] = "true"
 os.environ["CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY"] = pem_public
 os.environ["CLOUDFLARE_ACCESS_ISSUER"] = "https://playground.cloudflareaccess.com"
-os.environ["CLOUDFLARE_ACCESS_AUD"] = "test-aud-12345"
+os.environ["CLOUDFLARE_ACCESS_AUD"] = "dummy_aud_value"
 
 from app import run, validate_assertion, ValidatorHandler
 from http.server import HTTPServer
@@ -53,7 +53,7 @@ class TestCFAccessValidator(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
 
-    def make_jwt(self, email="admin@playground.com.pl", iss="https://playground.cloudflareaccess.com", aud="test-aud-12345", exp_offset=3600, key=pem_private):
+    def make_jwt(self, email="admin@playground.com.pl", iss="https://playground.cloudflareaccess.com", aud="dummy_aud_value", exp_offset=3600, key=pem_private):
         payload = {
             "iss": iss,
             "aud": aud,

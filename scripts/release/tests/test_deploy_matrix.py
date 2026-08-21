@@ -172,7 +172,7 @@ MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
-CLOUDFLARE_ACCESS_AUD=test-aud-12345
+CLOUDFLARE_ACCESS_AUD=dummy_aud_value
 CLOUDFLARE_ACCESS_TEST_MODE=false
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 """)
@@ -220,7 +220,7 @@ MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
-CLOUDFLARE_ACCESS_AUD=test-aud-12345
+CLOUDFLARE_ACCESS_AUD=dummy_aud_value
 CLOUDFLARE_ACCESS_TEST_MODE=false
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_path}
 """)
@@ -267,7 +267,7 @@ MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
-CLOUDFLARE_ACCESS_AUD=test-aud-12345
+CLOUDFLARE_ACCESS_AUD=dummy_aud_value
 CLOUDFLARE_ACCESS_TEST_MODE=false
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 """)

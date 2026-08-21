@@ -4,10 +4,16 @@ title = "FamilyPlaces Gitleaks configuration"
 useDefault = true
 
 [allowlist]
-description = "Ignore false positives triggered by 40-character Git commit SHAs and build manifests"
+description = "Ignore false positives triggered by 40-character Git commit SHAs, build manifests, and dummy test AUDs"
 paths = [
     '''scripts/verify-artifact-chain''',
     '''scripts/test-validate-env''',
     '''compose\.prod\.yaml''',
-    '''reports/implementation/.*'''
+    '''reports/implementation/.*''',
+    '''\.env\.example''',
+    '''scripts/release/tests/test_deploy_matrix\.py'''
+]
+regexes = [
+    '''CLOUDFLARE_ACCESS_AUD''',
+    '''test-aud-12345'''
 ]
