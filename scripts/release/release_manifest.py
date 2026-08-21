@@ -83,8 +83,10 @@ def validate_manifest(
     _require(isinstance(images, list), "images must be an array")
     _require(len(images) == len(IMAGES), f"manifest must contain exactly {len(IMAGES)} images")
     expected = dict(IMAGES)
-    _require({image.get("component") for image in images if isinstance(image, dict)} == set(expected),
-             "manifest components must be exactly api, web, postgis, and cf-access-validator")
+    _require(
+        {image.get("component") for image in images if isinstance(image, dict)} == set(expected),
+        "manifest components must be exactly api, web, postgis, and cf-access-validator",
+    )
 
     for image in images:
         _require(isinstance(image, dict), "each image must be an object")
@@ -96,36 +98,55 @@ def validate_manifest(
         _require(image.get("name") == name, f"{component}: image name mismatch")
         _require(image.get("versionTag") == version_tag, f"{component}: version tag mismatch")
         _require(image.get("shaTag") == sha_tag, f"{component}: SHA tag mismatch")
-        _require(DIGEST_RE.fullmatch(str(manifest_digest)) is not None,
-                 f"{component}: invalid manifest digest")
-        _require(image.get("manifestMediaType") in INDEX_MEDIA_TYPES,
-                 f"{component}: manifest must be an OCI image index")
-        _require(version_tag not in ("main", "latest") and sha_tag not in ("main", "latest"),
-                 f"{component}: forbidden mutable tag")
+        _require(
+            DIGEST_RE.fullmatch(str(manifest_digest)) is not None,
+            f"{component}: invalid manifest digest",
+        )
+        _require(
+            image.get("manifestMediaType") in INDEX_MEDIA_TYPES,
+            f"{component}: manifest must be an OCI image index",
+        )
+        _require(
+            version_tag not in ("main", "latest") and sha_tag not in ("main", "latest"),
+            f"{component}: forbidden mutable tag",
+        )
 
         tag_digests = image.get("tagDigests")
         _require(isinstance(tag_digests, dict), f"{component}: tagDigests must be an object")
         _require(set(tag_digests) == {"version", "sha"}, f"{component}: unexpected immutable tag")
-        _require(tag_digests.get("version") == manifest_digest,
-                 f"{component}: version tag digest mismatch")
-        _require(tag_digests.get("sha") == manifest_digest,
-                 f"{component}: SHA tag digest mismatch")
+        _require(
+            tag_digests.get("version") == manifest_digest,
+            f"{component}: version tag digest mismatch",
+        )
+        _require(
+            tag_digests.get("sha") == manifest_digest,
+            f"{component}: SHA tag digest mismatch",
+        )
 
         platforms = image.get("platforms")
         _require(isinstance(platforms, list), f"{component}: platforms must be an array")
-        _require(len(platforms) == 2, f"{component}: multiarch manifest with both linux/amd64 and linux/arm64 is required")
+        _require(
+            len(platforms) == 2,
+            f"{component}: multiarch manifest with both linux/amd64 and linux/arm64 is required",
+        )
         actual_platforms = {
             (platform.get("os"), platform.get("architecture"))
             for platform in platforms
             if isinstance(platform, dict)
         }
-        _require(actual_platforms == set(PLATFORMS),
-                 f"{component}: platforms must be exactly linux/amd64 and linux/arm64")
+        _require(
+            actual_platforms == set(PLATFORMS),
+            f"{component}: platforms must be exactly linux/amd64 and linux/arm64",
+        )
         for platform in platforms:
-            _require(DIGEST_RE.fullmatch(str(platform.get("digest"))) is not None,
-                     f"{component}: invalid platform digest")
-            _require(platform.get("sourceRevision") == source_sha,
-                     f"{component}: OCI source revision label mismatch")
+            _require(
+                DIGEST_RE.fullmatch(str(platform.get("digest"))) is not None,
+                f"{component}: invalid platform digest",
+            )
+            _require(
+                platform.get("sourceRevision") == source_sha,
+                f"{component}: OCI source revision label mismatch",
+            )
 
 
 def _run_json(*command: str) -> dict[str, Any]:
@@ -139,23 +160,15 @@ def _run_json(*command: str) -> dict[str, Any]:
 
 
 def _inspect_manifest(reference: str) -> tuple[dict[str, Any], str]:
-    try:
-        manifest = _run_json(
-            "docker", "buildx", "imagetools", "inspect", reference,
-            "--format", "{{json .Manifest}}",
-        )
-    except Exception:
-        if "cf-access-validator" in reference:
-            fallback_ref = reference.replace("cf-access-validator", "api")
-            manifest = _run_json(
-                "docker", "buildx", "imagetools", "inspect", fallback_ref,
-                "--format", "{{json .Manifest}}",
-            )
-        else:
-            raise
+    manifest = _run_json(
+        "docker", "buildx", "imagetools", "inspect", reference,
+        "--format", "{{json .Manifest}}",
+    )
     digest = manifest.get("digest")
-    _require(DIGEST_RE.fullmatch(str(digest)) is not None,
-             f"registry returned an invalid manifest digest for {reference}")
+    _require(
+        DIGEST_RE.fullmatch(str(digest)) is not None,
+        f"registry returned an invalid manifest digest for {reference}",
+    )
     return manifest, digest
 
 
@@ -175,20 +188,10 @@ def _platform_entries(index: dict[str, Any], image_name: str, source_sha: str) -
         _require(DIGEST_RE.fullmatch(str(digest)) is not None,
                  f"{image_name}: invalid platform digest")
         inspect_ref = f"{image_name}@{digest}"
-        try:
-            config = _run_json(
-                "docker", "buildx", "imagetools", "inspect", inspect_ref,
-                "--format", "{{json .Image}}",
-            )
-        except Exception:
-            if "cf-access-validator" in inspect_ref:
-                fallback_ref = inspect_ref.replace("cf-access-validator", "api")
-                config = _run_json(
-                    "docker", "buildx", "imagetools", "inspect", fallback_ref,
-                    "--format", "{{json .Image}}",
-                )
-            else:
-                raise
+        config = _run_json(
+            "docker", "buildx", "imagetools", "inspect", inspect_ref,
+            "--format", "{{json .Image}}",
+        )
         labels = config.get("config", {}).get("Labels", {})
         _require(labels.get("org.opencontainers.image.revision") == source_sha,
                  f"{image_name}@{digest}: OCI source revision label mismatch")
@@ -327,7 +330,6 @@ def resolve_release(release_input: str, output_path: pathlib.Path | None = None)
     elif clean_input not in ("local", "auto"):
         raise ManifestError(f"expected release version, got '{release_input}'")
 
-    # 1. Check local release-manifest/release.json if it exists and matches version
     local_manifest_path = pathlib.Path("release-manifest/release.json")
     if local_manifest_path.is_file():
         try:
@@ -345,7 +347,6 @@ def resolve_release(release_input: str, output_path: pathlib.Path | None = None)
 
     _require(bool(version and SEMVER_RE.fullmatch(version)), f"expected release version, got '{release_input}'")
 
-    # Inspect image on GHCR to find source_sha
     ref = f"ghcr.io/skiru/family-places-api:v{version}"
     try:
         config = _run_json("docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Image}}")
@@ -362,7 +363,6 @@ def resolve_release(release_input: str, output_path: pathlib.Path | None = None)
 
     _require(bool(source_sha and SHA_RE.fullmatch(source_sha)), f"could not determine valid source SHA for release version '{version}'")
 
-    # Try resolving tree from git
     try:
         res = subprocess.run(["git", "rev-parse", f"{source_sha}^{{tree}}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
         source_tree = res.stdout.strip()
