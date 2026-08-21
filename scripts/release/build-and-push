@@ -27,4 +27,5 @@ done <<'EOF'
 api|infra/docker/api.Dockerfile|ghcr.io/skiru/family-places-api
 web|infra/docker/web.Dockerfile|ghcr.io/skiru/family-places-web
 postgis|infra/docker/postgis.Dockerfile|ghcr.io/skiru/family-places-postgis
+cf-access-validator|infra/docker/cf-access-validator.Dockerfile|ghcr.io/skiru/family-places-cf-access-validator
 EOF

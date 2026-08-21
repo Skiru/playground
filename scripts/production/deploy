@@ -2,6 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib.sh"
 
 release_arg=""
@@ -67,11 +68,13 @@ trap 'rm -f "$resolved_manifest"' EXIT
 
 python3 "$ROOT/scripts/release/release_manifest.py" resolve "$release_arg" --output "$resolved_manifest" >/dev/null
 
-export RELEASE_VERSION=$(jq -r .releaseVersion "$resolved_manifest")
-export RELEASE_SHA=$(jq -r .sourceSha "$resolved_manifest")
-export API_IMAGE=$(jq -r '.images[] | select(.component=="api") | .name + "@" + .manifestDigest' "$resolved_manifest")
-export WEB_IMAGE=$(jq -r '.images[] | select(.component=="web") | .name + "@" + .manifestDigest' "$resolved_manifest")
-export POSTGIS_IMAGE=$(jq -r '.images[] | select(.component=="postgis") | .name + "@" + .manifestDigest' "$resolved_manifest")
+RELEASE_VERSION="$(jq -r .releaseVersion "$resolved_manifest")"
+RELEASE_SHA="$(jq -r .sourceSha "$resolved_manifest")"
+API_IMAGE="$(jq -r '.images[] | select(.component=="api") | .name + "@" + .manifestDigest' "$resolved_manifest")"
+WEB_IMAGE="$(jq -r '.images[] | select(.component=="web") | .name + "@" + .manifestDigest' "$resolved_manifest")"
+POSTGIS_IMAGE="$(jq -r '.images[] | select(.component=="postgis") | .name + "@" + .manifestDigest' "$resolved_manifest")"
+CF_ACCESS_VALIDATOR_IMAGE="$(jq -r '.images[] | select(.component=="cf-access-validator") | .name + "@" + .manifestDigest' "$resolved_manifest")"
+export RELEASE_VERSION RELEASE_SHA API_IMAGE WEB_IMAGE POSTGIS_IMAGE CF_ACCESS_VALIDATOR_IMAGE
 
 arch=$(uname -m)
 case "$arch" in
@@ -102,6 +105,7 @@ if [ "$print_release" = "true" ]; then
   printf 'API: %s\n' "$API_IMAGE"
   printf 'WEB: %s\n' "$WEB_IMAGE"
   printf 'POSTGIS: %s\n' "$POSTGIS_IMAGE"
+  printf 'CF_ACCESS_VALIDATOR: %s\n' "$CF_ACCESS_VALIDATOR_IMAGE"
   printf 'Storage: %s\n' "${STORAGE_DRIVER:-local}"
   printf 'Backup: %s\n' "$( [ "${BACKUP_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
   printf 'Discovery: %s\n' "$( [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
@@ -115,6 +119,7 @@ if [ "$dry_run" = "true" ]; then
   printf 'API: %s\n' "$API_IMAGE"
   printf 'WEB: %s\n' "$WEB_IMAGE"
   printf 'POSTGIS: %s\n' "$POSTGIS_IMAGE"
+  printf 'CF_ACCESS_VALIDATOR: %s\n' "$CF_ACCESS_VALIDATOR_IMAGE"
   printf 'Storage: %s\n' "${STORAGE_DRIVER:-local}"
   printf 'Backup: %s\n' "$( [ "${BACKUP_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
   printf 'Discovery: %s\n' "$( [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
@@ -157,6 +162,7 @@ if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
   services_to_start="$services_to_start cloudflared"
 fi
 
+# shellcheck disable=SC2086
 compose up --wait -d $services_to_start
 
 "$SCRIPT_DIR/smoke"
@@ -165,12 +171,13 @@ descriptor="$(release_dir)/$timestamp-${RELEASE_SHA}.json"
 jq -n \
   --arg release "v${RELEASE_VERSION}" \
   --arg sha "$RELEASE_SHA" \
-  --arg tree "$(git -C "$ROOT" rev-parse HEAD^{tree} 2>/dev/null || echo "$RELEASE_SHA")" \
+  --arg tree "$(git -C "$ROOT" rev-parse 'HEAD^{tree}' 2>/dev/null || echo "$RELEASE_SHA")" \
   --arg version "$RELEASE_VERSION" \
   --arg arch "$host_platform" \
   --arg api "$API_IMAGE" \
   --arg web "$WEB_IMAGE" \
   --arg postgis "$POSTGIS_IMAGE" \
+  --arg validator "$CF_ACCESS_VALIDATOR_IMAGE" \
   --arg before "$before" \
   --arg after "$after" \
   --arg storage "${STORAGE_DRIVER:-local}" \
@@ -187,7 +194,8 @@ jq -n \
     images: {
       api: $api,
       web: $web,
-      postgis: $postgis
+      postgis: $postgis,
+      "cf-access-validator": $validator
     },
     storageDriver: $storage,
     backupEnabled: ($backup == "true"),
@@ -211,6 +219,7 @@ printf 'Architecture: %s\n' "$host_platform"
 printf 'API: %s\n' "$API_IMAGE"
 printf 'WEB: %s\n' "$WEB_IMAGE"
 printf 'POSTGIS: %s\n' "$POSTGIS_IMAGE"
+printf 'CF_ACCESS_VALIDATOR: %s\n' "$CF_ACCESS_VALIDATOR_IMAGE"
 printf 'Storage: %s\n' "${STORAGE_DRIVER:-local}"
 printf 'Backups: %s\n' "$( [ "${BACKUP_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"
 printf 'Discovery: %s\n' "$( [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ] && echo "enabled" || echo "disabled" )"

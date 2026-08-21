@@ -30,6 +30,9 @@ RELEASE_VERSION=1.0.0
 API_IMAGE=ghcr.io/skiru/family-places-api@sha256:caaf14f3dd4c885dcf0fc3d54817b5c89c82b07fecb563591eb914a2279a30b8
 WEB_IMAGE=ghcr.io/skiru/family-places-web@sha256:dd7f9c70a06500b44058f826767326105f860e15be8cfc564f3de838c92d51a6
 POSTGIS_IMAGE=ghcr.io/skiru/family-places-postgis@sha256:0ce4396e2ec0312ff4c2dff4911f935da07888bcf9fa3c26fe73803be14809a1
+CF_ACCESS_VALIDATOR_IMAGE=ghcr.io/skiru/family-places-cf-access-validator@sha256:0ce4396e2ec0312ff4c2dff4911f935da07888bcf9fa3c26fe73803be14809a1
+CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
+CLOUDFLARE_ACCESS_AUD=test-aud-12345
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
 CLOUDFLARE_TUNNEL_TOKEN_FILE=$temp_dir/token
 APP_PUBLIC_ORIGIN=https://playground.com.pl
@@ -227,6 +230,19 @@ DOZZLE_AUTH_PROVIDER=simple
 EOF
 if "$validator" "$temp_dir/env.I3" >/dev/null 2>&1; then
   echo "FAIL: expected non-forward-proxy DOZZLE_AUTH_PROVIDER to fail" >&2
+  exit 1
+fi
+
+echo "--- Test I4: CLOUDFLARE_ACCESS_TEST_MODE=true => FAIL ---"
+valid_base > "$temp_dir/env.I4"
+cat >> "$temp_dir/env.I4" <<'EOF'
+STORAGE_DRIVER=local
+BACKUP_ENABLED=false
+MEDIA_PUBLIC_BASE_URL=https://playground.com.pl/media
+CLOUDFLARE_ACCESS_TEST_MODE=true
+EOF
+if "$validator" "$temp_dir/env.I4" >/dev/null 2>&1; then
+  echo "FAIL: expected CLOUDFLARE_ACCESS_TEST_MODE=true to fail" >&2
   exit 1
 fi
 

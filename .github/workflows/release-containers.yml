@@ -64,6 +64,7 @@ jobs:
       api_digest: ${{ steps.manifest.outputs.api_digest }}
       web_digest: ${{ steps.manifest.outputs.web_digest }}
       postgis_digest: ${{ steps.manifest.outputs.postgis_digest }}
+      cf_access_validator_digest: ${{ steps.manifest.outputs.cf_access_validator_digest }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with: {fetch-depth: 0, ref: '${{ inputs.source_sha }}'}
@@ -84,8 +85,9 @@ jobs:
             printf 'api_digest=%s\n' "$(jq -r '.images[] | select(.component == "api") | .manifestDigest' release-manifest/release.json)"
             printf 'web_digest=%s\n' "$(jq -r '.images[] | select(.component == "web") | .manifestDigest' release-manifest/release.json)"
             printf 'postgis_digest=%s\n' "$(jq -r '.images[] | select(.component == "postgis") | .manifestDigest' release-manifest/release.json)"
+            printf 'cf_access_validator_digest=%s\n' "$(jq -r '.images[] | select(.component == "cf-access-validator") | .manifestDigest' release-manifest/release.json)"
           } >> "$GITHUB_OUTPUT"
-          jq -r '.images[] | "\(.component | ascii_upcase)_IMAGE=\(.name)@\(.manifestDigest)"' release-manifest/release.json > release-manifest/.env.production.images
+          jq -r '.images[] | "\(.component | gsub("-"; "_") | ascii_upcase)_IMAGE=\(.name)@\(.manifestDigest)"' release-manifest/release.json > release-manifest/.env.production.images
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-manifest-data
@@ -132,12 +134,21 @@ jobs:
           subject-digest: ${{ needs.release-build-and-push.outputs.postgis_digest }}
           push-to-registry: true
           create-storage-record: false
+      - name: attest-cf-access-validator-image
+        id: attest_cf_access_validator
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ghcr.io/skiru/family-places-cf-access-validator
+          subject-digest: ${{ needs.release-build-and-push.outputs.cf_access_validator_digest }}
+          push-to-registry: true
+          create-storage-record: false
       - name: verify-image-attestations
         env:
           GH_TOKEN: ${{ github.token }}
           API_DIGEST: ${{ needs.release-build-and-push.outputs.api_digest }}
           WEB_DIGEST: ${{ needs.release-build-and-push.outputs.web_digest }}
           POSTGIS_DIGEST: ${{ needs.release-build-and-push.outputs.postgis_digest }}
+          CF_ACCESS_VALIDATOR_DIGEST: ${{ needs.release-build-and-push.outputs.cf_access_validator_digest }}
         run: |
           while IFS='|' read -r image digest; do
             gh attestation verify "oci://${image}@${digest}" --repo "$GITHUB_REPOSITORY"
@@ -145,6 +156,7 @@ jobs:
           ghcr.io/skiru/family-places-api|$API_DIGEST
           ghcr.io/skiru/family-places-web|$WEB_DIGEST
           ghcr.io/skiru/family-places-postgis|$POSTGIS_DIGEST
+          ghcr.io/skiru/family-places-cf-access-validator|$CF_ACCESS_VALIDATOR_DIGEST
           EOF
       - name: capture-attestation-evidence
         env:
@@ -157,15 +169,20 @@ jobs:
           POSTGIS_ATTESTATION_ID: ${{ steps.attest_postgis.outputs.attestation-id }}
           POSTGIS_ATTESTATION_URL: ${{ steps.attest_postgis.outputs.attestation-url }}
           POSTGIS_BUNDLE: ${{ steps.attest_postgis.outputs.bundle-path }}
+          CF_ACCESS_VALIDATOR_ATTESTATION_ID: ${{ steps.attest_cf_access_validator.outputs.attestation-id }}
+          CF_ACCESS_VALIDATOR_ATTESTATION_URL: ${{ steps.attest_cf_access_validator.outputs.attestation-url }}
+          CF_ACCESS_VALIDATOR_BUNDLE: ${{ steps.attest_cf_access_validator.outputs.bundle-path }}
         run: |
           cp "$API_BUNDLE" release-manifest/api-attestation.json
           cp "$WEB_BUNDLE" release-manifest/web-attestation.json
           cp "$POSTGIS_BUNDLE" release-manifest/postgis-attestation.json
+          cp "$CF_ACCESS_VALIDATOR_BUNDLE" release-manifest/cf-access-validator-attestation.json
           jq -n \
             --arg apiId "$API_ATTESTATION_ID" --arg apiUrl "$API_ATTESTATION_URL" \
             --arg webId "$WEB_ATTESTATION_ID" --arg webUrl "$WEB_ATTESTATION_URL" \
             --arg postgisId "$POSTGIS_ATTESTATION_ID" --arg postgisUrl "$POSTGIS_ATTESTATION_URL" \
-            '{api:{id:$apiId,url:$apiUrl},web:{id:$webId,url:$webUrl},postgis:{id:$postgisId,url:$postgisUrl}}' \
+            --arg validatorId "$CF_ACCESS_VALIDATOR_ATTESTATION_ID" --arg validatorUrl "$CF_ACCESS_VALIDATOR_ATTESTATION_URL" \
+            '{api:{id:$apiId,url:$apiUrl},web:{id:$webId,url:$webUrl},postgis:{id:$postgisId,url:$postgisUrl},"cf-access-validator":{id:$validatorId,url:$validatorUrl}}' \
             > release-manifest/attestations.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

@@ -49,7 +49,7 @@ load_env() {
     [ -n "${API_IMAGE:-}" ] || export API_IMAGE=$(jq -r '.images.api // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${WEB_IMAGE:-}" ] || export WEB_IMAGE=$(jq -r '.images.web // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${POSTGIS_IMAGE:-}" ] || export POSTGIS_IMAGE=$(jq -r '.images.postgis // empty' "$(release_descriptor)" 2>/dev/null || true)
-    [ -n "${CF_ACCESS_VALIDATOR_IMAGE:-}" ] || export CF_ACCESS_VALIDATOR_IMAGE=${CF_ACCESS_VALIDATOR_IMAGE:-family-places-cf-access-validator:local}
+    [ -n "${CF_ACCESS_VALIDATOR_IMAGE:-}" ] || export CF_ACCESS_VALIDATOR_IMAGE=$(jq -r '.images["cf-access-validator"] // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${RELEASE_VERSION:-}" ] || export RELEASE_VERSION=$(jq -r '.releaseVersion // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${RELEASE_SHA:-}" ] || export RELEASE_SHA=$(jq -r '.sourceSha // empty' "$(release_descriptor)" 2>/dev/null || true)
   fi

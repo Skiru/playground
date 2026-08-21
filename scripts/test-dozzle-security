@@ -6,6 +6,7 @@ cd "$repo_dir"
 
 echo "=== 1. Testing Caddyfile Dozzle Route & Header Protection ==="
 caddyfile="infra/deployment/Caddyfile"
+# shellcheck disable=SC2016
 if ! grep -Fq 'logs.{$GATEWAY_DOMAIN:playground.com.pl}' "$caddyfile"; then
   echo "ERROR: Caddyfile missing logs.{$GATEWAY_DOMAIN:playground.com.pl} domain block." >&2
   exit 1

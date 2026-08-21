@@ -55,10 +55,12 @@ else
   api=$(jq -r '.images[] | select(.component=="api") | .name + "@" + .manifestDigest' "$tmp_manifest")
   web=$(jq -r '.images[] | select(.component=="web") | .name + "@" + .manifestDigest' "$tmp_manifest")
   postgis=$(jq -r '.images[] | select(.component=="postgis") | .name + "@" + .manifestDigest' "$tmp_manifest")
+  cf_access_validator=$(jq -r '.images[] | select(.component=="cf-access-validator") | .name + "@" + .manifestDigest' "$tmp_manifest")
 
   printf 'RELEASE_VERSION=%s\n' "$version"
   printf 'RELEASE_SHA=%s\n' "$sha"
   printf 'API_IMAGE=%s\n' "$api"
   printf 'WEB_IMAGE=%s\n' "$web"
   printf 'POSTGIS_IMAGE=%s\n' "$postgis"
+  printf 'CF_ACCESS_VALIDATOR_IMAGE=%s\n' "$cf_access_validator"
 fi

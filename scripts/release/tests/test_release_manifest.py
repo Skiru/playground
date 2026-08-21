@@ -13,7 +13,7 @@ SPEC.loader.exec_module(release_manifest)
 
 SHA = "a" * 40
 TREE = "b" * 40
-DIGESTS = [f"sha256:{character * 64}" for character in "123456789abcdef"]
+DIGESTS = [f"sha256:{character * 64}" for character in "123456789abcdef0123456789"]
 
 
 def valid_manifest():

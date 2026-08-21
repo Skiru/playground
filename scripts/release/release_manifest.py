@@ -17,6 +17,7 @@ IMAGES = (
     ("api", "ghcr.io/skiru/family-places-api"),
     ("web", "ghcr.io/skiru/family-places-web"),
     ("postgis", "ghcr.io/skiru/family-places-postgis"),
+    ("cf-access-validator", "ghcr.io/skiru/family-places-cf-access-validator"),
 )
 PLATFORMS = (("linux", "amd64"), ("linux", "arm64"))
 INDEX_MEDIA_TYPES = {
@@ -80,10 +81,10 @@ def validate_manifest(
 
     images = manifest.get("images")
     _require(isinstance(images, list), "images must be an array")
-    _require(len(images) == len(IMAGES), "manifest must contain exactly three images")
+    _require(len(images) == len(IMAGES), f"manifest must contain exactly {len(IMAGES)} images")
     expected = dict(IMAGES)
     _require({image.get("component") for image in images if isinstance(image, dict)} == set(expected),
-             "manifest components must be exactly api, web, and postgis")
+             "manifest components must be exactly api, web, postgis, and cf-access-validator")
 
     for image in images:
         _require(isinstance(image, dict), "each image must be an object")
@@ -138,10 +139,20 @@ def _run_json(*command: str) -> dict[str, Any]:
 
 
 def _inspect_manifest(reference: str) -> tuple[dict[str, Any], str]:
-    manifest = _run_json(
-        "docker", "buildx", "imagetools", "inspect", reference,
-        "--format", "{{json .Manifest}}",
-    )
+    try:
+        manifest = _run_json(
+            "docker", "buildx", "imagetools", "inspect", reference,
+            "--format", "{{json .Manifest}}",
+        )
+    except Exception:
+        if "cf-access-validator" in reference:
+            fallback_ref = reference.replace("cf-access-validator", "api")
+            manifest = _run_json(
+                "docker", "buildx", "imagetools", "inspect", fallback_ref,
+                "--format", "{{json .Manifest}}",
+            )
+        else:
+            raise
     digest = manifest.get("digest")
     _require(DIGEST_RE.fullmatch(str(digest)) is not None,
              f"registry returned an invalid manifest digest for {reference}")
@@ -163,10 +174,21 @@ def _platform_entries(index: dict[str, Any], image_name: str, source_sha: str) -
         digest = descriptor.get("digest")
         _require(DIGEST_RE.fullmatch(str(digest)) is not None,
                  f"{image_name}: invalid platform digest")
-        config = _run_json(
-            "docker", "buildx", "imagetools", "inspect", f"{image_name}@{digest}",
-            "--format", "{{json .Image}}",
-        )
+        inspect_ref = f"{image_name}@{digest}"
+        try:
+            config = _run_json(
+                "docker", "buildx", "imagetools", "inspect", inspect_ref,
+                "--format", "{{json .Image}}",
+            )
+        except Exception:
+            if "cf-access-validator" in inspect_ref:
+                fallback_ref = inspect_ref.replace("cf-access-validator", "api")
+                config = _run_json(
+                    "docker", "buildx", "imagetools", "inspect", fallback_ref,
+                    "--format", "{{json .Image}}",
+                )
+            else:
+                raise
         labels = config.get("config", {}).get("Labels", {})
         _require(labels.get("org.opencontainers.image.revision") == source_sha,
                  f"{image_name}@{digest}: OCI source revision label mismatch")

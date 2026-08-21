@@ -188,7 +188,7 @@ services:
     logging: {driver: local, options: {max-size: 5m, max-file: "3"}}
 
   cf-access-validator:
-    image: ${CF_ACCESS_VALIDATOR_IMAGE:-family-places-cf-access-validator:local}
+    image: ${CF_ACCESS_VALIDATOR_IMAGE:?CF_ACCESS_VALIDATOR_IMAGE is required in production}
     build: !reset null
     restart: unless-stopped
     read_only: true
@@ -197,8 +197,8 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     environment:
-      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-playground}
-      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
+      CLOUDFLARE_ACCESS_ISSUER: ${CLOUDFLARE_ACCESS_ISSUER:?CLOUDFLARE_ACCESS_ISSUER is required in production}
+      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:?CLOUDFLARE_ACCESS_AUD is required in production}
       CLOUDFLARE_ACCESS_TEST_MODE: ${CLOUDFLARE_ACCESS_TEST_MODE:-false}
       CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY: ${CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY:-}
     healthcheck:
@@ -206,7 +206,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    networks: [internal]
+    networks: [internal, api-egress]
     logging: {driver: json-file, options: {max-size: 5m, max-file: "3"}}
 
   dozzle-socket-proxy:

@@ -172,7 +172,7 @@ services:
       context: .
       dockerfile: infra/docker/cf-access-validator.Dockerfile
     environment:
-      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-playground}
+      CLOUDFLARE_ACCESS_ISSUER: ${CLOUDFLARE_ACCESS_ISSUER:-https://playground.cloudflareaccess.com}
       CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
       CLOUDFLARE_ACCESS_TEST_MODE: ${CLOUDFLARE_ACCESS_TEST_MODE:-false}
       CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY: ${CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY:-}
@@ -181,7 +181,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    networks: [internal]
+    networks: [internal, api-egress]
 
   dozzle-socket-proxy:
     image: ${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}

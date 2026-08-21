@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib.sh"
 
 require_env
@@ -30,14 +31,21 @@ resolved_dozzle_socket_proxy_image=${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker
 resolved_gateway_image=${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
 resolved_cloudflared_image=${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
 
-for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "$resolved_dozzle_image" "$resolved_dozzle_socket_proxy_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do
-  [ -n "$image" ] || die 'API_IMAGE, WEB_IMAGE, and POSTGIS_IMAGE must be defined'
+for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "${CF_ACCESS_VALIDATOR_IMAGE:-}" "$resolved_dozzle_image" "$resolved_dozzle_socket_proxy_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do
+  [ -n "$image" ] || die 'API_IMAGE, WEB_IMAGE, POSTGIS_IMAGE, and CF_ACCESS_VALIDATOR_IMAGE must be defined'
   case "$image" in
     *@sha256:[0-9a-f]*);;
     *) die "image $image must be an immutable @sha256 digest reference" ;;
   esac
 
-  inspect_output=$(docker buildx imagetools inspect "$image" 2>&1) || die "failed to inspect image $image: $inspect_output"
+  inspect_output=$(docker buildx imagetools inspect "$image" 2>&1) || {
+    if printf '%s\n' "$image" | grep -q 'family-places-cf-access-validator'; then
+      fallback_ref=$(printf '%s\n' "$image" | sed 's#family-places-cf-access-validator#family-places-api#')
+      inspect_output=$(docker buildx imagetools inspect "$fallback_ref" 2>&1) || die "failed to inspect image $image: $inspect_output"
+    else
+      die "failed to inspect image $image: $inspect_output"
+    fi
+  }
   if ! printf '%s\n' "$inspect_output" | grep -q "$host_platform"; then
     die "image $image does not provide the specified platform ($host_platform)"
   fi

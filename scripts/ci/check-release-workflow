@@ -17,6 +17,7 @@ require 'uses: ./.github/workflows/certified-release-gates.yml'
 require 'subject-name: ghcr.io/skiru/family-places-api'
 require 'subject-name: ghcr.io/skiru/family-places-web'
 require 'subject-name: ghcr.io/skiru/family-places-postgis'
+require 'subject-name: ghcr.io/skiru/family-places-cf-access-validator'
 # These are literal GitHub/shell expressions that must remain unexpanded here.
 # shellcheck disable=SC2016
 require 'subject-digest: ${{ needs.release-build-and-push.outputs.api_digest }}'
@@ -24,6 +25,8 @@ require 'subject-digest: ${{ needs.release-build-and-push.outputs.api_digest }}'
 require 'subject-digest: ${{ needs.release-build-and-push.outputs.web_digest }}'
 # shellcheck disable=SC2016
 require 'subject-digest: ${{ needs.release-build-and-push.outputs.postgis_digest }}'
+# shellcheck disable=SC2016
+require 'subject-digest: ${{ needs.release-build-and-push.outputs.cf_access_validator_digest }}'
 require 'push-to-registry: true'
 # shellcheck disable=SC2016
 require 'gh attestation verify "oci://${image}@${digest}" --repo "$GITHUB_REPOSITORY"'

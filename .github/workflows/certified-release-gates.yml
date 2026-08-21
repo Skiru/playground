@@ -128,6 +128,7 @@ jobs:
           docker build -f infra/docker/api.Dockerfile -t family-places-api:certification .
           docker build -f infra/docker/web.Dockerfile -t family-places-web:certification .
           docker build -f infra/docker/postgis.Dockerfile -t family-places-postgis:certification .
+          docker build -f infra/docker/cf-access-validator.Dockerfile -t family-places-cf-access-validator:certification .
       - name: trivy-api-image
         run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-api.json family-places-api:certification
       - name: trivy-api-fixable-gate
@@ -140,14 +141,20 @@ jobs:
         run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-postgis.json family-places-postgis:certification
       - name: trivy-postgis-fixable-gate
         run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-postgis.json
+      - name: trivy-cf-access-validator-image
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/repo" -w /repo aquasec/trivy:0.69.3 image --severity HIGH,CRITICAL --exit-code 0 --format json --output evidence/security/trivy-cf-access-validator.json family-places-cf-access-validator:certification
+      - name: trivy-cf-access-validator-fixable-gate
+        run: jq -e '[.Results[]?.Vulnerabilities[]? | select((.FixedVersion // "") != "")] | length == 0' evidence/security/trivy-cf-access-validator.json
       - name: hadolint-api
         run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/api.Dockerfile
       - name: hadolint-web
         run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/web.Dockerfile
       - name: hadolint-postgis
         run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/postgis.Dockerfile
+      - name: hadolint-cf-access-validator
+        run: docker run --rm -i hadolint/hadolint:v2.12.0-debian < infra/docker/cf-access-validator.Dockerfile
       - name: shellcheck
-        run: docker run --rm -v "$PWD:/mnt" koalaman/shellcheck-alpine:v0.10.0 shellcheck --exclude=SC1007 /mnt/scripts/check /mnt/scripts/test /mnt/scripts/ci/start-fresh-e2e-database /mnt/scripts/ci/check-action-pins /mnt/scripts/ci/check-release-workflow /mnt/scripts/ci/install-arm-certification-tools /mnt/scripts/release/build-and-push /mnt/scripts/release/dry-run /mnt/scripts/release/test-manifest /mnt/scripts/release/validate-request /mnt/scripts/release/verify-published /mnt/scripts/verify-gitleaks /mnt/scripts/verify-gitleaks-allowlist
+        run: docker run --rm -v "$PWD:/mnt" koalaman/shellcheck-alpine:v0.10.0 shellcheck --exclude=SC1007 /mnt/scripts/check /mnt/scripts/test /mnt/scripts/ci/start-fresh-e2e-database /mnt/scripts/ci/check-action-pins /mnt/scripts/ci/check-release-workflow /mnt/scripts/ci/install-arm-certification-tools /mnt/scripts/release/build-and-push /mnt/scripts/release/dry-run /mnt/scripts/release/test-manifest /mnt/scripts/release/validate-request /mnt/scripts/release/verify-published /mnt/scripts/verify-gitleaks /mnt/scripts/verify-gitleaks-allowlist /mnt/scripts/validate-production-env /mnt/scripts/production/preflight /mnt/scripts/production/deploy /mnt/scripts/production/smoke /mnt/scripts/test-dozzle-security /mnt/scripts/production/resolve-release /mnt/scripts/test-validate-env
       - name: composer-audit
         run: docker run --rm -v "$PWD/apps/api:/app" -w /app composer:2 composer audit --locked
       - name: pnpm-audit

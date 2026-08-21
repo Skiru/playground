@@ -134,6 +134,7 @@ class TestDeployMatrix(unittest.TestCase):
         self.assertIn("API_IMAGE=ghcr.io/skiru/family-places-api@sha256:", res.stdout)
         self.assertIn("WEB_IMAGE=ghcr.io/skiru/family-places-web@sha256:", res.stdout)
         self.assertIn("POSTGIS_IMAGE=ghcr.io/skiru/family-places-postgis@sha256:", res.stdout)
+        self.assertIn("CF_ACCESS_VALIDATOR_IMAGE=ghcr.io/skiru/family-places-cf-access-validator@sha256:", res.stdout)
 
     def test_deploy_script_dry_run_0_1_5(self):
         root = pathlib.Path(__file__).parents[3]
@@ -170,6 +171,9 @@ BACKUP_ENABLED=false
 MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
+CLOUDFLARE_ACCESS_AUD=test-aud-12345
+CLOUDFLARE_ACCESS_TEST_MODE=false
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 """)
 
@@ -182,6 +186,7 @@ CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
             self.assertIn("API: ghcr.io/skiru/family-places-api@sha256:", res.stdout)
             self.assertIn("WEB: ghcr.io/skiru/family-places-web@sha256:", res.stdout)
             self.assertIn("POSTGIS: ghcr.io/skiru/family-places-postgis@sha256:", res.stdout)
+            self.assertIn("CF_ACCESS_VALIDATOR: ghcr.io/skiru/family-places-cf-access-validator@sha256:", res.stdout)
             self.assertIn("Storage: local", res.stdout)
             self.assertIn("Backup: disabled", res.stdout)
             self.assertIn("Discovery: disabled", res.stdout)
@@ -214,6 +219,9 @@ BACKUP_ENABLED=false
 MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
+CLOUDFLARE_ACCESS_AUD=test-aud-12345
+CLOUDFLARE_ACCESS_TEST_MODE=false
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_path}
 """)
 
@@ -258,6 +266,9 @@ BACKUP_ENABLED=false
 MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 MAP_PROVIDER_NAME=OpenFreeMap
 MAP_ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+CLOUDFLARE_ACCESS_ISSUER=https://playground.cloudflareaccess.com
+CLOUDFLARE_ACCESS_AUD=test-aud-12345
+CLOUDFLARE_ACCESS_TEST_MODE=false
 CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 """)
 

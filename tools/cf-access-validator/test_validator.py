@@ -132,6 +132,21 @@ class TestCFAccessValidator(unittest.TestCase):
             urlopen(req)
         self.assertEqual(cm.exception.code, 403)
 
+    def test_algorithm_confusion_hs256_rejected(self):
+        payload = {
+            "iss": "https://playground.cloudflareaccess.com",
+            "aud": "test-aud-12345",
+            "sub": "user-123",
+            "email": "attacker@evil.com",
+            "exp": int(time.time()) + 3600,
+        }
+        token = jwt.encode(payload, "secret-key", algorithm="HS256", headers={"kid": "test-kid"})
+        req = Request("http://127.0.0.1:8089/validate")
+        req.add_header("Cf-Access-Jwt-Assertion", token)
+        with self.assertRaises(HTTPError) as cm:
+            urlopen(req)
+        self.assertEqual(cm.exception.code, 403)
+
     def test_authenticated_valid_flow(self):
         token = self.make_jwt(email="valid_user@playground.com.pl")
         req = Request("http://127.0.0.1:8089/validate")
