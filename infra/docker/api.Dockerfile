@@ -18,7 +18,7 @@ RUN CGO_ENABLED=1 \
         --replace github.com/getkin/kin-openapi=github.com/getkin/kin-openapi@v0.144.0 \
         --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1
 
-FROM dunglas/frankenphp:php8.5-bookworm@sha256:d904ac794314fea494f806b5c491b74e09335535c0eb721309e45d1aaebd127f AS vendor
+FROM --platform=$BUILDPLATFORM dunglas/frankenphp:php8.5-bookworm@sha256:d904ac794314fea494f806b5c491b74e09335535c0eb721309e45d1aaebd127f AS vendor
 RUN apt-get clean && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && apt-get upgrade -y --no-install-recommends && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
 COPY --from=composer:2@sha256:5946476338742b200bb9ff88f8be56275ddae4b3949c72305cb0dbf10cfcb760 /usr/bin/composer /usr/bin/composer

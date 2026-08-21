@@ -19,7 +19,7 @@ IMAGES = (
     ("postgis", "ghcr.io/skiru/family-places-postgis"),
     ("cf-access-validator", "ghcr.io/skiru/family-places-cf-access-validator"),
 )
-PLATFORMS = (("linux", "amd64"), ("linux", "arm64"))
+PLATFORMS = (("linux", "amd64"),)
 INDEX_MEDIA_TYPES = {
     "application/vnd.docker.distribution.manifest.list.v2+json",
     "application/vnd.oci.image.index.v1+json",
@@ -126,8 +126,8 @@ def validate_manifest(
         platforms = image.get("platforms")
         _require(isinstance(platforms, list), f"{component}: platforms must be an array")
         _require(
-            len(platforms) == 2,
-            f"{component}: multiarch manifest with both linux/amd64 and linux/arm64 is required",
+            len(platforms) == len(PLATFORMS),
+            f"{component}: manifest with linux/amd64 platform is required",
         )
         actual_platforms = {
             (platform.get("os"), platform.get("architecture"))
@@ -136,7 +136,7 @@ def validate_manifest(
         }
         _require(
             actual_platforms == set(PLATFORMS),
-            f"{component}: platforms must be exactly linux/amd64 and linux/arm64",
+            f"{component}: platforms must be exactly linux/amd64",
         )
         for platform in platforms:
             _require(

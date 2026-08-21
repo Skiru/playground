@@ -9,23 +9,39 @@ created_at=$(git -C "$repo_dir" show -s --format=%cI "$source_sha")
 printf '%s\n' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
 printf '%s\n' "$source_sha" | grep -Eq '^[0-9a-f]{40}$'
 
+pids=""
 while IFS='|' read -r component dockerfile image; do
-  docker buildx build \
-    --platform linux/amd64,linux/arm64 \
-    --push \
-    --provenance=true \
-    --sbom=true \
-    --file "$repo_dir/$dockerfile" \
-    --tag "$image:sha-$source_sha" \
-    --tag "$image:v$version" \
-    --build-arg "OCI_REVISION=$source_sha" \
-    --build-arg "OCI_VERSION=$version" \
-    --build-arg "OCI_CREATED=$created_at" \
-    "$repo_dir"
-  printf 'published %s (%s)\n' "$component" "$image"
+  (
+    docker buildx build \
+      --platform linux/amd64 \
+      --push \
+      --provenance=true \
+      --sbom=true \
+      --cache-from "type=gha,scope=$component" \
+      --cache-to "type=gha,mode=max,scope=$component" \
+      --file "$repo_dir/$dockerfile" \
+      --tag "$image:sha-$source_sha" \
+      --tag "$image:v$version" \
+      --build-arg "OCI_REVISION=$source_sha" \
+      --build-arg "OCI_VERSION=$version" \
+      --build-arg "OCI_CREATED=$created_at" \
+      "$repo_dir"
+    printf 'published %s (%s)\n' "$component" "$image"
+  ) &
+  pids="$pids $!"
 done <<'EOF'
 api|infra/docker/api.Dockerfile|ghcr.io/skiru/family-places-api
 web|infra/docker/web.Dockerfile|ghcr.io/skiru/family-places-web
 postgis|infra/docker/postgis.Dockerfile|ghcr.io/skiru/family-places-postgis
 cf-access-validator|infra/docker/cf-access-validator.Dockerfile|ghcr.io/skiru/family-places-cf-access-validator
 EOF
+
+failed=0
+for pid in $pids; do
+  wait "$pid" || failed=1
+done
+
+if [ "$failed" -ne 0 ]; then
+  printf 'one or more image builds failed\n' >&2
+  exit 1
+fi

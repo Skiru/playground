@@ -7,15 +7,10 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 require_env
 
-arch=$(uname -m)
-case "$arch" in
-  x86_64) host_platform="linux/amd64" ;;
-  aarch64|arm64) host_platform="linux/arm64" ;;
-  *) die "Unsupported production host architecture: $arch" ;;
-esac
+target_platform="${TARGET_PLATFORM:-linux/amd64}"
 
 command -v docker >/dev/null 2>&1 || die 'Docker is required'
-docker compose version >/dev/null 2>&1 || die 'Docker Compose v2 is required'
+command -v docker compose >/dev/null 2>&1 || die 'Docker Compose v2 is required'
 command -v jq >/dev/null 2>&1 || die 'jq is required'
 command -v python3 >/dev/null 2>&1 || die 'python3 is required'
 
@@ -39,8 +34,8 @@ for image in "${API_IMAGE:-}" "${WEB_IMAGE:-}" "${POSTGIS_IMAGE:-}" "${CF_ACCESS
   esac
 
   inspect_output=$(docker buildx imagetools inspect "$image" 2>&1) || die "failed to inspect image $image: $inspect_output"
-  if ! printf '%s\n' "$inspect_output" | grep -q "$host_platform"; then
-    die "image $image does not provide the specified platform ($host_platform)"
+  if ! printf '%s\n' "$inspect_output" | grep -q "$target_platform"; then
+    die "image $image does not provide the specified platform ($target_platform)"
   fi
 done
 

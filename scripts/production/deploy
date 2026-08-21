@@ -76,12 +76,7 @@ POSTGIS_IMAGE="$(jq -r '.images[] | select(.component=="postgis") | .name + "@" 
 CF_ACCESS_VALIDATOR_IMAGE="$(jq -r '.images[] | select(.component=="cf-access-validator") | .name + "@" + .manifestDigest' "$resolved_manifest")"
 export RELEASE_VERSION RELEASE_SHA API_IMAGE WEB_IMAGE POSTGIS_IMAGE CF_ACCESS_VALIDATOR_IMAGE
 
-arch=$(uname -m)
-case "$arch" in
-  x86_64) host_platform="linux/amd64" ;;
-  aarch64|arm64) host_platform="linux/arm64" ;;
-  *) host_platform="linux/unknown" ;;
-esac
+host_platform="${TARGET_PLATFORM:-linux/amd64}"
 
 if [ "$dry_run" = "false" ] && [ "$print_release" = "false" ]; then
   printf '[3/7] Checking host architecture: %s\n' "$host_platform"

@@ -37,7 +37,6 @@ def valid_multiarch_manifest():
             "tagDigests": {"version": digest, "sha": digest},
             "platforms": [
                 {"os": "linux", "architecture": "amd64", "digest": DIGESTS[(index * 2) + 3], "sourceRevision": SHA},
-                {"os": "linux", "architecture": "arm64", "digest": DIGESTS[(index * 2) + 4], "sourceRevision": SHA},
             ],
         })
     return {
@@ -83,7 +82,6 @@ if len(args) >= 4 and args[:3] == ["buildx", "imagetools", "inspect"]:
         print("Name: " + reference)
         print("MediaType: application/vnd.oci.image.index.v1+json")
         print("linux/amd64")
-        print("linux/arm64")
         raise SystemExit(0)
 
     if "{{json .Manifest}}" in fmt:
@@ -92,7 +90,6 @@ if len(args) >= 4 and args[:3] == ["buildx", "imagetools", "inspect"]:
             "mediaType": "application/vnd.oci.image.index.v1+json",
             "manifests": [
                 {{"digest": AMD64_DIGEST, "platform": {{"os": "linux", "architecture": "amd64"}}}},
-                {{"digest": ARM64_DIGEST, "platform": {{"os": "linux", "architecture": "arm64"}}}},
             ],
         }}))
         raise SystemExit(0)
@@ -122,14 +119,6 @@ class TestDeployMatrix(unittest.TestCase):
     def test_multiarch_manifest_validation_pass(self):
         manifest = valid_multiarch_manifest()
         release_manifest.validate_manifest(manifest, "1.4.0", SHA, TREE)
-
-    def test_rejects_single_arch_amd64_only(self):
-        manifest = valid_multiarch_manifest()
-        manifest["images"][0]["platforms"] = [
-            {"os": "linux", "architecture": "amd64", "digest": DIGESTS[3], "sourceRevision": SHA}
-        ]
-        with self.assertRaises(release_manifest.ManifestError):
-            release_manifest.validate_manifest(manifest, "1.4.0", SHA, TREE)
 
     def test_rejects_single_arch_arm64_only(self):
         manifest = valid_multiarch_manifest()
