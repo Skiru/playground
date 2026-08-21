@@ -149,11 +149,15 @@ compose run --rm --no-deps api php bin/console doctrine:migrations:migrate --no-
 after=$(compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COALESCE(max(version), '') FROM doctrine_migration_versions" 2>/dev/null || true)
 
 printf '[7/7] Starting services and running smoke tests\n'
-if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
-  compose up --wait -d worker api web gateway dozzle-socket-proxy observability-logs cloudflared
-else
-  compose up --wait -d worker api web gateway dozzle-socket-proxy observability-logs
+services_to_start="worker api web gateway dozzle-socket-proxy cf-access-validator observability-logs"
+if [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ]; then
+  services_to_start="$services_to_start place-discovery-scheduler place-discovery-worker"
 fi
+if compose config --services 2>/dev/null | grep -q '^cloudflared$'; then
+  services_to_start="$services_to_start cloudflared"
+fi
+
+compose up --wait -d $services_to_start
 
 "$SCRIPT_DIR/smoke"
 

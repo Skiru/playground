@@ -166,6 +166,23 @@ services:
       retries: 5
     networks: [internal]
 
+  cf-access-validator:
+    image: ${CF_ACCESS_VALIDATOR_IMAGE:-family-places-cf-access-validator:local}
+    build:
+      context: .
+      dockerfile: infra/docker/cf-access-validator.Dockerfile
+    environment:
+      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-playground}
+      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
+      CLOUDFLARE_ACCESS_TEST_MODE: ${CLOUDFLARE_ACCESS_TEST_MODE:-false}
+      CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY: ${CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [internal]
+
   dozzle-socket-proxy:
     image: ${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}
     environment:
@@ -188,6 +205,11 @@ services:
       VOLUMES: 0
       NETWORKS: 0
       PLUGINS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:2375/version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [observability-internal]
@@ -204,9 +226,13 @@ services:
       DOZZLE_AUTH_HEADER_NAME: ${DOZZLE_AUTH_HEADER_NAME:-Cf-Access-Authenticated-User-Email}
       DOZZLE_ENABLE_ACTIONS: "false"
       DOZZLE_NO_SENSITIVE: "true"
+    volumes:
+      - dozzle-data:/data
     depends_on:
       dozzle-socket-proxy:
-        condition: service_started
+        condition: service_healthy
+      cf-access-validator:
+        condition: service_healthy
     networks: [internal, observability-internal]
 
 volumes:
@@ -215,6 +241,7 @@ volumes:
   media-data:
   caddy-data:
   caddy-config:
+  dozzle-data:
 
 networks:
   edge:

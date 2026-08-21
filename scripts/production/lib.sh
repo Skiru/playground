@@ -49,6 +49,7 @@ load_env() {
     [ -n "${API_IMAGE:-}" ] || export API_IMAGE=$(jq -r '.images.api // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${WEB_IMAGE:-}" ] || export WEB_IMAGE=$(jq -r '.images.web // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${POSTGIS_IMAGE:-}" ] || export POSTGIS_IMAGE=$(jq -r '.images.postgis // empty' "$(release_descriptor)" 2>/dev/null || true)
+    [ -n "${CF_ACCESS_VALIDATOR_IMAGE:-}" ] || export CF_ACCESS_VALIDATOR_IMAGE=${CF_ACCESS_VALIDATOR_IMAGE:-family-places-cf-access-validator:local}
     [ -n "${RELEASE_VERSION:-}" ] || export RELEASE_VERSION=$(jq -r '.releaseVersion // empty' "$(release_descriptor)" 2>/dev/null || true)
     [ -n "${RELEASE_SHA:-}" ] || export RELEASE_SHA=$(jq -r '.sourceSha // empty' "$(release_descriptor)" 2>/dev/null || true)
   fi
@@ -73,7 +74,11 @@ compose() {
     PGHOST=${PGHOST:-database} PGPORT=${PGPORT:-5432} PGPASSWORD=${PGPASSWORD:-${POSTGRES_PASSWORD:-}} command "$@"
     return
   fi
-  COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-family-places}" ENV_FILE="$ENV_FILE" docker compose --env-file "$ENV_FILE" -f "$ROOT/compose.yaml" -f "$ROOT/compose.prod.yaml" "$@"
+  profiles_arg=""
+  if [ "${PLACE_DISCOVERY_ENABLED:-false}" = "true" ]; then
+    profiles_arg="--profile discovery"
+  fi
+  COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-family-places}" ENV_FILE="$ENV_FILE" docker compose --env-file "$ENV_FILE" $profiles_arg -f "$ROOT/compose.yaml" -f "$ROOT/compose.prod.yaml" "$@"
 }
 
 sha256() {

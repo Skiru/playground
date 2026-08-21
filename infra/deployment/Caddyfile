@@ -39,12 +39,12 @@ logs.{$GATEWAY_DOMAIN:playground.com.pl} {
         -Server
     }
 
-    # Require Cloudflare Access authentication header from authenticated Access proxy.
-    # Reject direct origin requests missing the required assertion header.
-    @missing_cf_auth {
-        not header Cf-Access-Authenticated-User-Email *
+    # Validate Cloudflare Access JWT Assertion token cryptographically
+    # and extract verified email before allowing access to Dozzle.
+    forward_auth cf-access-validator:8080 {
+        uri /validate
+        copy_headers Cf-Access-Authenticated-User-Email
     }
-    respond @missing_cf_auth "Access Denied: Cloudflare Access Authentication Required" 403
 
     reverse_proxy observability-logs:8080 {
         header_up -Remote-User

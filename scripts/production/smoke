@@ -46,12 +46,38 @@ compose exec -T api curl -s -f http://localhost/admin/login | grep -q '_csrf_tok
 compose exec -T web node -e "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)})"
 compose exec -T database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT PostGIS_Version()' | grep -q '^3\.6'
 
-# Dozzle and Docker Socket Proxy smoke checks
+# Dozzle and Docker Socket Proxy smoke checks (testing JWT verification and origin spoof protection)
 dozzle_unauth=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" 'http://localhost:80/' 2>&1 || true)
 printf '%s\n' "$dozzle_unauth" | grep -q '403' || die 'Dozzle direct unauthenticated access failed to return 403'
 
-dozzle_auth=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" --header="Cf-Access-Authenticated-User-Email: admin@playground.com.pl" 'http://localhost:80/' 2>&1 || true)
-printf '%s\n' "$dozzle_auth" | grep -q '200' || die 'Dozzle authenticated access with Cloudflare header failed'
+dozzle_spoof_email=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" --header="Cf-Access-Authenticated-User-Email: attacker@evil.com" 'http://localhost:80/' 2>&1 || true)
+printf '%s\n' "$dozzle_spoof_email" | grep -q '403' || die 'Dozzle header spoofing attack (email without JWT) failed to be rejected with 403'
+
+dozzle_spoof_remote_user=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" --header="Remote-User: admin" 'http://localhost:80/' 2>&1 || true)
+printf '%s\n' "$dozzle_spoof_remote_user" | grep -q '403' || die 'Dozzle header spoofing attack (Remote-User without JWT) failed to be rejected with 403'
+
+dozzle_bad_jwt=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" --header="Cf-Access-Jwt-Assertion: invalid.jwt.token" 'http://localhost:80/' 2>&1 || true)
+printf '%s\n' "$dozzle_bad_jwt" | grep -q '403' || die 'Dozzle invalid JWT assertion failed to be rejected with 403'
+
+if [ "${CLOUDFLARE_ACCESS_TEST_MODE:-false}" = "true" ] && [ -n "${CLOUDFLARE_ACCESS_TEST_PRIVATE_KEY:-}" ]; then
+  test_jwt=$(python3 -c "
+import time, jwt
+payload = {
+    'iss': '${CLOUDFLARE_ACCESS_ISSUER:-https://playground.cloudflareaccess.com}',
+    'aud': '${CLOUDFLARE_ACCESS_AUD:-}',
+    'sub': 'smoke-test-user',
+    'email': 'admin@playground.com.pl',
+    'exp': int(time.time()) + 300,
+    'iat': int(time.time())
+}
+key = '''${CLOUDFLARE_ACCESS_TEST_PRIVATE_KEY}'''
+print(jwt.encode(payload, key, algorithm='RS256', headers={'kid': 'test-kid'}))
+" 2>/dev/null || true)
+  if [ -n "$test_jwt" ]; then
+    dozzle_valid_jwt=$(compose exec -T gateway wget -S -O /dev/null --header="Host: logs.${GATEWAY_DOMAIN:-playground.com.pl}" --header="Cf-Access-Jwt-Assertion: $test_jwt" 'http://localhost:80/' 2>&1 || true)
+    printf '%s\n' "$dozzle_valid_jwt" | grep -q '200' || die 'Dozzle authenticated access with valid JWT assertion failed'
+  fi
+fi
 
 if [ "${STORAGE_DRIVER:-local}" = "s3" ]; then
   key="release-smoke/$(date -u +%s)-$$"

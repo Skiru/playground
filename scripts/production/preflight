@@ -45,8 +45,7 @@ done
 
 legacy_containers=$(docker ps --filter "label=com.docker.compose.project=familyplaces" --format '{{.Names}}' 2>/dev/null || true)
 if [ -n "$legacy_containers" ]; then
-  printf 'WARNING: Legacy Compose project "familyplaces" containers are currently running on host: %s\n' "$legacy_containers" >&2
-  printf 'WARNING: Stop the legacy stack by running: docker compose -p familyplaces down\n' >&2
+  die "Legacy Compose project 'familyplaces' containers are currently active on host: $legacy_containers. You must stop the legacy stack with 'docker compose -p familyplaces down' before proceeding."
 fi
 
 cf_token_file="${CLOUDFLARE_TUNNEL_TOKEN_FILE:-/etc/familyplaces/cloudflared-token}"

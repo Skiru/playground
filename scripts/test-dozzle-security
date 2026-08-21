@@ -21,8 +21,13 @@ if ! grep -q 'header_up -Remote-Email' "$caddyfile"; then
   exit 1
 fi
 
-if ! grep -q 'Cf-Access-Authenticated-User-Email' "$caddyfile"; then
-  echo "ERROR: Caddyfile must enforce Cf-Access-Authenticated-User-Email header." >&2
+if ! grep -q 'forward_auth cf-access-validator:8080' "$caddyfile"; then
+  echo "ERROR: Caddyfile must use forward_auth cf-access-validator:8080 for Dozzle authentication." >&2
+  exit 1
+fi
+
+if ! grep -q 'copy_headers Cf-Access-Authenticated-User-Email' "$caddyfile"; then
+  echo "ERROR: Caddyfile must copy verified Cf-Access-Authenticated-User-Email from cf-access-validator." >&2
   exit 1
 fi
 
@@ -31,7 +36,7 @@ echo "--- CNAME & Caddy Header Rules PASSED ---"
 echo "=== 2. Testing Production Compose Dozzle Topology & Port Exposure ==="
 prod_config=$(docker compose --env-file .env.example -f compose.yaml -f compose.prod.yaml config)
 
-# Verify Dozzle and Socket Proxy have NO published ports on host
+# Verify Dozzle, Socket Proxy, and Validator have NO published ports on host
 if echo "$prod_config" | grep -A 20 'observability-logs:' | grep -q 'ports:'; then
   echo "ERROR: observability-logs (Dozzle) must NOT have published ports in production compose." >&2
   exit 1
@@ -39,6 +44,11 @@ fi
 
 if echo "$prod_config" | grep -A 20 'dozzle-socket-proxy:' | grep -q 'ports:'; then
   echo "ERROR: dozzle-socket-proxy must NOT have published ports in production compose." >&2
+  exit 1
+fi
+
+if echo "$prod_config" | grep -A 20 'cf-access-validator:' | grep -q 'ports:'; then
+  echo "ERROR: cf-access-validator must NOT have published ports in production compose." >&2
   exit 1
 fi
 

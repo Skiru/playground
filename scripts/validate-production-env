@@ -77,6 +77,7 @@ resolved_dozzle_image=${DOZZLE_IMAGE:-amir20/dozzle:v8.11.8@sha256:d6b43130cdee3
 resolved_dozzle_socket_proxy_image=${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}
 resolved_gateway_image=${GATEWAY_IMAGE:-caddy:2.10.0-alpine@sha256:ae4458638da8e1a91aafffb231c5f8778e964bca650c8a8cb23a7e8ac557aa3c}
 resolved_cloudflared_image=${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df}
+resolved_cf_access_validator_image=${CF_ACCESS_VALIDATOR_IMAGE:-family-places-cf-access-validator:local}
 for image in "$API_IMAGE" "$WEB_IMAGE" "$POSTGIS_IMAGE" "$resolved_dozzle_image" "$resolved_dozzle_socket_proxy_image" "$resolved_gateway_image" "$resolved_cloudflared_image"; do printf %s "$image" | grep -Eq '@sha256:[0-9a-f]{64}$' || fail "deployment image '$image' must use exact sha256 digest reference"; done
 dozzle_provider=${DOZZLE_AUTH_PROVIDER:-forward-proxy}
 [ "$dozzle_provider" = forward-proxy ] || fail 'DOZZLE_AUTH_PROVIDER must be forward-proxy'

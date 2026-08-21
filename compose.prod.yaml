@@ -187,6 +187,28 @@ services:
     networks: [edge]
     logging: {driver: local, options: {max-size: 5m, max-file: "3"}}
 
+  cf-access-validator:
+    image: ${CF_ACCESS_VALIDATOR_IMAGE:-family-places-cf-access-validator:local}
+    build: !reset null
+    restart: unless-stopped
+    read_only: true
+    mem_limit: 64m
+    cpus: 0.1
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-playground}
+      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
+      CLOUDFLARE_ACCESS_TEST_MODE: ${CLOUDFLARE_ACCESS_TEST_MODE:-false}
+      CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY: ${CLOUDFLARE_ACCESS_TEST_PUBLIC_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [internal]
+    logging: {driver: json-file, options: {max-size: 5m, max-file: "3"}}
+
   dozzle-socket-proxy:
     image: ${DOZZLE_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:0.1.1@sha256:6c22b9545adc95258af9deffdde6c0ce0a0a70716771e5a4e02d24d1b6e0dda1}
     restart: unless-stopped
@@ -215,6 +237,11 @@ services:
       VOLUMES: 0
       NETWORKS: 0
       PLUGINS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:2375/version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [observability-internal]
@@ -234,9 +261,13 @@ services:
       DOZZLE_AUTH_HEADER_NAME: ${DOZZLE_AUTH_HEADER_NAME:-Cf-Access-Authenticated-User-Email}
       DOZZLE_ENABLE_ACTIONS: "false"
       DOZZLE_NO_SENSITIVE: "true"
+    volumes:
+      - dozzle-data:/data
     depends_on:
       dozzle-socket-proxy:
-        condition: service_started
+        condition: service_healthy
+      cf-access-validator:
+        condition: service_healthy
     mem_limit: 128m
     cpus: 0.15
     security_opt: [no-new-privileges:true]
