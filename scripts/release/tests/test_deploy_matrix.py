@@ -76,7 +76,15 @@ if args[:1] == ["ps"]:
     raise SystemExit(0)
 
 if len(args) >= 4 and args[:3] == ["buildx", "imagetools", "inspect"]:
+    reference = args[3]
     fmt = args[5] if len(args) > 5 and args[4] == "--format" else ""
+
+    if not fmt:
+        print("Name: " + reference)
+        print("MediaType: application/vnd.oci.image.index.v1+json")
+        print("linux/amd64")
+        print("linux/arm64")
+        raise SystemExit(0)
 
     if "{{json .Manifest}}" in fmt:
         print(json.dumps({{
