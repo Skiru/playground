@@ -74,7 +74,7 @@ jobs:
       - name: api-client-runtime-image
         run: |
           docker compose -f compose.yaml -f compose.dev.yaml build api
-          docker image tag "${COMPOSE_PROJECT_NAME}-api" family-places-api:development
+          docker image tag "${API_IMAGE}" family-places-api:development
       - name: api-client-consistency
         run: ./scripts/api-check
       - name: backend-test-migrations
