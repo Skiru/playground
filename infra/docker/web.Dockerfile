@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:24-bookworm@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059 AS base
+FROM --platform=$BUILDPLATFORM node:26-bookworm@sha256:0353e48e0e8a993db87b720c242f54b207059d1bcc0106534896e8a11054c837 AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -22,7 +22,7 @@ RUN pnpm --filter @family-places/api-client build \
     && cp -R apps/web/build /prod/web/build \
     && test -x /prod/web/node_modules/.bin/react-router-serve
 
-FROM node:24-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS production
+FROM node:26-bookworm-slim@sha256:cd565714d4da3e84bfd341e31448f81d47c6362198f152345297c9c1154e6341 AS production
 ENV NODE_ENV=production PORT=3000
 
 ARG OCI_SOURCE=https://github.com/Skiru/playground
