@@ -76,28 +76,27 @@ if args[:1] == ["ps"]:
     raise SystemExit(0)
 
 if len(args) >= 4 and args[:3] == ["buildx", "imagetools", "inspect"]:
-    reference = args[3]
     fmt = args[5] if len(args) > 5 and args[4] == "--format" else ""
 
     if "{{json .Manifest}}" in fmt:
-        print(json.dumps({
+        print(json.dumps({{
             "digest": INDEX_DIGEST,
             "mediaType": "application/vnd.oci.image.index.v1+json",
             "manifests": [
                 {{"digest": AMD64_DIGEST, "platform": {{"os": "linux", "architecture": "amd64"}}}},
                 {{"digest": ARM64_DIGEST, "platform": {{"os": "linux", "architecture": "arm64"}}}},
             ],
-        }))
+        }}))
         raise SystemExit(0)
 
     if "{{json .Image}}" in fmt:
-        print(json.dumps({
-            "config": {
-                "Labels": {
+        print(json.dumps({{
+            "config": {{
+                "Labels": {{
                     "org.opencontainers.image.revision": SOURCE_SHA,
-                }
-            }
-        }))
+                }}
+            }}
+        }}))
         raise SystemExit(0)
 
 raise SystemExit(0)
@@ -343,7 +342,7 @@ CLOUDFLARE_TUNNEL_TOKEN_FILE={token_file}
 
     def test_validator_inspection_failure_is_not_replaced_with_api(self):
         def failing_run_json(*command):
-            reference = command[3]
+            reference = command[4]
             if "cf-access-validator" in reference:
                 raise subprocess.CalledProcessError(1, list(command))
             return {"digest": DIGESTS[0], "mediaType": "application/vnd.oci.image.index.v1+json"}
