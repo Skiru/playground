@@ -20,6 +20,8 @@ final class DisabledPlaceDiscoveryConsoleTest extends KernelTestCase
         self::bootKernel();
         $connection = self::getContainer()->get(Connection::class);
         self::assertInstanceOf(Connection::class, $connection);
+        (new \App\Places\Infrastructure\Fixtures\PlacesFixtures($connection))->load();
+        (new \App\PlaceDiscovery\Infrastructure\Fixtures\PlaceDiscoveryFixtures($connection))->load();
         $application = new Application(self::$kernel);
         $application->setAutoExit(false);
         $before = (int) $connection->fetchOne('SELECT COUNT(*) FROM place_discovery_runs');

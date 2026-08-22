@@ -1,7 +1,130 @@
-{% extends 'base.html.twig' %}
-{% block title %}{{ item ? 'Edytuj' : 'Dodaj' }} {{ type }} | FamilyPlaces Admin{% endblock %}
-{% block body %}<main><a href="{{ path('admin_dictionary_list', {type: type}) }}">Anuluj</a><h1>{{ item ? 'Edytuj' : 'Dodaj' }} {{ type }}</h1>
-{% for message in app.flashes('error') %}<p role="alert">{{ message }}</p>{% endfor %}<form method="post"><input type="hidden" name="_token" value="{{ csrf_token(item ? 'dictionary-' ~ type ~ '-' ~ item.id : 'dictionary-' ~ type) }}">
-<label>Nazwa <input name="name" value="{{ item.name ?? '' }}" required maxlength="120"></label><label>Slug <input name="slug" value="{{ item.slug ?? '' }}" pattern="[a-z0-9-]+" required maxlength="120"></label><label><input type="checkbox" name="enabled" value="1"{% if item is null or item.enabled %} checked{% endif %}> Aktywne</label>
-{% if type == 'cities' %}<label>Kod kraju <input name="countryCode" value="{{ item.country_code ?? 'PL' }}" pattern="[A-Z]{2}" required></label><label>Latitude <input name="latitude" type="number" min="-90" max="90" step="any" value="{{ item.latitude ?? '' }}" required></label><label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" value="{{ item.longitude ?? '' }}" required></label><label>Zoom <input name="defaultZoom" type="number" min="1" max="20" value="{{ item.default_zoom ?? 12 }}"></label><label>Promień km <input name="defaultRadiusKm" type="number" min="1" max="100" value="{{ item.default_radius_km ?? 15 }}"></label><label>Timezone <input name="timezone" value="{{ item.timezone ?? 'Europe/Warsaw' }}" required></label>
-{% else %}<label>Ikona <input name="iconKey" value="{{ item.icon_key ?? '' }}" required></label><label>Kolejność <input name="displayOrder" type="number" min="0" value="{{ item.display_order ?? 0 }}" required></label>{% if type == 'categories' %}<label>Opis <textarea name="description">{{ item.description ?? '' }}</textarea></label>{% else %}<label>Grupa <input name="group" value="{{ item.amenity_group ?? '' }}" required></label>{% endif %}{% endif %}<button>Zapisz</button></form></main>{% endblock %}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block title %}
+    {{ item ? 'Edytuj' : 'Dodaj' }} {% if type == 'cities' %}miasto{% elseif type == 'categories' %}kategorię{% else %}udogodnienie{% endif %} | FamilyPlaces Admin
+{% endblock %}
+
+{% block content_title %}
+    <ol class="breadcrumb mb-1 fs-6">
+        <li class="breadcrumb-item"><a href="{{ path('admin') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ path('admin_dictionary_list', {type: type}) }}">{% if type == 'cities' %}Miasta{% elseif type == 'categories' %}Kategorie{% else %}Udogodnienia{% endif %}</a></li>
+        <li class="breadcrumb-item active text-dark">{{ item ? 'Edycja' : 'Nowy wpis' }}</li>
+    </ol>
+    <h1 class="m-0 fs-2 fw-bold text-dark">{{ item ? 'Edytuj wpis słownikowy' : 'Dodaj wpis słownikowy' }}</h1>
+{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('admin_dictionary_list', {type: type}) }}" class="btn btn-outline-secondary">
+        <i class="fa fa-arrow-left me-1"></i> Powrót do listy
+    </a>
+{% endblock %}
+
+{% block main %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light py-3 fw-bold border-0">
+                    <i class="fa fa-list me-1 text-primary"></i> Formularz Słownika: {{ type|title }}
+                </div>
+                <div class="card-body">
+                    <form method="post" action="">
+                        <input type="hidden" name="_token" value="{{ csrf_token(item ? 'dictionary-' ~ type ~ '-' ~ item.id : 'dictionary-' ~ type) }}">
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-bold">Nazwa <span class="text-danger">*</span></label>
+                            <input type="text" id="name" name="name" value="{{ item.name ?? '' }}" class="form-control" required maxlength="120">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="slug" class="form-label fw-bold">Slug <span class="text-danger">*</span></label>
+                            <input type="text" id="slug" name="slug" value="{{ item.slug ?? '' }}" pattern="[a-z0-9-]+" class="form-control" required maxlength="120" placeholder="np. warszawa lub wozkownia">
+                            <div class="form-text">Dozwolone małe litery, cyfry i myślniki. Must be unique.</div>
+                        </div>
+
+                        <div class="mb-3 form-check form-switch">
+                            <input type="checkbox" id="enabled" name="enabled" value="1" class="form-check-input" {% if item is null or item.enabled %}checked{% endif %}>
+                            <label for="enabled" class="form-check-label fw-bold">Wpis aktywny w systemie</label>
+                        </div>
+
+                        {% if type == 'cities' %}
+                            <hr class="my-4">
+                            <h5 class="fw-bold fs-6 mb-3 text-secondary">Parametry geograficzne i lokalne</h5>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="countryCode" class="form-label fw-bold">Kod kraju (ISO 2) <span class="text-danger">*</span></label>
+                                    <input type="text" id="countryCode" name="countryCode" value="{{ item.country_code ?? 'PL' }}" pattern="[A-Z]{2}" class="form-control" required maxlength="2">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="timezone" class="form-label fw-bold">Strefa czasowa <span class="text-danger">*</span></label>
+                                    <input type="text" id="timezone" name="timezone" value="{{ item.timezone ?? 'Europe/Warsaw' }}" class="form-control" required placeholder="Europe/Warsaw">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="latitude" class="form-label fw-bold">Szerokość geograficzna (Latitude) <span class="text-danger">*</span></label>
+                                    <input type="number" id="latitude" name="latitude" min="-90" max="90" step="any" value="{{ item.latitude ?? '' }}" class="form-control" required placeholder="52.2297">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="longitude" class="form-label fw-bold">Długość geograficzna (Longitude) <span class="text-danger">*</span></label>
+                                    <input type="number" id="longitude" name="longitude" min="-180" max="180" step="any" value="{{ item.longitude ?? '' }}" class="form-control" required placeholder="21.0122">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="defaultZoom" class="form-label fw-bold">Domyślne powiększenie (Zoom)</label>
+                                    <input type="number" id="defaultZoom" name="defaultZoom" min="1" max="20" value="{{ item.default_zoom ?? 12 }}" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="defaultRadiusKm" class="form-label fw-bold">Domyślny promień (km)</label>
+                                    <input type="number" id="defaultRadiusKm" name="defaultRadiusKm" min="1" max="100" value="{{ item.default_radius_km ?? 15 }}" class="form-control">
+                                </div>
+                            </div>
+
+                        {% else %}
+                            <hr class="my-4">
+                            <h5 class="fw-bold fs-6 mb-3 text-secondary">Aprezentacja i ikona</h5>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="iconKey" class="form-label fw-bold">Klucz ikony FontAwesome <span class="text-danger">*</span></label>
+                                    <input type="text" id="iconKey" name="iconKey" value="{{ item.icon_key ?? '' }}" class="form-control" required placeholder="np. city, tags, concierge-bell">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="displayOrder" class="form-label fw-bold">Kolejność wyświetlania <span class="text-danger">*</span></label>
+                                    <input type="number" id="displayOrder" name="displayOrder" min="0" value="{{ item.display_order ?? 0 }}" class="form-control" required>
+                                </div>
+                            </div>
+
+                            {% if type == 'categories' %}
+                                <div class="mb-3">
+                                    <label for="description" class="form-label fw-bold">Opis kategorii</label>
+                                    <textarea id="description" name="description" rows="3" class="form-control" placeholder="Opis sposobu klasyfikacji miejsc...">{{ item.description ?? '' }}</textarea>
+                                </div>
+                            {% else %}
+                                <div class="mb-3">
+                                    <label for="group" class="form-label fw-bold">Grupa udogodnienia <span class="text-danger">*</span></label>
+                                    <input type="text" id="group" name="group" value="{{ item.amenity_group ?? '' }}" class="form-control" required placeholder="family, general">
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                            <a href="{{ path('admin_dictionary_list', {type: type}) }}" class="btn btn-outline-secondary">Anuluj</a>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Zapisz wpis</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

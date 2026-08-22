@@ -33,6 +33,8 @@ final class PlaceDiscoveryAdminWorkflowTest extends WebTestCase
         $connection = self::getContainer()->get(Connection::class);
         self::assertInstanceOf(Connection::class, $connection);
         $this->connection = $connection;
+        (new \App\Places\Infrastructure\Fixtures\PlacesFixtures($connection))->load();
+        (new \App\PlaceDiscovery\Infrastructure\Fixtures\PlaceDiscoveryFixtures($connection))->load();
         $this->connection->beginTransaction();
     }
 

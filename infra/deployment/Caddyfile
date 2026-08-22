@@ -25,6 +25,9 @@
     handle /admin* {
         reverse_proxy api:80
     }
+    handle /bundles/* {
+        reverse_proxy api:80
+    }
     handle {
         reverse_proxy web:3000
     }

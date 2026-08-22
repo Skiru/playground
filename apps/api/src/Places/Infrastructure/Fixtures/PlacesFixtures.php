@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Places\Infrastructure\Fixtures;
 
-use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\Persistence\ObjectManager;
 
-final class PlacesFixtures extends Fixture
+final class PlacesFixtures implements FixtureInterface
 {
     public function __construct(private readonly Connection $connection)
     {
     }
 
-    public function load(ObjectManager $manager): void
+    public function load(?ObjectManager $manager = null): void
     {
         $this->connection->executeStatement('TRUNCATE place_source_links, place_candidates, place_discovery_runs, place_discovery_areas, moderation_idempotency_keys, content_reports, moderation_actions, forum_posts, forum_threads, forum_categories, external_place_references, special_opening_intervals, special_opening_days, weekly_opening_intervals, place_age_zones, place_amenities, place_categories, reviews, place_comments, places, amenities, categories, cities, users CASCADE');
         $now = '2026-07-16 08:00:00';

@@ -41,4 +41,20 @@ final class DashboardAuthorizationTest extends WebTestCase
             }
         }
     }
+
+    public function testDashboardRendersStatisticsAccurately(): void
+    {
+        $client = self::createClient();
+        $login = $client->request('GET', '/admin/login');
+        $client->request('POST', '/admin/login', [
+            '_username' => 'admin@example.test',
+            '_password' => 'test-password',
+            '_csrf_token' => $login->filter('input[name="_csrf_token"]')->attr('value'),
+        ], [], ['HTTP_ORIGIN' => 'http://localhost']);
+        self::assertResponseRedirects('/admin');
+
+        $crawler = $client->request('GET', '/admin');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Panel Administracyjny FamilyPlaces', $client->getResponse()->getContent());
+    }
 }

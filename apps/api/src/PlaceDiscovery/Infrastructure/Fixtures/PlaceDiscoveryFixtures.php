@@ -6,12 +6,12 @@ namespace App\PlaceDiscovery\Infrastructure\Fixtures;
 
 use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\Places\Infrastructure\Fixtures\PlacesFixtures;
-use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
+use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\Persistence\ObjectManager;
 
-final class PlaceDiscoveryFixtures extends Fixture implements DependentFixtureInterface
+final class PlaceDiscoveryFixtures implements FixtureInterface, DependentFixtureInterface
 {
     public function __construct(private readonly Connection $connection)
     {
@@ -22,7 +22,7 @@ final class PlaceDiscoveryFixtures extends Fixture implements DependentFixtureIn
         return [PlacesFixtures::class];
     }
 
-    public function load(ObjectManager $manager): void
+    public function load(?ObjectManager $manager = null): void
     {
         $now = '2026-07-28 09:30:00+02';
         $areaId = self::id(900);

@@ -13,6 +13,7 @@ services:
       - "127.0.0.1:${API_PORT:-8080}:80"
     volumes:
       - ./apps/api:/app
+      - ./infra/deployment/Caddyfile:/app/infra/deployment/Caddyfile:ro
       - media-data:/data/familyplaces-media
   worker:
     build:
