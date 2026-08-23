@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Places\Infrastructure\Fixtures;
 
-use Doctrine\Common\DataFixtures\FixtureInterface;
+use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\DBAL\Connection;
 use Doctrine\Persistence\ObjectManager;
 
-final class PlacesFixtures implements FixtureInterface
+final class PlacesFixtures extends Fixture
 {
     public function __construct(private readonly Connection $connection)
     {

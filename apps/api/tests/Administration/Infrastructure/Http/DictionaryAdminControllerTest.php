@@ -28,6 +28,7 @@ final class DictionaryAdminControllerTest extends WebTestCase
         $connection = self::getContainer()->get(Connection::class);
         self::assertInstanceOf(Connection::class, $connection);
         (new \App\Places\Infrastructure\Fixtures\PlacesFixtures($connection))->load();
+        (new \App\PlaceDiscovery\Infrastructure\Fixtures\PlaceDiscoveryFixtures($connection))->load();
         $table = $type;
         $connection->executeStatement('DELETE FROM '.$table.' WHERE slug=:slug', ['slug' => $payload['slug']]);
         $this->login($client);

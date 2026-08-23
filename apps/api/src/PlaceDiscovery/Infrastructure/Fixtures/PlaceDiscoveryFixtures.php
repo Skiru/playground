@@ -6,12 +6,12 @@ namespace App\PlaceDiscovery\Infrastructure\Fixtures;
 
 use App\PlaceDiscovery\Domain\OvertureOperatingStatus;
 use App\Places\Infrastructure\Fixtures\PlacesFixtures;
+use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
-use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\Persistence\ObjectManager;
 
-final class PlaceDiscoveryFixtures implements FixtureInterface, DependentFixtureInterface
+final class PlaceDiscoveryFixtures extends Fixture implements DependentFixtureInterface
 {
     public function __construct(private readonly Connection $connection)
     {

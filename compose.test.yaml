@@ -13,6 +13,7 @@ services:
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
     volumes:
       - ./apps/api:/app
+      - ./infra/deployment/Caddyfile:/app/infra/deployment/Caddyfile:ro
       - media-data:/data/familyplaces-media
   worker:
     build:
