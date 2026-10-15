@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:builder@sha256:dd9d093f74005fb9a7c22c0c4edca9424015c0f3e28f720d76ff79c2b8f084e7 AS frankenphp-builder
+FROM dunglas/frankenphp:builder@sha256:9ca7401a512a71c6e0879f59702eea68d4e7cccce244946a85422c4826b30c45 AS frankenphp-builder
 COPY --from=golang:1.26-bookworm@sha256:116d58cbd88c1297624acc6e967a060012422bacf9930927e23fb719189c6f36 /usr/local/go /usr/local/go
 COPY --from=caddy:builder@sha256:198d47eaee306d4d0c38a9960c89ff2c959aa29ad51d3e2dafa3e93ac961782a /usr/bin/xcaddy /usr/bin/xcaddy
 ENV GODEBUG=http2client=0 \
@@ -18,7 +18,7 @@ RUN CGO_ENABLED=1 \
         --replace github.com/getkin/kin-openapi=github.com/getkin/kin-openapi@v0.144.0 \
         --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1
 
-FROM --platform=$BUILDPLATFORM dunglas/frankenphp:php8.5-bookworm@sha256:d904ac794314fea494f806b5c491b74e09335535c0eb721309e45d1aaebd127f AS vendor
+FROM --platform=$BUILDPLATFORM dunglas/frankenphp:php8.5-bookworm@sha256:8896df27f5fe22f4be4628a2cabfc9959229e1010b2890019f6768139a3dfbcf AS vendor
 RUN apt-get clean && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && apt-get upgrade -y --no-install-recommends && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
 COPY --from=composer:2@sha256:5946476338742b200bb9ff88f8be56275ddae4b3949c72305cb0dbf10cfcb760 /usr/bin/composer /usr/bin/composer
@@ -26,7 +26,7 @@ WORKDIR /app
 COPY apps/api/composer.json apps/api/composer.lock ./
 RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --prefer-dist
 
-FROM dunglas/frankenphp:php8.5-bookworm@sha256:d904ac794314fea494f806b5c491b74e09335535c0eb721309e45d1aaebd127f AS base
+FROM dunglas/frankenphp:php8.5-bookworm@sha256:8896df27f5fe22f4be4628a2cabfc9959229e1010b2890019f6768139a3dfbcf AS base
 COPY --from=frankenphp-builder /usr/local/bin/frankenphp /usr/local/bin/frankenphp
 RUN apt-get clean && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && apt-get upgrade -y --no-install-recommends && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN install-php-extensions pdo_pgsql pgsql pcntl intl opcache zip gd exif
