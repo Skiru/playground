@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM golang:1.26-bookworm@sha256:116d58cbd88c1297624ac
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go install -trimpath -ldflags '-s -w' github.com/tianon/gosu@6456aaa0f3c854d199d0f037f068eb97515b7513
 
-FROM postgres:18-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
+FROM postgres:18-bookworm@sha256:7d2695c3aa88e792e8b3b233e7e4adb296a20412c6c0ca361e3edaaacfada108
 
 ARG OCI_SOURCE=https://github.com/Skiru/playground
 ARG OCI_REVISION
